@@ -31,6 +31,13 @@ struct Todo: Identifiable, Codable {
     var tags: [String]
     var priority: Priority
     
+    // Add computed property to detect links
+    var containsLinks: Bool {
+        let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
+        let matches = detector?.matches(in: title, options: [], range: NSRange(location: 0, length: title.utf16.count))
+        return (matches?.count ?? 0) > 0
+    }
+    
     init(title: String, isCompleted: Bool = false, tags: [String] = [], priority: Priority = .normal) {
         self.title = title
         self.isCompleted = isCompleted

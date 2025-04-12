@@ -123,6 +123,46 @@ struct TodoItemView: View {
     @State private var showingTagManagement = false
     @FocusState private var focusField: Bool
     
+    // Helper struct to represent text segments
+    private struct TextSegment: Identifiable {
+        let id = UUID()
+        let text: String
+        let isLink: Bool
+        let url: URL?
+    }
+    
+    // Function to split text into segments
+    private func splitIntoSegments(text: String) -> [TextSegment] {
+        var segments: [TextSegment] = []
+        let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
+        let nsString = text as NSString
+        var currentIndex = 0
+        
+        let matches = detector?.matches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count)) ?? []
+        
+        for match in matches {
+            // Add text before link if any
+            if match.range.location > currentIndex {
+                let normalText = nsString.substring(with: NSRange(location: currentIndex, length: match.range.location - currentIndex))
+                segments.append(TextSegment(text: normalText, isLink: false, url: nil))
+            }
+            
+            // Add link
+            let linkText = nsString.substring(with: match.range)
+            segments.append(TextSegment(text: linkText, isLink: true, url: match.url))
+            
+            currentIndex = match.range.location + match.range.length
+        }
+        
+        // Add remaining text if any
+        if currentIndex < nsString.length {
+            let normalText = nsString.substring(with: NSRange(location: currentIndex, length: nsString.length - currentIndex))
+            segments.append(TextSegment(text: normalText, isLink: false, url: nil))
+        }
+        
+        return segments
+    }
+    
     init(todoList: TodoList, todo: Todo) {
         self.todoList = todoList
         self.todo = todo
@@ -185,9 +225,25 @@ struct TodoItemView: View {
                             .stroke(Color.blue, lineWidth: 1)
                     )
             } else {
-                Text(todo.title)
-                    .strikethrough(todo.isCompleted)
-                    .foregroundColor(todo.isCompleted ? .secondary : .primary)
+                HStack(spacing: 0) {
+                    ForEach(splitIntoSegments(text: todo.title)) { segment in
+                        if segment.isLink {
+                            Text(segment.text)
+                                .strikethrough(todo.isCompleted)
+                                .foregroundColor(.blue)
+                                .underline()
+                                .onTapGesture {
+                                    if let url = segment.url {
+                                        NSWorkspace.shared.open(url)
+                                    }
+                                }
+                        } else {
+                            Text(segment.text)
+                                .strikethrough(todo.isCompleted)
+                                .foregroundColor(todo.isCompleted ? .secondary : .primary)
+                        }
+                    }
+                }
             }
             
             if !todo.tags.isEmpty {
@@ -296,7 +352,7 @@ struct TodoItemView: View {
     }
     
     private func saveChanges() {
-        if !editedTitle.isEmpty {  // Only save if the title isn't empty
+        if !editedTitle.isEmpty {
             var updatedTodo = todo
             updatedTodo.title = editedTitle
             todoList.updateTodo(updatedTodo)
