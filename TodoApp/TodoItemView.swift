@@ -289,19 +289,18 @@ struct TodoItemView: View {
             }
         )
         .onChange(of: focusField) { focused in
-            if !focused {
+            if !focused && isEditing {
                 saveChanges()
             }
         }
     }
     
     private func saveChanges() {
-        if editedTitle.isEmpty {
-            editedTitle = todo.title
+        if !editedTitle.isEmpty {  // Only save if the title isn't empty
+            var updatedTodo = todo
+            updatedTodo.title = editedTitle
+            todoList.updateTodo(updatedTodo)
         }
-        var updatedTodo = todo
-        updatedTodo.title = editedTitle
-        todoList.updateTodo(updatedTodo)
         isEditing = false
         focusField = false
     }
