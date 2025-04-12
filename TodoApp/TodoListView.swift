@@ -78,26 +78,25 @@ struct TodoListView: View {
     
     var body: some View {
         NavigationView {
-            // Left panel - Goals (25%)
+            // Left panel - Goals
             VStack(spacing: 0) {
                 FileManagementControls(todoList: todoList)
+                    .padding(Theme.contentPadding)
                 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.itemSpacing) {
                     HStack {
                         Text("Goals")
-                            .font(.title2)
-                            .fontWeight(.bold)
+                            .font(Theme.titleFont)
                         Spacer()
                     }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
+                    .padding(.horizontal, Theme.contentPadding)
                     
                     MarkdownEditor(text: todoList.goals, todoList: todoList)
                         .frame(maxHeight: .infinity)
-                        .padding(.horizontal)
+                        .padding(.horizontal, Theme.contentPadding)
                 }
-                .padding(.vertical, 4)
-                .background(Color(NSColor.underPageBackgroundColor)) // System background that adapts to dark/light mode
+                .padding(.vertical, Theme.itemSpacing)
+                .background(Theme.background)
             }
             .frame(minWidth: 300, maxWidth: .infinity)
             
@@ -472,22 +471,23 @@ struct TodoListSection: View {
     
     var body: some View {
         if !todos.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Theme.itemSpacing) {
                 HStack {
                     Text(title)
-                        .font(.headline)
+                        .font(Theme.headlineFont)
+                        .foregroundColor(Theme.text)
                     Spacer()
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, Theme.contentPadding)
                 
                 ForEach(todos) { todo in
                     TodoItemView(todoList: todoList, todo: todo)
                 }
             }
-            .padding(.vertical, 8)
-            .contentShape(Rectangle())  // Make the entire area tappable
+            .padding(.vertical, Theme.itemSpacing)
+            .background(Theme.background)
+            .contentShape(Rectangle())
             .onTapGesture {
-                // This will trigger when clicking anywhere in the section
                 NSApp.keyWindow?.makeFirstResponder(nil)
             }
         }

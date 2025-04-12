@@ -169,47 +169,41 @@ struct TodoItemView: View {
         _editedTitle = State(initialValue: todo.title)
     }
     
-    // Function to generate a consistent color for a tag
-    private func colorForTag(_ tag: String) -> Color {
-        // Reserve red for urgent and today tags
-        if tag == "urgent" || tag == "today" {
-            return .red
-        }
+    private func TagView(tag: String) -> some View {
+        let isSpecialTag = tag.lowercased() == "urgent" || tag.lowercased() == "today"
+        let tagColor = Theme.colorForTag(tag)
         
-        // Generate a consistent color based on the tag string
-        let colors: [Color] = [
-            .blue,
-            .green,
-            .orange,
-            .purple,
-            .teal,
-            .indigo,
-            .mint,
-            .pink,
-            .cyan,
-            .brown
-        ]
-        
-        // Use the hash of the tag string to pick a consistent color
-        var hash = 0
-        for char in tag {
-            hash = ((hash << 5) &+ hash) &+ Int(char.asciiValue ?? 0)
-        }
-        return colors[abs(hash) % colors.count]
+        return Text("#\(tag)")
+            .font(Theme.smallFont)
+            .foregroundColor(isSpecialTag ? .white : Theme.text)  // Dark text for regular tags
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(
+                isSpecialTag ? 
+                    tagColor :  // Solid red for urgent/today
+                    tagColor.opacity(0.25)  // Lighter background for other tags
+            )
+            .overlay(  // Add subtle border for non-urgent tags
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(isSpecialTag ? Color.clear : tagColor.opacity(0.8), lineWidth: 1)
+            )
     }
     
     var body: some View {
-        HStack {
+        HStack(spacing: Theme.itemSpacing) {
+            // Checkbox button
             Button(action: {
                 var updatedTodo = todo
                 updatedTodo.isCompleted.toggle()
                 todoList.updateTodo(updatedTodo)
             }) {
                 Image(systemName: todo.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(todo.isCompleted ? .green : .gray)
+                    .foregroundColor(todo.isCompleted ? Theme.accent : Theme.secondaryText)
+                    .font(.system(size: 14))
             }
             .buttonStyle(PlainButtonStyle())
             
+            // Title with link detection
             if isEditing {
                 TextField("Todo title", text: $editedTitle)
                     .textFieldStyle(PlainTextFieldStyle())
@@ -217,12 +211,13 @@ struct TodoItemView: View {
                     .onSubmit {
                         saveChanges()
                     }
+                    .font(Theme.bodyFont)
                     .padding(6)
-                    .background(Color(.textBackgroundColor))
-                    .cornerRadius(6)
+                    .background(Theme.background)
+                    .cornerRadius(Theme.cornerRadius)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color.blue, lineWidth: 1)
+                        RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                            .stroke(Theme.accent, lineWidth: 1)
                     )
             } else {
                 HStack(spacing: 0) {
@@ -230,8 +225,9 @@ struct TodoItemView: View {
                         if segment.isLink {
                             Text(segment.text)
                                 .strikethrough(todo.isCompleted)
-                                .foregroundColor(.blue)
+                                .foregroundColor(Theme.accent)
                                 .underline()
+                                .font(Theme.bodyFont)
                                 .onTapGesture {
                                     if let url = segment.url {
                                         NSWorkspace.shared.open(url)
@@ -240,98 +236,65 @@ struct TodoItemView: View {
                         } else {
                             Text(segment.text)
                                 .strikethrough(todo.isCompleted)
-                                .foregroundColor(todo.isCompleted ? .secondary : .primary)
+                                .foregroundColor(todo.isCompleted ? Theme.secondaryText : Theme.text)
+                                .font(Theme.bodyFont)
                         }
                     }
                 }
             }
             
+            // Tags with new styling
             if !todo.tags.isEmpty {
                 HStack(spacing: 4) {
                     ForEach(Array(todo.tags), id: \.self) { tag in
-                        Text("#\(tag)")
-                            .font(.system(size: 12))
-                            .foregroundColor(colorForTag(tag))
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 2)
-                            .background(colorForTag(tag).opacity(0.1))
-                            .cornerRadius(4)
+                        TagView(tag: tag)
                     }
                 }
             }
             
             Spacer()
             
-            HStack(spacing: 8) {
-                Button(action: {
-                    var updatedTodo = todo
-                    switch todo.priority {
-                    case .whenTime:
-                        updatedTodo.priority = .normal
-                    case .normal:
-                        updatedTodo.priority = .urgent
-                    case .urgent:
-                        break
-                    }
-                    todoList.updateTodo(updatedTodo)
-                }) {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .foregroundColor(todo.priority == .urgent ? .gray : .blue)
+            // Control buttons - always visible
+            HStack(spacing: Theme.itemSpacing) {
+                // Priority indicator
+                if todo.priority != .normal {
+                    Image(systemName: todo.priority == .urgent ? "exclamationmark.circle.fill" : "arrow.down.circle.fill")
+                        .foregroundColor(todo.priority == .urgent ? .red : Theme.secondaryText)
+                        .font(.system(size: 14))
                 }
-                .buttonStyle(PlainButtonStyle())
-                .disabled(todo.priority == .urgent)
                 
-                Button(action: {
-                    var updatedTodo = todo
-                    switch todo.priority {
-                    case .urgent:
-                        updatedTodo.priority = .normal
-                    case .normal:
-                        updatedTodo.priority = .whenTime
-                    case .whenTime:
-                        break
-                    }
-                    todoList.updateTodo(updatedTodo)
-                }) {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .foregroundColor(todo.priority == .whenTime ? .gray : .blue)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .disabled(todo.priority == .whenTime)
-                
-                Button(action: { isEditing = true }) {
-                    Image(systemName: "pencil.circle.fill")
-                        .foregroundColor(.blue)
-                }
-                .buttonStyle(PlainButtonStyle())
-                
+                // Tag management button
                 Button(action: { showingTagManagement = true }) {
-                    Image(systemName: "tag.circle.fill")
-                        .foregroundColor(.blue)
+                    Image(systemName: "tag")
+                        .font(.system(size: 12))
+                        .foregroundColor(Theme.secondaryText)
                 }
                 .buttonStyle(PlainButtonStyle())
-                .sheet(isPresented: $showingTagManagement) {
-                    TagManagementSheet(todo: todo, todoList: todoList, isPresented: $showingTagManagement)
+                .popover(isPresented: $showingTagManagement, arrowEdge: .bottom) {
+                    TagManagementPopover(todo: todo, todoList: todoList, isPresented: $showingTagManagement)
+                        .frame(width: 250, height: 300)
                 }
                 
+                // Delete button
                 Button(action: {
                     todoList.deleteTodo(todo)
                 }) {
-                    Image(systemName: "trash.circle.fill")
-                        .foregroundColor(.red)
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12))
+                        .foregroundColor(Theme.secondaryText)
                 }
                 .buttonStyle(PlainButtonStyle())
             }
             .opacity(isHovered ? 1 : 0.5)
         }
-        .padding(.vertical, 4)
-        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .padding(.horizontal, Theme.contentPadding)
         .background(
-            RoundedRectangle(cornerRadius: 6)
+            RoundedRectangle(cornerRadius: Theme.cornerRadius)
                 .fill(
-                    isEditing ? Color.blue.opacity(0.1) :
-                    (isSelected ? Color.blue.opacity(0.15) : 
-                    (isHovered ? Color.gray.opacity(0.08) : Color.clear))
+                    isEditing ? Theme.accent.opacity(0.1) :
+                    (isSelected ? Theme.accent.opacity(0.08) : 
+                    (isHovered ? Theme.secondaryBackground : Color.clear))
                 )
         )
         .onHover { hovering in
@@ -359,5 +322,137 @@ struct TodoItemView: View {
         }
         isEditing = false
         focusField = false
+    }
+}
+
+// New TagManagementPopover view
+struct TagManagementPopover: View {
+    let todo: Todo
+    @ObservedObject var todoList: TodoList
+    @Binding var isPresented: Bool
+    @State private var newTag = ""
+    
+    var availableTags: [String] {
+        todoList.allTags.filter { !todo.tags.contains($0) }
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Manage Tags")
+                    .font(Theme.headlineFont)
+                Spacer()
+            }
+            .padding()
+            .background(Theme.secondaryBackground)
+            
+            Divider()
+            
+            ScrollView {
+                VStack(spacing: 12) {
+                    // New tag input
+                    HStack {
+                        TextField("Add new tag", text: $newTag)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .font(Theme.bodyFont)
+                        
+                        Button(action: addNewTag) {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundColor(Theme.accent)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .disabled(newTag.isEmpty)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    
+                    // Current tags
+                    if !todo.tags.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Current Tags")
+                                .font(Theme.smallFont)
+                                .foregroundColor(Theme.secondaryText)
+                            
+                            ForEach(todo.tags, id: \.self) { tag in
+                                TagRowView(tag: tag, isCurrentTag: true)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                    
+                    // Available tags
+                    if !availableTags.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Available Tags")
+                                .font(Theme.smallFont)
+                                .foregroundColor(Theme.secondaryText)
+                            
+                            ForEach(availableTags, id: \.self) { tag in
+                                TagRowView(tag: tag, isCurrentTag: false)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+                .padding(.bottom, 12)
+            }
+        }
+        .background(Theme.background)
+        .fixedSize(horizontal: true, vertical: false)
+    }
+    
+    private func addNewTag() {
+        if !newTag.isEmpty {
+            todoList.addTag(to: todo, tag: newTag)
+            newTag = ""
+        }
+    }
+    
+    private func addTag(_ tag: String) {
+        todoList.addTag(to: todo, tag: tag)
+    }
+    
+    private func removeTag(_ tag: String) {
+        todoList.removeTag(from: todo, tag: tag)
+    }
+    
+    private func TagRowView(tag: String, isCurrentTag: Bool) -> some View {
+        let isSpecialTag = tag.lowercased() == "urgent" || tag.lowercased() == "today"
+        let tagColor = Theme.colorForTag(tag)
+        
+        return HStack {
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(tagColor)
+                    .frame(width: 8, height: 8)
+                Text(tag)
+                    .font(Theme.bodyFont)
+                    .foregroundColor(Theme.text)
+            }
+            Spacer()
+            Button(action: { 
+                if isCurrentTag {
+                    removeTag(tag)
+                } else {
+                    addTag(tag)
+                }
+            }) {
+                Image(systemName: isCurrentTag ? "xmark" : "plus")
+                    .font(.system(size: 10))
+                    .foregroundColor(Theme.secondaryText)
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 8)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                .fill(Theme.secondaryBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                        .stroke(tagColor.opacity(0.5), lineWidth: 1)
+                )
+        )
     }
 } 
