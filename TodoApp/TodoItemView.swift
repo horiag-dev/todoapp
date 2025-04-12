@@ -1,34 +1,5 @@
 import SwiftUI
 
-struct PriorityMenuView: View {
-    let todo: Todo
-    @ObservedObject var todoList: TodoList
-    
-    var body: some View {
-        Menu {
-            ForEach(Priority.allCases, id: \.self) { priority in
-                Button(action: {
-                    var updatedTodo = todo
-                    updatedTodo.priority = priority
-                    todoList.updateTodo(updatedTodo)
-                }) {
-                    HStack {
-                        Image(systemName: priority.icon)
-                            .foregroundColor(priority.color)
-                        Text(priority.rawValue)
-                        if todo.priority == priority {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-        } label: {
-            Image(systemName: todo.priority.icon)
-                .foregroundColor(todo.priority.color)
-        }
-    }
-}
-
 struct TagManagementSheet: View {
     let todo: Todo
     @ObservedObject var todoList: TodoList
@@ -199,6 +170,7 @@ struct TodoItemView: View {
     
     var body: some View {
         HStack(spacing: Theme.itemSpacing) {
+            // Checkbox
             Button(action: {
                 var updatedTodo = todo
                 updatedTodo.isCompleted.toggle()
@@ -210,6 +182,7 @@ struct TodoItemView: View {
             }
             .buttonStyle(PlainButtonStyle())
             
+            // Content area
             if isEditing {
                 TextField("Todo title", text: $editedTitle)
                     .textFieldStyle(PlainTextFieldStyle())
@@ -226,8 +199,8 @@ struct TodoItemView: View {
                             .stroke(Theme.accent, lineWidth: 1)
                     )
             } else {
+                // Todo text with links and tags
                 HStack(spacing: Theme.itemSpacing) {
-                    // Todo text with links
                     HStack(spacing: 0) {
                         ForEach(splitIntoSegments(text: todo.title)) { segment in
                             if segment.isLink {
@@ -250,7 +223,6 @@ struct TodoItemView: View {
                         }
                     }
                     
-                    // Tags inline
                     if !todo.tags.isEmpty {
                         HStack(spacing: 4) {
                             ForEach(Array(todo.tags), id: \.self) { tag in
@@ -263,7 +235,7 @@ struct TodoItemView: View {
             
             Spacer()
             
-            // Control buttons - always visible
+            // Control buttons - always visible, right-aligned
             HStack(spacing: Theme.itemSpacing) {
                 // Tag management button
                 Button(action: { showingTagManagement = true }) {
@@ -276,24 +248,6 @@ struct TodoItemView: View {
                     TagManagementPopover(todo: todo, todoList: todoList, isPresented: $showingTagManagement)
                         .frame(width: 250, height: 300)
                 }
-                
-                // Priority change button
-                Menu {
-                    ForEach(Priority.allCases, id: \.self) { priority in
-                        Button(action: {
-                            var updatedTodo = todo
-                            updatedTodo.priority = priority
-                            todoList.updateTodo(updatedTodo)
-                        }) {
-                            Text(priority.rawValue)
-                        }
-                    }
-                } label: {
-                    Image(systemName: "arrow.up.arrow.down")
-                        .font(.system(size: 12))
-                        .foregroundColor(Theme.secondaryText)
-                }
-                .menuStyle(BorderlessButtonMenuStyle())
                 
                 // Delete button
                 Button(action: {
