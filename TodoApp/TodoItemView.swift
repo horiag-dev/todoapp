@@ -189,9 +189,16 @@ struct TodoItemView: View {
             )
     }
     
+    private func nextPriority(_ current: Priority) -> Priority {
+        switch current {
+        case .whenTime: return .normal
+        case .normal: return .urgent
+        case .urgent: return .whenTime
+        }
+    }
+    
     var body: some View {
         HStack(spacing: Theme.itemSpacing) {
-            // Checkbox button
             Button(action: {
                 var updatedTodo = todo
                 updatedTodo.isCompleted.toggle()
@@ -203,7 +210,6 @@ struct TodoItemView: View {
             }
             .buttonStyle(PlainButtonStyle())
             
-            // Title with link detection
             if isEditing {
                 TextField("Todo title", text: $editedTitle)
                     .textFieldStyle(PlainTextFieldStyle())
@@ -220,34 +226,37 @@ struct TodoItemView: View {
                             .stroke(Theme.accent, lineWidth: 1)
                     )
             } else {
-                HStack(spacing: 0) {
-                    ForEach(splitIntoSegments(text: todo.title)) { segment in
-                        if segment.isLink {
-                            Text(segment.text)
-                                .strikethrough(todo.isCompleted)
-                                .foregroundColor(Theme.accent)
-                                .underline()
-                                .font(Theme.bodyFont)
-                                .onTapGesture {
-                                    if let url = segment.url {
-                                        NSWorkspace.shared.open(url)
+                HStack(spacing: Theme.itemSpacing) {
+                    // Todo text with links
+                    HStack(spacing: 0) {
+                        ForEach(splitIntoSegments(text: todo.title)) { segment in
+                            if segment.isLink {
+                                Text(segment.text)
+                                    .strikethrough(todo.isCompleted)
+                                    .foregroundColor(Theme.accent)
+                                    .underline()
+                                    .font(Theme.bodyFont)
+                                    .onTapGesture {
+                                        if let url = segment.url {
+                                            NSWorkspace.shared.open(url)
+                                        }
                                     }
-                                }
-                        } else {
-                            Text(segment.text)
-                                .strikethrough(todo.isCompleted)
-                                .foregroundColor(todo.isCompleted ? Theme.secondaryText : Theme.text)
-                                .font(Theme.bodyFont)
+                            } else {
+                                Text(segment.text)
+                                    .strikethrough(todo.isCompleted)
+                                    .foregroundColor(todo.isCompleted ? Theme.secondaryText : Theme.text)
+                                    .font(Theme.bodyFont)
+                            }
                         }
                     }
-                }
-            }
-            
-            // Tags with new styling
-            if !todo.tags.isEmpty {
-                HStack(spacing: 4) {
-                    ForEach(Array(todo.tags), id: \.self) { tag in
-                        TagView(tag: tag)
+                    
+                    // Tags inline
+                    if !todo.tags.isEmpty {
+                        HStack(spacing: 4) {
+                            ForEach(Array(todo.tags), id: \.self) { tag in
+                                TagView(tag: tag)
+                            }
+                        }
                     }
                 }
             }
@@ -256,13 +265,6 @@ struct TodoItemView: View {
             
             // Control buttons - always visible
             HStack(spacing: Theme.itemSpacing) {
-                // Priority indicator
-                if todo.priority != .normal {
-                    Image(systemName: todo.priority == .urgent ? "exclamationmark.circle.fill" : "arrow.down.circle.fill")
-                        .foregroundColor(todo.priority == .urgent ? .red : Theme.secondaryText)
-                        .font(.system(size: 14))
-                }
-                
                 // Tag management button
                 Button(action: { showingTagManagement = true }) {
                     Image(systemName: "tag")
@@ -274,6 +276,24 @@ struct TodoItemView: View {
                     TagManagementPopover(todo: todo, todoList: todoList, isPresented: $showingTagManagement)
                         .frame(width: 250, height: 300)
                 }
+                
+                // Priority change button
+                Menu {
+                    ForEach(Priority.allCases, id: \.self) { priority in
+                        Button(action: {
+                            var updatedTodo = todo
+                            updatedTodo.priority = priority
+                            todoList.updateTodo(updatedTodo)
+                        }) {
+                            Text(priority.rawValue)
+                        }
+                    }
+                } label: {
+                    Image(systemName: "arrow.up.arrow.down")
+                        .font(.system(size: 12))
+                        .foregroundColor(Theme.secondaryText)
+                }
+                .menuStyle(BorderlessButtonMenuStyle())
                 
                 // Delete button
                 Button(action: {
