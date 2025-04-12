@@ -9,7 +9,7 @@ struct NewTodoView: View {
     @State private var selectedTags: Set<String> = []
     
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 14) {
             // Header
             HStack {
                 Text("New Todo")
@@ -22,7 +22,7 @@ struct NewTodoView: View {
             .padding()
             
             // Content
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 11) {
                 // Title input
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Title")
@@ -37,7 +37,7 @@ struct NewTodoView: View {
                     Text("Priority")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                    HStack(spacing: 12) {
+                    HStack(spacing: 20) {
                         ForEach(Priority.allCases, id: \.self) { p in
                             Button(action: { priority = p }) {
                                 HStack {

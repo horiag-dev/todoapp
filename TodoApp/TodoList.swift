@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 class TodoList: ObservableObject {
     @Published var todos: [Todo] = []
+    @Published var deletedTodos: [Todo] = []
     @Published var bigThings: [String] = []
     @Published var goals: String = ""
     @Published var selectedFile: URL? {
@@ -13,6 +14,7 @@ class TodoList: ObservableObject {
             }
         }
     }
+    @Published var isDeletedSectionCollapsed = true
     
     private let fileManager = FileManager.default
     private let documentsDirectory: URL
@@ -128,7 +130,25 @@ class TodoList: ObservableObject {
     }
     
     func deleteTodo(_ todo: Todo) {
-        todos.removeAll { $0.id == todo.id }
+        if let index = todos.firstIndex(where: { $0.id == todo.id }) {
+            let deletedTodo = todos[index]
+            deletedTodos.append(deletedTodo)
+            todos.remove(at: index)
+            saveTodos()
+        }
+    }
+    
+    func restoreTodo(_ todo: Todo) {
+        if let index = deletedTodos.firstIndex(where: { $0.id == todo.id }) {
+            let restoredTodo = deletedTodos[index]
+            todos.append(restoredTodo)
+            deletedTodos.remove(at: index)
+            saveTodos()
+        }
+    }
+    
+    func permanentlyDeleteTodo(_ todo: Todo) {
+        deletedTodos.removeAll { $0.id == todo.id }
         saveTodos()
     }
     
@@ -258,6 +278,15 @@ class TodoList: ObservableObject {
             for todo in completedTodos {
                 markdownContent += formatTodo(todo)
             }
+            markdownContent += "\n"
+        }
+        
+        // Add deleted todos
+        if !deletedTodos.isEmpty {
+            markdownContent += "## 🗑️ Deleted\n\n"
+            for todo in deletedTodos {
+                markdownContent += formatTodo(todo)
+            }
         }
         
         do {
@@ -346,6 +375,46 @@ class TodoList: ObservableObject {
             todos = []
             bigThings = []
             goals = ""
+        }
+    }
+}
+
+struct DeletedTodosView: View {
+    @ObservedObject var todoList: TodoList
+    
+    var body: some View {
+        if !todoList.deletedTodos.isEmpty {
+            DisclosureGroup(
+                isExpanded: $todoList.isDeletedSectionCollapsed,
+                content: {
+                    ForEach(todoList.deletedTodos) { todo in
+                        HStack {
+                            Text(todo.title)
+                                .strikethrough()
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Button(action: { todoList.restoreTodo(todo) }) {
+                                Image(systemName: "arrow.uturn.backward")
+                                    .foregroundColor(.blue)
+                            }
+                            Button(action: { todoList.permanentlyDeleteTodo(todo) }) {
+                                Image(systemName: "trash.fill")
+                                    .foregroundColor(.red)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                },
+                label: {
+                    HStack {
+                        Image(systemName: "trash")
+                        Text("Deleted Items")
+                        Text("(\(todoList.deletedTodos.count))")
+                            .foregroundColor(.secondary)
+                    }
+                }
+            )
+            .padding(.horizontal)
         }
     }
 } 

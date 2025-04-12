@@ -444,6 +444,44 @@ struct TodoListSections: View {
             if !completedTodos.isEmpty {
                 TodoListSection(todoList: todoList, priority: nil, todos: completedTodos)
             }
+            
+            // Deleted section
+            if !todoList.deletedTodos.isEmpty {
+                DisclosureGroup(
+                    isExpanded: $todoList.isDeletedSectionCollapsed,
+                    content: {
+                        ForEach(todoList.deletedTodos) { todo in
+                            HStack {
+                                Text(todo.title)
+                                    .strikethrough()
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Button(action: { todoList.restoreTodo(todo) }) {
+                                    Image(systemName: "arrow.uturn.backward")
+                                        .foregroundColor(.blue)
+                                }
+                                Button(action: { todoList.permanentlyDeleteTodo(todo) }) {
+                                    Image(systemName: "trash.fill")
+                                        .foregroundColor(.red)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                            .padding(.horizontal, Theme.contentPadding)
+                        }
+                    },
+                    label: {
+                        HStack {
+                            Image(systemName: "trash")
+                            Text("🗑️ Deleted Items")
+                            Text("(\(todoList.deletedTodos.count))")
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, Theme.contentPadding)
+                    }
+                )
+                .padding(.vertical, Theme.itemSpacing)
+                .background(Theme.background)
+            }
         }
         .padding(.vertical)
     }

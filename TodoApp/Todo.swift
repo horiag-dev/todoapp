@@ -9,14 +9,14 @@ enum Priority: String, Codable, CaseIterable {
     var color: Color {
         switch self {
         case .urgent: return .red
-        case .normal: return .blue
-        case .whenTime: return .gray
+        case .normal: return Theme.accent
+        case .whenTime: return Theme.secondaryText
         }
     }
     
     var icon: String {
         switch self {
-        case .urgent: return "exclamationmark.triangle.fill"
+        case .urgent: return "exclamationmark.circle.fill"
         case .normal: return "circle.fill"
         case .whenTime: return "clock.fill"
         }
