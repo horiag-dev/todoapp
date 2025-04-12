@@ -121,6 +121,7 @@ struct TodoItemView: View {
     @State private var isEditing = false
     @State private var editedTitle: String
     @State private var showingTagManagement = false
+    @FocusState private var focusField: Bool
     
     init(todoList: TodoList, todo: Todo) {
         self.todoList = todoList
@@ -170,11 +171,19 @@ struct TodoItemView: View {
             .buttonStyle(PlainButtonStyle())
             
             if isEditing {
-                TextField("Todo title", text: $editedTitle, onCommit: saveChanges)
+                TextField("Todo title", text: $editedTitle)
                     .textFieldStyle(PlainTextFieldStyle())
+                    .focused($focusField)
                     .onSubmit {
                         saveChanges()
                     }
+                    .padding(6)
+                    .background(Color(.textBackgroundColor))
+                    .cornerRadius(6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.blue, lineWidth: 1)
+                    )
             } else {
                 Text(todo.title)
                     .strikethrough(todo.isCompleted)
@@ -263,20 +272,37 @@ struct TodoItemView: View {
         .padding(.horizontal, 8)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(isSelected ? Color.blue.opacity(0.15) : (isHovered ? Color.gray.opacity(0.08) : Color.clear))
+                .fill(
+                    isEditing ? Color.blue.opacity(0.1) :
+                    (isSelected ? Color.blue.opacity(0.15) : 
+                    (isHovered ? Color.gray.opacity(0.08) : Color.clear))
+                )
         )
         .onHover { hovering in
             isHovered = hovering
         }
-        .onTapGesture {
-            isSelected.toggle()
+        .gesture(
+            TapGesture(count: 2).onEnded {
+                isEditing = true
+                editedTitle = todo.title
+                focusField = true
+            }
+        )
+        .onChange(of: focusField) { focused in
+            if !focused {
+                saveChanges()
+            }
         }
     }
     
     private func saveChanges() {
+        if editedTitle.isEmpty {
+            editedTitle = todo.title
+        }
         var updatedTodo = todo
         updatedTodo.title = editedTitle
         todoList.updateTodo(updatedTodo)
         isEditing = false
+        focusField = false
     }
 } 

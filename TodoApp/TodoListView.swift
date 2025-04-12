@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 struct MarkdownEditor: View {
-    let text: String // Changed from @Binding to let since it's read-only now
+    let text: String
     @ObservedObject var todoList: TodoList
     
     private func processLines() -> [(isList: Bool, content: String)] {
@@ -485,6 +485,11 @@ struct TodoListSection: View {
                 }
             }
             .padding(.vertical, 8)
+            .contentShape(Rectangle())  // Make the entire area tappable
+            .onTapGesture {
+                // This will trigger when clicking anywhere in the section
+                NSApp.keyWindow?.makeFirstResponder(nil)
+            }
         }
     }
 }
