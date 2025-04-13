@@ -146,16 +146,15 @@ struct TodoItemView: View {
         
         return Text("#\(tag)")
             .font(Theme.smallFont)
-            .foregroundColor(isSpecialTag ? .white : Theme.text)  // Dark text for regular tags
+            .foregroundColor(isSpecialTag ? .white : Theme.text)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
             .background(
-                isSpecialTag ? 
-                    tagColor :  // Solid red for urgent/today
-                    tagColor.opacity(0.25)  // Lighter background for other tags
+                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                    .fill(isSpecialTag ? tagColor : tagColor.opacity(0.25))
             )
-            .overlay(  // Add subtle border for non-urgent tags
-                RoundedRectangle(cornerRadius: 4)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cornerRadius)
                     .stroke(isSpecialTag ? Color.clear : tagColor.opacity(0.8), lineWidth: 1)
             )
     }
