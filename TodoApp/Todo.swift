@@ -16,9 +16,9 @@ enum Priority: String, Codable, CaseIterable {
     
     var icon: String {
         switch self {
-        case .urgent: return "exclamationmark.circle.fill"
-        case .normal: return "circle.fill"
-        case .whenTime: return "clock.fill"
+        case .urgent: return "flag.fill"
+        case .normal: return "flag"
+        case .whenTime: return "flag.slash"
         }
     }
 }

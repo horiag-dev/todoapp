@@ -79,9 +79,8 @@ struct TodoListView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Top Bar - Compact version
+            // Top Bar - File Management
             HStack(spacing: 8) {
-                // File Management - Simplified
                 Button(action: { todoList.openFile() }) {
                     Image(systemName: "doc")
                 }
@@ -91,47 +90,8 @@ struct TodoListView: View {
                     Image(systemName: "doc.badge.plus")
                 }
                 .help("Create new todo file")
-                
-                Divider()
-                    .frame(height: 20)
-                
-                // New Todo Input - Simplified
-                TextField("New todo", text: $newTodoTitle)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .onSubmit(createTodo)
-                
-                Button(action: { showingTagManagement = true }) {
-                    Image(systemName: "tag")
-                }
-                .buttonStyle(PlainButtonStyle())
-                .popover(isPresented: $showingTagManagement) {
-                    TagSelectionSheet(
-                        todoList: todoList,
-                        selectedTags: $selectedTags,
-                        isPresented: $showingTagManagement
-                    )
-                }
-                
-                Menu {
-                    Button(action: { newTodoPriority = .urgent }) {
-                        Label("Urgent", systemImage: "exclamationmark.circle.fill")
-                    }
-                    Button(action: { newTodoPriority = .normal }) {
-                        Label("Normal", systemImage: "circle.fill")
-                    }
-                    Button(action: { newTodoPriority = .whenTime }) {
-                        Label("When there's time", systemImage: "circle")
-                    }
-                } label: {
-                    Image(systemName: newTodoPriority.icon)
-                        .foregroundColor(newTodoPriority.color)
-                }
-                
-                Button(action: createTodo) {
-                    Image(systemName: "plus.circle.fill")
-                }
-                .buttonStyle(PlainButtonStyle())
-                .disabled(newTodoTitle.isEmpty)
+
+                Spacer()
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -200,21 +160,77 @@ struct TodoListView: View {
                 
                 Divider()
                 
-                // Right Column - Todos (fills remaining space)
+                // Right Column - Todos
                 VStack(spacing: Theme.itemSpacing) {
-                    Text("Todos")
-                        .font(Theme.titleFont)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(spacing: Theme.itemSpacing) {
+                        Text("Todos")
+                            .font(Theme.titleFont)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, Theme.contentPadding)
+                            .padding(.vertical, Theme.contentPadding)
+                            .background(Color(NSColor.textBackgroundColor))
+                        
+                        // New Todo Input - Left aligned
+                        HStack(spacing: 8) {
+                            TextField("New todo", text: $newTodoTitle)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .frame(width: 300)
+                                .onSubmit(createTodo)
+                            
+                            Menu {
+                                Button(action: { newTodoPriority = .urgent }) {
+                                    Label("Urgent", systemImage: "flag.fill")
+                                }
+                                Button(action: { newTodoPriority = .normal }) {
+                                    Label("Normal", systemImage: "flag")
+                                }
+                                Button(action: { newTodoPriority = .whenTime }) {
+                                    Label("When there's time", systemImage: "flag.slash")
+                                }
+                            } label: {
+                                Image(systemName: newTodoPriority.icon)
+                                    .foregroundColor(newTodoPriority.color)
+                                    .imageScale(.small)
+                            }
+                            .menuStyle(BorderlessButtonMenuStyle())
+                            .frame(width: 32)
+                            
+                            Button(action: { showingTagManagement = true }) {
+                                Image(systemName: "tag")
+                                    .imageScale(.small)
+                                    .foregroundColor(Theme.secondaryText)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .popover(isPresented: $showingTagManagement) {
+                                TagSelectionSheet(
+                                    todoList: todoList,
+                                    selectedTags: $selectedTags,
+                                    isPresented: $showingTagManagement
+                                )
+                            }
+                            .frame(width: 24)
+                            
+                            Button(action: createTodo) {
+                                Image(systemName: "plus.circle.fill")
+                                    .imageScale(.small)
+                                    .foregroundColor(Theme.accent)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .disabled(newTodoTitle.isEmpty)
+                            .frame(width: 24)
+                            
+                            Spacer()
+                        }
                         .padding(.horizontal, Theme.contentPadding)
-                        .padding(.vertical, Theme.contentPadding)
+                        .padding(.bottom, Theme.itemSpacing)
+                        
+                        ScrollView {
+                            TodoListSections(todoList: todoList)
+                        }
                         .background(Color(NSColor.textBackgroundColor))
-                    
-                    ScrollView {
-                        TodoListSections(todoList: todoList)
+                        .cornerRadius(Theme.cornerRadius)
+                        .padding(.horizontal, Theme.contentPadding)
                     }
-                    .background(Color(NSColor.textBackgroundColor))
-                    .cornerRadius(Theme.cornerRadius)
-                    .padding(.horizontal, Theme.contentPadding)
                 }
                 .background(Theme.rightColumnGradient)
             }
@@ -300,13 +316,13 @@ struct NewTodoInput: View {
                 
                 Menu {
                     Button(action: { newTodoPriority = .urgent }) {
-                        Label("Urgent", systemImage: "exclamationmark.circle.fill")
+                        Label("Urgent", systemImage: "flag.fill")
                     }
                     Button(action: { newTodoPriority = .normal }) {
-                        Label("Normal", systemImage: "circle.fill")
+                        Label("Normal", systemImage: "flag")
                     }
                     Button(action: { newTodoPriority = .whenTime }) {
-                        Label("When there's time", systemImage: "circle")
+                        Label("When there's time", systemImage: "flag.slash")
                     }
                 } label: {
                     Image(systemName: newTodoPriority.icon)
@@ -520,6 +536,8 @@ struct TagListView: View {
                             }
                         } else {
                             Text(tag)
+                                .font(Theme.headlineFont)
+                                .foregroundColor(tag.lowercased() == "today" ? .red : Theme.text)
                                 .onTapGesture(count: 2) {
                                     editingTag = tag
                                     editedTagName = tag
