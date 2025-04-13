@@ -82,7 +82,7 @@ struct TodoListView: View {
             // Top Bar - File Management
             HStack(spacing: 8) {
                 Button(action: { todoList.openFile() }) {
-                    Image(systemName: "doc")
+                    Image(systemName: "folder.badge.plus")
                 }
                 .help("Open existing todo file")
                 
@@ -185,7 +185,7 @@ struct TodoListView: View {
                                     Label("Normal", systemImage: "flag")
                                 }
                                 Button(action: { newTodoPriority = .whenTime }) {
-                                    Label("When there's time", systemImage: "flag.slash")
+                                    Label("When there's time", systemImage: "clock.fill")
                                 }
                             } label: {
                                 Image(systemName: newTodoPriority.icon)
@@ -279,7 +279,7 @@ struct FileManagementControls: View {
             .help("Create new todo file")
             
             Button(action: { todoList.openFile() }) {
-                Image(systemName: "doc")
+                Image(systemName: "folder.badge.plus")
             }
             .help("Open existing todo file")
         }
@@ -322,7 +322,7 @@ struct NewTodoInput: View {
                         Label("Normal", systemImage: "flag")
                     }
                     Button(action: { newTodoPriority = .whenTime }) {
-                        Label("When there's time", systemImage: "flag.slash")
+                        Label("When there's time", systemImage: "clock.fill")
                     }
                 } label: {
                     Image(systemName: newTodoPriority.icon)

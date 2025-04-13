@@ -281,8 +281,8 @@ struct TodoItemView: View {
                 focusField = true
             }
         )
-        .onChange(of: focusField) { focused in
-            if !focused && isEditing {
+        .onChange(of: focusField) { oldValue, newValue in
+            if !newValue && isEditing {
                 saveChanges()
             }
         }
@@ -392,7 +392,6 @@ struct TagManagementPopover: View {
     }
     
     private func TagRowView(tag: String, isCurrentTag: Bool) -> some View {
-        let isSpecialTag = tag.lowercased() == "urgent" || tag.lowercased() == "today"
         let tagColor = Theme.colorForTag(tag)
         
         return HStack {

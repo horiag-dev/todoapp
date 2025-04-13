@@ -18,7 +18,7 @@ enum Priority: String, Codable, CaseIterable {
         switch self {
         case .urgent: return "flag.fill"
         case .normal: return "flag"
-        case .whenTime: return "flag.slash"
+        case .whenTime: return "clock.fill"
         }
     }
 }

@@ -11,7 +11,7 @@ struct FlowLayout: Layout {
         let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
         
         var height: CGFloat = 0
-        var width: CGFloat = proposal.width ?? 0
+        let width: CGFloat = proposal.width ?? 0
         var currentX: CGFloat = 0
         var currentY: CGFloat = 0
         var maxHeight: CGFloat = 0
