@@ -383,12 +383,19 @@ struct TodoListSections: View {
                 
                 if !todos.isEmpty {
                     TodoListSection(todoList: todoList, priority: priority, todos: todos)
+                    
+                    if priority != .whenTime {
+                        Divider()
+                            .padding(.vertical, Theme.itemSpacing)
+                    }
                 }
             }
             
             // Completed section
             let completedTodos = todoList.todos.filter { $0.isCompleted }
             if !completedTodos.isEmpty {
+                Divider()
+                    .padding(.vertical, Theme.itemSpacing)
                 TodoListSection(todoList: todoList, priority: nil, todos: completedTodos)
             }
             
