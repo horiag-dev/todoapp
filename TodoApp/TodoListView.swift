@@ -427,7 +427,7 @@ struct TodoListSections: View {
                     }
                 )
                 .padding(.vertical, Theme.itemSpacing)
-                .background(Theme.background)
+                .background(Color(NSColor.textBackgroundColor))
             }
         }
         .padding(.vertical)
@@ -481,7 +481,7 @@ struct TodoListSection: View {
                 }
             }
             .padding(.vertical, Theme.itemSpacing)
-            .background(Theme.background)
+            .background(Color(NSColor.textBackgroundColor))
             .contentShape(Rectangle())
             .onTapGesture {
                 NSApp.keyWindow?.makeFirstResponder(nil)
