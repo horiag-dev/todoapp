@@ -71,83 +71,167 @@ struct TodoListView: View {
     @ObservedObject var todoList: TodoList
     @State private var selectedTag: String?
     @State private var newTodoTitle = ""
-    @State private var newBigThingTitle = ""
     @State private var newTodoPriority: Priority = .normal
     @State private var showingTagManagement = false
     @State private var selectedTags: Set<String> = []
+    @State private var leftColumnWidth: CGFloat = 300
+    @State private var middleColumnWidth: CGFloat = 300
     
     var body: some View {
-        NavigationView {
-            // Left panel - Goals
-            VStack(spacing: 0) {
-                FileManagementControls(todoList: todoList)
-                    .padding(Theme.contentPadding)
-                
-                VStack(alignment: .leading, spacing: Theme.itemSpacing) {
-                    HStack {
-                        Text("Goals")
-                            .font(Theme.titleFont)
-                        Spacer()
-                    }
-                    .padding(.horizontal, Theme.contentPadding)
-                    
-                    MarkdownEditor(text: todoList.goals, todoList: todoList)
-                        .frame(maxHeight: .infinity)
-                        .padding(.horizontal, Theme.contentPadding)
+        VStack(spacing: 0) {
+            // Top Bar - Compact version
+            HStack(spacing: 8) {
+                // File Management - Simplified
+                Button(action: { todoList.openFile() }) {
+                    Image(systemName: "doc")
                 }
-                .padding(.vertical, Theme.itemSpacing)
-                .background(Theme.background)
-            }
-            .frame(minWidth: 300, maxWidth: .infinity)
-            
-            // Middle panel - Tags (25%)
-            VStack(spacing: 0) {
-                HStack {
-                    Text("Tags & Categories")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    Spacer()
-                }
-                .padding(.horizontal)
-                .padding(.top, 8)
-                .padding(.bottom, 12)
+                .help("Open existing todo file")
                 
-                TagListView(todoList: todoList, selectedTag: $selectedTag)
-                    .background(Color(NSColor.underPageBackgroundColor)) // System background that adapts to dark/light mode
-            }
-            .frame(minWidth: 300, maxWidth: .infinity)
-            
-            // Right panel - Todos and Big Things (50%)
-            VStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Todos & Big Things")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                        Spacer()
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-                    
-                    BigThingsSection(todoList: todoList)
-                    Divider()
-                    NewTodoInput(
+                Button(action: { todoList.createNewFile() }) {
+                    Image(systemName: "doc.badge.plus")
+                }
+                .help("Create new todo file")
+                
+                Divider()
+                    .frame(height: 20)
+                
+                // New Todo Input - Simplified
+                TextField("New todo", text: $newTodoTitle)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .onSubmit(createTodo)
+                
+                Button(action: { showingTagManagement = true }) {
+                    Image(systemName: "tag")
+                }
+                .buttonStyle(PlainButtonStyle())
+                .popover(isPresented: $showingTagManagement) {
+                    TagSelectionSheet(
                         todoList: todoList,
-                        newTodoTitle: $newTodoTitle,
-                        newTodoPriority: $newTodoPriority,
-                        showingTagManagement: $showingTagManagement,
-                        selectedTags: $selectedTags
+                        selectedTags: $selectedTags,
+                        isPresented: $showingTagManagement
                     )
+                }
+                
+                Menu {
+                    Button(action: { newTodoPriority = .urgent }) {
+                        Label("Urgent", systemImage: "exclamationmark.circle.fill")
+                    }
+                    Button(action: { newTodoPriority = .normal }) {
+                        Label("Normal", systemImage: "circle.fill")
+                    }
+                    Button(action: { newTodoPriority = .whenTime }) {
+                        Label("When there's time", systemImage: "circle")
+                    }
+                } label: {
+                    Image(systemName: newTodoPriority.icon)
+                        .foregroundColor(newTodoPriority.color)
+                }
+                
+                Button(action: createTodo) {
+                    Image(systemName: "plus.circle.fill")
+                }
+                .buttonStyle(PlainButtonStyle())
+                .disabled(newTodoTitle.isEmpty)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color(.windowBackgroundColor))
+            
+            // Main Content with Resizable Columns
+            HStack(spacing: 0) {
+                // Left Column - Goals and Top 5
+                VStack(spacing: 0) {
+                    GeometryReader { geometry in
+                        VStack(spacing: 0) {
+                            // Goals Section
+                            VStack(alignment: .leading, spacing: Theme.itemSpacing) {
+                                Text("Goals")
+                                    .font(Theme.titleFont)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, Theme.contentPadding)
+                                    .padding(.vertical, Theme.contentPadding)
+                                    .background(Color(.windowBackgroundColor))
+                                
+                                MarkdownEditor(text: todoList.goals, todoList: todoList)
+                                    .padding(.horizontal, Theme.contentPadding)
+                            }
+                            .frame(height: geometry.size.height * 0.75)
+                            
+                            Divider()
+                            
+                            // Top 5 Week Section
+                            VStack(alignment: .leading, spacing: Theme.itemSpacing) {
+                                Text("Top 5 Week")
+                                    .font(Theme.titleFont)
+                                    .padding(.horizontal, Theme.contentPadding)
+                                
+                                MarkdownEditor(text: todoList.bigThingsMarkdown, todoList: todoList)
+                                    .padding(.horizontal, Theme.contentPadding)
+                            }
+                            .padding(.vertical, Theme.contentPadding)
+                            .frame(height: geometry.size.height * 0.25)
+                        }
+                    }
+                }
+                .frame(width: leftColumnWidth)
+                .background(Theme.leftColumnGradient)
+                
+                // Resizable divider
+                ResizableBar(width: $leftColumnWidth, minWidth: 200, maxWidth: 500)
+                
+                Divider()
+                
+                // Middle Column - Tags
+                VStack(spacing: Theme.itemSpacing) {
+                    Text("Tags")
+                        .font(Theme.titleFont)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, Theme.contentPadding)
+                        .padding(.vertical, Theme.contentPadding)
+                        .background(Color(.windowBackgroundColor))
+                    
+                    TagListView(todoList: todoList, selectedTag: $selectedTag)
+                }
+                .frame(width: middleColumnWidth)
+                .background(Theme.middleColumnGradient)
+                
+                // Resizable divider
+                ResizableBar(width: $middleColumnWidth, minWidth: 200, maxWidth: 500)
+                
+                Divider()
+                
+                // Right Column - Todos (fills remaining space)
+                VStack(spacing: Theme.itemSpacing) {
+                    Text("Todos")
+                        .font(Theme.titleFont)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, Theme.contentPadding)
+                        .padding(.vertical, Theme.contentPadding)
+                        .background(Color(.windowBackgroundColor))
+                    
                     ScrollView {
                         TodoListSections(todoList: todoList)
                     }
                 }
-                .background(Color(.windowBackgroundColor))
+                .background(Theme.rightColumnGradient)
             }
-            .frame(minWidth: 300, maxWidth: .infinity)
         }
-        .navigationTitle("Todo List")
         .frame(minWidth: 900, minHeight: 600)
+    }
+    
+    private func createTodo() {
+        if !newTodoTitle.isEmpty {
+            let todo = Todo(
+                title: newTodoTitle,
+                isCompleted: false,
+                tags: Array(selectedTags),
+                priority: newTodoPriority
+            )
+            todoList.addTodo(todo)
+            newTodoTitle = ""
+            selectedTags.removeAll()
+            newTodoPriority = .normal
+        }
     }
 }
 
@@ -181,146 +265,6 @@ struct FileManagementControls: View {
             .help("Open existing todo file")
         }
         .padding()
-    }
-}
-
-struct BigThingsSection: View {
-    @ObservedObject var todoList: TodoList
-    @State private var newBigThingTitle: String = ""
-    @State private var isAddingNew = false
-    @State private var height: CGFloat = 140 // Smaller default height for 3-4 items
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text("🎯 Big Things for the Week")
-                    .font(.headline)
-                
-                Spacer()
-                
-                Button(action: { isAddingNew = true }) {
-                    Image(systemName: "plus.circle")
-                        .foregroundColor(.blue)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .popover(isPresented: $isAddingNew) {
-                    VStack(spacing: 8) {
-                        TextField("Add a big thing for the week", text: $newBigThingTitle)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .onSubmit { addBigThing() }
-                        
-                        HStack {
-                            Button("Cancel") {
-                                isAddingNew = false
-                                newBigThingTitle = ""
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            
-                            Button("Add") {
-                                addBigThing()
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .disabled(newBigThingTitle.isEmpty)
-                        }
-                    }
-                    .padding()
-                    .frame(width: 300)
-                }
-            }
-            .padding(.horizontal)
-            .padding(.bottom, 8)
-            
-            if !todoList.bigThings.isEmpty {
-                ScrollView {
-                    VStack(spacing: 4) {
-                        ForEach(todoList.bigThings.indices, id: \.self) { index in
-                            HStack {
-                                Text("\(index + 1).")
-                                    .font(.headline)
-                                    .foregroundColor(.secondary)
-                                    .frame(width: 25, alignment: .leading)
-                                
-                                Text(todoList.bigThings[index])
-                                    .font(.headline)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                
-                                Spacer()
-                                
-                                Button(action: { todoList.removeBigThing(at: index) }) {
-                                    Image(systemName: "minus.circle")
-                                        .foregroundColor(.red)
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                            }
-                            .padding(.vertical, 2)
-                            .padding(.horizontal)
-                            .background(Color(.windowBackgroundColor))
-                            .onDrag {
-                                return NSItemProvider(object: String(index) as NSString)
-                            }
-                            .onDrop(of: [.text], delegate: BigThingDropDelegate(
-                                todoList: todoList,
-                                fromIndex: index
-                            ))
-                        }
-                    }
-                }
-                .frame(height: height)
-                .gesture(
-                    DragGesture()
-                        .onChanged { value in
-                            height = max(80, min(400, height + value.translation.height))
-                        }
-                )
-            } else {
-                Spacer()
-                    .frame(height: height)
-            }
-        }
-        .padding(.vertical, 4)
-        .background(Color(.windowBackgroundColor))
-    }
-    
-    private func addBigThing() {
-        if !newBigThingTitle.isEmpty {
-            todoList.addBigThing(newBigThingTitle)
-            newBigThingTitle = ""
-            isAddingNew = false
-        }
-    }
-}
-
-struct BigThingDropDelegate: DropDelegate {
-    let todoList: TodoList
-    let fromIndex: Int
-    
-    func performDrop(info: DropInfo) -> Bool {
-        guard let item = info.itemProviders(for: [.text]).first else { return false }
-        
-        item.loadItem(forTypeIdentifier: "public.text", options: nil) { (data, error) in
-            if let data = data as? Data,
-               let str = String(data: data, encoding: .utf8),
-               let toIndex = Int(str) {
-                DispatchQueue.main.async {
-                    moveItem(from: fromIndex, to: toIndex)
-                }
-            }
-        }
-        
-        return true
-    }
-    
-    private func moveItem(from sourceIndex: Int, to destinationIndex: Int) {
-        guard sourceIndex >= 0 && sourceIndex < todoList.bigThings.count,
-              destinationIndex >= 0 && destinationIndex < todoList.bigThings.count else {
-            return
-        }
-        
-        var items = todoList.bigThings
-        let item = items.remove(at: sourceIndex)
-        items.insert(item, at: destinationIndex)
-        todoList.bigThings = items
-        todoList.saveTodos()
     }
 }
 
@@ -515,6 +459,17 @@ struct TodoListSection: View {
                         .font(Theme.headlineFont)
                         .foregroundColor(Theme.text)
                     Spacer()
+                    
+                    if priority == nil { // This is the completed section
+                        Button(action: { todoList.moveAllCompletedToDeleted() }) {
+                            HStack {
+                                Image(systemName: "trash")
+                                Text("Move to Deleted")
+                            }
+                            .foregroundColor(.red)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
                 }
                 .padding(.horizontal, Theme.contentPadding)
                 
@@ -646,5 +601,34 @@ struct SimpleTodoItemView: View {
                 .foregroundColor(todo.priority.color)
         }
         .padding(.vertical, 4)
+    }
+}
+
+// Add a resizable bar between columns
+struct ResizableBar: View {
+    @Binding var width: CGFloat
+    let minWidth: CGFloat
+    let maxWidth: CGFloat
+    @State private var isResizing = false
+    
+    var body: some View {
+        Rectangle()
+            .fill(Color.clear)
+            .frame(width: 4)
+            .contentShape(Rectangle())
+            .onHover { hovering in
+                if hovering {
+                    NSCursor.resizeLeftRight.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+            .gesture(
+                DragGesture()
+                    .onChanged { value in
+                        let newWidth = width + value.translation.width
+                        width = min(max(minWidth, newWidth), maxWidth)
+                    }
+            )
     }
 } 

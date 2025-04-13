@@ -15,10 +15,20 @@ class TodoList: ObservableObject {
         }
     }
     @Published var isDeletedSectionCollapsed = true
+    @Published var todosFileURL: URL?
+    
+    var bigThingsMarkdown: String {
+        var markdown = ""
+        if !bigThings.isEmpty {
+            for (index, thing) in bigThings.enumerated() {
+                markdown += "\(index + 1). \(thing)\n"
+            }
+        }
+        return markdown
+    }
     
     private let fileManager = FileManager.default
     private let documentsDirectory: URL
-    private var todosFileURL: URL?
     
     init() {
         documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -152,6 +162,13 @@ class TodoList: ObservableObject {
         saveTodos()
     }
     
+    func moveAllCompletedToDeleted() {
+        let completed = todos.filter { $0.isCompleted }
+        deletedTodos.append(contentsOf: completed)
+        todos.removeAll { $0.isCompleted }
+        saveTodos()
+    }
+    
     func updateTodo(_ updatedTodo: Todo) {
         if let index = todos.firstIndex(where: { $0.id == updatedTodo.id }) {
             todos[index] = updatedTodo
@@ -274,7 +291,7 @@ class TodoList: ObservableObject {
         
         // Add completed todos
         if !completedTodos.isEmpty {
-            markdownContent += "## ✅ Completed\n\n"
+            markdownContent += "### ✅ Completed\n\n"
             for todo in completedTodos {
                 markdownContent += formatTodo(todo)
             }
@@ -283,7 +300,7 @@ class TodoList: ObservableObject {
         
         // Add deleted todos
         if !deletedTodos.isEmpty {
-            markdownContent += "## 🗑️ Deleted\n\n"
+            markdownContent += "### 🗑️ Deleted\n\n"
             for todo in deletedTodos {
                 markdownContent += formatTodo(todo)
             }
@@ -318,28 +335,50 @@ class TodoList: ObservableObject {
             
             var currentPriority: Priority = .normal
             var newTodos: [Todo] = []
+            var newDeletedTodos: [Todo] = []
             var newBigThings: [String] = []
             var newGoals: [String] = []
             var isInGoalsSection = false
+            var isInDeletedSection = false
+            var isInBigThingsSection = false
             
             for line in lines {
                 if line.hasPrefix("## ") {
                     let sectionName = line.replacingOccurrences(of: "## ", with: "").trimmingCharacters(in: .whitespaces)
                     if sectionName.contains("🎯") {
                         isInGoalsSection = true
+                        isInDeletedSection = false
+                        isInBigThingsSection = false
                     } else if sectionName.contains("📋") {
                         isInGoalsSection = false
+                        isInDeletedSection = false
+                        isInBigThingsSection = true
                     } else {
                         isInGoalsSection = false
+                        isInDeletedSection = false
+                        isInBigThingsSection = false
                     }
                 } else if line.hasPrefix("### ") {
-                    let priorityLine = line.replacingOccurrences(of: "### ", with: "").trimmingCharacters(in: .whitespaces)
-                    if priorityLine.contains("🔴") {
+                    let sectionName = line.replacingOccurrences(of: "### ", with: "").trimmingCharacters(in: .whitespaces)
+                    if sectionName.contains("🔴") {
                         currentPriority = .urgent
-                    } else if priorityLine.contains("🔵") {
+                        isInDeletedSection = false
+                        isInBigThingsSection = false
+                    } else if sectionName.contains("🔵") {
                         currentPriority = .normal
-                    } else if priorityLine.contains("⚪") {
+                        isInDeletedSection = false
+                        isInBigThingsSection = false
+                    } else if sectionName.contains("⚪") {
                         currentPriority = .whenTime
+                        isInDeletedSection = false
+                        isInBigThingsSection = false
+                    } else if sectionName.contains("✅") {
+                        currentPriority = .normal
+                        isInDeletedSection = false
+                        isInBigThingsSection = false
+                    } else if sectionName.contains("🗑️") {
+                        isInDeletedSection = true
+                        isInBigThingsSection = false
                     }
                 }
                 
@@ -358,9 +397,13 @@ class TodoList: ObservableObject {
                     let tags = parts.dropFirst().map { $0.trimmingCharacters(in: .whitespaces) }
                     
                     let todo = Todo(title: title, isCompleted: isCompleted, tags: tags, priority: currentPriority)
-                    newTodos.append(todo)
-                } else if line.range(of: #"^\d+\."#, options: .regularExpression) != nil {
-                    // Match numbered lines for big things
+                    
+                    if isInDeletedSection {
+                        newDeletedTodos.append(todo)
+                    } else {
+                        newTodos.append(todo)
+                    }
+                } else if isInBigThingsSection && line.range(of: #"^\d+\."#, options: .regularExpression) != nil {
                     if let thing = line.split(separator: ".", maxSplits: 1).last {
                         newBigThings.append(thing.trimmingCharacters(in: .whitespaces))
                     }
@@ -368,11 +411,13 @@ class TodoList: ObservableObject {
             }
             
             todos = newTodos
+            deletedTodos = newDeletedTodos
             bigThings = newBigThings
             goals = newGoals.joined(separator: "\n")
         } catch {
             print("Error loading todos: \(error)")
             todos = []
+            deletedTodos = []
             bigThings = []
             goals = ""
         }

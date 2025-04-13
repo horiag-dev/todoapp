@@ -2,16 +2,16 @@ import SwiftUI
 
 enum Theme {
     // Colors
-    static let background = Color(NSColor(red: 0.98, green: 0.98, blue: 0.98, alpha: 1.0))
+    static let background = Color(.windowBackgroundColor)
     static let secondaryBackground = Color(NSColor(red: 0.96, green: 0.96, blue: 0.96, alpha: 1.0))
     static let accent = Color(NSColor(red: 0.0, green: 0.48, blue: 1.0, alpha: 1.0)) // Things blue
-    static let text = Color(NSColor.labelColor)
+    static let text = Color.primary
     static let secondaryText = Color(NSColor.secondaryLabelColor)
     static let divider = Color(NSColor.separatorColor)
     
     // Font sizes
-    static let titleFont = Font.system(size: 15, weight: .medium)
-    static let headlineFont = Font.system(size: 13, weight: .semibold)
+    static let titleFont: Font = .title2.bold()
+    static let headlineFont: Font = .headline
     static let bodyFont = Font.system(size: 13, weight: .regular)
     static let smallFont = Font.system(size: 11, weight: .regular)
     
@@ -51,4 +51,35 @@ enum Theme {
         }
         return tagColors[abs(hash) % tagColors.count]
     }
+    
+    // Gradient backgrounds
+    static let leftColumnGradient = LinearGradient(
+        gradient: Gradient(colors: [
+            Color.blue.opacity(0.1),
+            Color.blue.opacity(0.05),
+            Color.white.opacity(0.8)
+        ]),
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    static let middleColumnGradient = LinearGradient(
+        gradient: Gradient(colors: [
+            Color.blue.opacity(0.05),
+            Color.white.opacity(0.8),
+            Color.blue.opacity(0.05)
+        ]),
+        startPoint: .top,
+        endPoint: .bottom
+    )
+    
+    static let rightColumnGradient = LinearGradient(
+        gradient: Gradient(colors: [
+            Color.white.opacity(0.8),
+            Color.blue.opacity(0.05),
+            Color.blue.opacity(0.1)
+        ]),
+        startPoint: .topTrailing,
+        endPoint: .bottomLeading
+    )
 } 
