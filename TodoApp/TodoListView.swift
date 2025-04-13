@@ -5,30 +5,75 @@ struct MarkdownEditor: View {
     let text: String
     @ObservedObject var todoList: TodoList
     
-    private func processLines() -> [(isList: Bool, content: String)] {
+    private func processLines() -> [(isList: Bool, content: String, isNumbered: Bool, number: Int?, tags: [String])] {
         let lines = text.components(separatedBy: .newlines)
-        var result: [(isList: Bool, content: String)] = []
-        var currentListItems: [String] = []
+        var result: [(isList: Bool, content: String, isNumbered: Bool, number: Int?, tags: [String])] = []
+        var currentListItems: [(content: String, tags: [String])] = []
+        var currentNumberedItems: [(number: Int, content: String, tags: [String])] = []
         
         for line in lines {
-            if line.hasPrefix("- ") || line.hasPrefix("* ") {
-                currentListItems.append(String(line.dropFirst(2)))
+            // Split content and tags
+            let components = line.components(separatedBy: " #")
+            let mainContent = components[0]
+            let tags = components.dropFirst().map { $0.trimmingCharacters(in: .whitespaces) }
+            
+            if mainContent.hasPrefix("- ") || mainContent.hasPrefix("* ") {
+                let content = String(mainContent.dropFirst(2))
+                currentListItems.append((content: content, tags: tags))
+            } else if let match = mainContent.range(of: #"^\d+\.\s"#, options: .regularExpression) {
+                let number = Int(mainContent[..<match.upperBound].trimmingCharacters(in: CharacterSet(charactersIn: ". "))) ?? 0
+                let content = String(mainContent[match.upperBound...]).trimmingCharacters(in: .whitespaces)
+                currentNumberedItems.append((number: number, content: content, tags: tags))
             } else {
                 if !currentListItems.isEmpty {
-                    result.append((true, currentListItems.joined(separator: "\n")))
+                    for item in currentListItems {
+                        result.append((true, item.content, false, nil, item.tags))
+                    }
                     currentListItems.removeAll()
                 }
-                if !line.isEmpty {
-                    result.append((false, line))
+                if !currentNumberedItems.isEmpty {
+                    for item in currentNumberedItems {
+                        result.append((true, item.content, true, item.number, item.tags))
+                    }
+                    currentNumberedItems.removeAll()
+                }
+                if !mainContent.isEmpty {
+                    result.append((false, mainContent, false, nil, tags))
                 }
             }
         }
         
         if !currentListItems.isEmpty {
-            result.append((true, currentListItems.joined(separator: "\n")))
+            for item in currentListItems {
+                result.append((true, item.content, false, nil, item.tags))
+            }
+        }
+        if !currentNumberedItems.isEmpty {
+            for item in currentNumberedItems {
+                result.append((true, item.content, true, item.number, item.tags))
+            }
         }
         
         return result
+    }
+    
+    private func TagView(tag: String) -> some View {
+        let isSpecialTag = tag.lowercased() == "urgent" || tag.lowercased() == "today"
+        let tagColor = Theme.colorForTag(tag)
+        
+        return Text("#\(tag)")
+            .font(Theme.smallFont)
+            .foregroundColor(isSpecialTag ? .white : Theme.text)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                    .fill(isSpecialTag ? tagColor : tagColor.opacity(0.25))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                    .stroke(isSpecialTag ? Color.clear : tagColor.opacity(0.8), lineWidth: 1)
+            )
     }
     
     private func renderContent() -> some View {
@@ -39,19 +84,46 @@ struct MarkdownEditor: View {
                 let item = processedLines[index]
                 
                 if item.isList {
-                    VStack(alignment: .leading, spacing: 4) {
-                        ForEach(item.content.components(separatedBy: .newlines), id: \.self) { listItem in
-                            HStack(alignment: .top, spacing: 4) {
-                                Text("•")
-                                    .foregroundColor(.secondary)
-                                Text(try! AttributedString(markdown: listItem))
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+                    if item.isNumbered {
+                        HStack(alignment: .top, spacing: 4) {
+                            Text("\(item.number ?? 0).")
+                                .foregroundColor(.secondary)
+                                .frame(width: 25, alignment: .trailing)
+                            HStack {
+                                Text(try! AttributedString(markdown: item.content))
+                                if !item.tags.isEmpty {
+                                    ForEach(item.tags, id: \.self) { tag in
+                                        TagView(tag: tag)
+                                    }
+                                }
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    } else {
+                        HStack(alignment: .top, spacing: 4) {
+                            Text("•")
+                                .foregroundColor(.secondary)
+                            HStack {
+                                Text(try! AttributedString(markdown: item.content))
+                                if !item.tags.isEmpty {
+                                    ForEach(item.tags, id: \.self) { tag in
+                                        TagView(tag: tag)
+                                    }
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
                 } else {
-                    Text(try! AttributedString(markdown: item.content))
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    HStack {
+                        Text(try! AttributedString(markdown: item.content))
+                        if !item.tags.isEmpty {
+                            ForEach(item.tags, id: \.self) { tag in
+                                TagView(tag: tag)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
