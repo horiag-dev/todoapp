@@ -29,21 +29,21 @@ enum Theme {
         Color(NSColor(red: 0.45, green: 0.75, blue: 0.45, alpha: 1.0)),  // Green
         Color(NSColor(red: 0.75, green: 0.55, blue: 0.95, alpha: 1.0)),  // Purple
         Color(NSColor(red: 0.55, green: 0.75, blue: 0.85, alpha: 1.0)),  // Light Blue
-        Color(NSColor(red: 0.95, green: 0.65, blue: 0.45, alpha: 1.0)),  // Orange
+        Color(NSColor(red: 0.95, green: 0.78, blue: 0.45, alpha: 1.0)),  // Golden Yellow
         Color(NSColor(red: 0.65, green: 0.45, blue: 0.85, alpha: 1.0)),  // Violet
-        Color(NSColor(red: 0.85, green: 0.75, blue: 0.35, alpha: 1.0)),  // Yellow
-        Color(NSColor(red: 0.85, green: 0.55, blue: 0.75, alpha: 1.0)),  // Pink
+        Color(NSColor(red: 0.85, green: 0.85, blue: 0.35, alpha: 1.0)),  // Yellow
+        Color(NSColor(red: 0.85, green: 0.65, blue: 0.85, alpha: 1.0)),  // Light Purple
         Color(NSColor(red: 0.50, green: 0.85, blue: 0.75, alpha: 1.0)),  // Teal
-        Color(NSColor(red: 0.95, green: 0.45, blue: 0.50, alpha: 1.0)),  // Coral
+        Color(NSColor(red: 0.45, green: 0.85, blue: 0.65, alpha: 1.0)),  // Mint
         Color(NSColor(red: 0.70, green: 0.60, blue: 0.45, alpha: 1.0)),  // Brown
         Color(NSColor(red: 0.45, green: 0.60, blue: 0.70, alpha: 1.0)),  // Steel Blue
-        Color(NSColor(red: 0.75, green: 0.45, blue: 0.45, alpha: 1.0)),  // Burgundy
-        Color(NSColor(red: 0.45, green: 0.75, blue: 0.65, alpha: 1.0)),  // Mint
+        Color(NSColor(red: 0.60, green: 0.75, blue: 0.45, alpha: 1.0)),  // Olive Green
+        Color(NSColor(red: 0.45, green: 0.75, blue: 0.85, alpha: 1.0)),  // Sky Blue
         Color(NSColor(red: 0.65, green: 0.45, blue: 0.65, alpha: 1.0)),  // Plum
-        Color(NSColor(red: 0.55, green: 0.65, blue: 0.45, alpha: 1.0)),  // Olive
-        Color(NSColor(red: 0.85, green: 0.45, blue: 0.85, alpha: 1.0)),  // Magenta
+        Color(NSColor(red: 0.55, green: 0.65, blue: 0.45, alpha: 1.0)),  // Sage
+        Color(NSColor(red: 0.75, green: 0.65, blue: 0.85, alpha: 1.0)),  // Lavender
         Color(NSColor(red: 0.45, green: 0.85, blue: 0.85, alpha: 1.0)),  // Cyan
-        Color(NSColor(red: 0.75, green: 0.65, blue: 0.55, alpha: 1.0)),  // Tan
+        Color(NSColor(red: 0.75, green: 0.75, blue: 0.55, alpha: 1.0)),  // Khaki
         Color(NSColor(red: 0.55, green: 0.45, blue: 0.75, alpha: 1.0))   // Indigo
     ]
     

@@ -535,9 +535,19 @@ struct TagListView: View {
                                 editingTag = nil
                             }
                         } else {
-                            Text(tag)
-                                .font(Theme.headlineFont)
-                                .foregroundColor(tag.lowercased() == "today" ? .red : Theme.text)
+                            Text("#\(tag)")
+                                .font(Theme.smallFont)
+                                .foregroundColor(tag.lowercased() == "today" ? .white : Theme.text)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(
+                                    RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                                        .fill(tag.lowercased() == "today" ? Theme.urgentTagColor : Theme.colorForTag(tag).opacity(0.25))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                                        .stroke(tag.lowercased() == "today" ? Color.clear : Theme.colorForTag(tag).opacity(0.8), lineWidth: 1)
+                                )
                                 .onTapGesture(count: 2) {
                                     editingTag = tag
                                     editedTagName = tag
