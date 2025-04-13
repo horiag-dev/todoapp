@@ -55,9 +55,8 @@ enum Theme {
     // Gradient backgrounds
     static let leftColumnGradient = LinearGradient(
         gradient: Gradient(colors: [
-            Color.blue.opacity(0.1),
-            Color.blue.opacity(0.05),
-            Color.white.opacity(0.8)
+            Color.blue.opacity(0.08),
+            Color.white.opacity(0.95)
         ]),
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -65,21 +64,19 @@ enum Theme {
     
     static let middleColumnGradient = LinearGradient(
         gradient: Gradient(colors: [
-            Color.blue.opacity(0.05),
-            Color.white.opacity(0.8),
-            Color.blue.opacity(0.05)
+            Color.blue.opacity(0.08),
+            Color.white.opacity(0.95)
         ]),
-        startPoint: .top,
-        endPoint: .bottom
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
     )
     
     static let rightColumnGradient = LinearGradient(
         gradient: Gradient(colors: [
-            Color.white.opacity(0.8),
-            Color.blue.opacity(0.05),
-            Color.blue.opacity(0.1)
+            Color.blue.opacity(0.08),
+            Color.white.opacity(0.95)
         ]),
-        startPoint: .topTrailing,
-        endPoint: .bottomLeading
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
     )
 } 

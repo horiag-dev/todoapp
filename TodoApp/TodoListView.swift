@@ -150,7 +150,7 @@ struct TodoListView: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(.horizontal, Theme.contentPadding)
                                     .padding(.vertical, Theme.contentPadding)
-                                    .background(Color(.windowBackgroundColor))
+                                    .background(Color(NSColor.textBackgroundColor))
                                 
                                 MarkdownEditor(text: todoList.goals, todoList: todoList)
                                     .padding(.horizontal, Theme.contentPadding)
@@ -188,7 +188,7 @@ struct TodoListView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, Theme.contentPadding)
                         .padding(.vertical, Theme.contentPadding)
-                        .background(Color(.windowBackgroundColor))
+                        .background(Color(NSColor.textBackgroundColor))
                     
                     TagListView(todoList: todoList, selectedTag: $selectedTag)
                 }
@@ -207,7 +207,7 @@ struct TodoListView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, Theme.contentPadding)
                         .padding(.vertical, Theme.contentPadding)
-                        .background(Color(.windowBackgroundColor))
+                        .background(Color(NSColor.textBackgroundColor))
                     
                     ScrollView {
                         TodoListSections(todoList: todoList)
@@ -533,6 +533,9 @@ struct TagListView: View {
             }
         }
         .listStyle(.inset)
+        .background(Color(NSColor.textBackgroundColor))
+        .cornerRadius(Theme.cornerRadius)
+        .padding(.horizontal, Theme.contentPadding)
         .alert("Export to Notes", isPresented: $showingExportAlert) {
             Button("Copy to Clipboard") {
                 let pasteboard = NSPasteboard.general
