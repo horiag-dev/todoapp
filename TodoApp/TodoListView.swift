@@ -212,6 +212,9 @@ struct TodoListView: View {
                     ScrollView {
                         TodoListSections(todoList: todoList)
                     }
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(Theme.cornerRadius)
+                    .padding(.horizontal, Theme.contentPadding)
                 }
                 .background(Theme.rightColumnGradient)
             }
