@@ -544,31 +544,6 @@ class TodoList: ObservableObject {
         // Save backup file
         try backupContent.write(to: backupFilePath, atomically: true, encoding: .utf8)
         print("✅ Backup created successfully at: \(backupFilePath.path)")
-        
-        // Clean up old backups (keep last 10)
-        cleanupOldBackups(in: folderPath)
-    }
-    
-    private func cleanupOldBackups(in folder: URL) {
-        let fileManager = FileManager.default
-        do {
-            let backupFiles = try fileManager.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.creationDateKey])
-                .filter { $0.lastPathComponent.hasPrefix("todo_backup_") }
-                .sorted { (file1, file2) -> Bool in
-                    let date1 = try? file1.resourceValues(forKeys: [.creationDateKey]).creationDate ?? Date.distantPast
-                    let date2 = try? file2.resourceValues(forKeys: [.creationDateKey]).creationDate ?? Date.distantPast
-                    return date1! > date2!
-                }
-            
-            // Keep only the 10 most recent backups
-            if backupFiles.count > 10 {
-                for file in backupFiles[10...] {
-                    try fileManager.removeItem(at: file)
-                }
-            }
-        } catch {
-            print("Error cleaning up old backups: \(error)")
-        }
     }
     
     deinit {
