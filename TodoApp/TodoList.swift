@@ -17,6 +17,9 @@ class TodoList: ObservableObject {
     @Published var isDeletedSectionCollapsed = true
     @Published var todosFileURL: URL?
     
+    private var backupTimer: Timer?
+    private let backupInterval: TimeInterval = 7200 // 2 hours in seconds
+    
     var bigThingsMarkdown: String {
         var markdown = ""
         if !bigThings.isEmpty {
@@ -111,6 +114,9 @@ class TodoList: ObservableObject {
         todosFileURL = url
         UserDefaults.standard.set(url.path, forKey: "lastTodoFilePath")
         loadTodos()
+        
+        // Initialize backup after selecting a file
+        setupBackupTimer()
     }
     
     func createNewFile() {
@@ -325,9 +331,11 @@ class TodoList: ObservableObject {
     
     private func loadTodos() {
         guard let fileURL = todosFileURL else {
-            print("No file selected")
+            print("❌ No file selected for loading todos")
             return
         }
+        
+        print("📝 Loading todos from: \(fileURL.path)")
         
         do {
             let markdownContent = try String(contentsOf: fileURL, encoding: .utf8)
@@ -414,13 +422,157 @@ class TodoList: ObservableObject {
             deletedTodos = newDeletedTodos
             bigThings = newBigThings
             goals = newGoals.joined(separator: "\n")
+            
+            print("✅ Successfully loaded todos: \(newTodos.count) todos, \(newBigThings.count) big things")
+            
+            // Create initial backup after loading
+            DispatchQueue.main.async {
+                self.createBackup()
+                self.setupBackupTimer()
+            }
         } catch {
-            print("Error loading todos: \(error)")
+            print("❌ Error loading todos: \(error)")
             todos = []
             deletedTodos = []
             bigThings = []
             goals = ""
         }
+    }
+    
+    private func setupBackupTimer() {
+        backupTimer = Timer.scheduledTimer(withTimeInterval: backupInterval, repeats: true) { [weak self] _ in
+            self?.createBackup()
+        }
+    }
+    
+    private func createBackup() {
+        guard let fileURL = todosFileURL else {
+            print("❌ No file selected for backup")
+            return
+        }
+        
+        // Get the directory of the original file
+        let originalFolder = fileURL.deletingLastPathComponent()
+        let backupsFolderPath = originalFolder.appendingPathComponent("TodoAppBackups")
+        
+        print("Creating backup in folder: \(backupsFolderPath.path)")
+        
+        // Try to access existing bookmark first
+        if let bookmarkData = UserDefaults.standard.data(forKey: "backupFolderBookmark") {
+            var isStale = false
+            do {
+                let url = try URL(resolvingBookmarkData: bookmarkData,
+                                options: .withSecurityScope,
+                                relativeTo: nil,
+                                bookmarkDataIsStale: &isStale)
+                
+                if url.startAccessingSecurityScopedResource() {
+                    defer { url.stopAccessingSecurityScopedResource() }
+                    
+                    // Create backups directory
+                    try fileManager.createDirectory(at: backupsFolderPath, withIntermediateDirectories: true, attributes: nil)
+                    
+                    // Create and save the backup
+                    try createBackupFile(at: backupsFolderPath, originalFile: fileURL)
+                    return
+                }
+            } catch {
+                print("Failed to resolve bookmark: \(error)")
+                // Continue to request new access
+            }
+        }
+        
+        // If we don't have a valid bookmark, request access
+        let openPanel = NSOpenPanel()
+        openPanel.title = "Grant Access to Create Backups"
+        openPanel.message = "Please select the folder where you want to save backups"
+        openPanel.prompt = "Grant Access"
+        openPanel.canChooseFiles = false
+        openPanel.canChooseDirectories = true
+        openPanel.directoryURL = originalFolder
+        openPanel.canCreateDirectories = true
+        
+        if openPanel.runModal() == .OK {
+            guard let selectedURL = openPanel.url else { return }
+            
+            do {
+                // Create new bookmark
+                let bookmarkData = try selectedURL.bookmarkData(options: .withSecurityScope,
+                                                              includingResourceValuesForKeys: nil,
+                                                              relativeTo: nil)
+                UserDefaults.standard.set(bookmarkData, forKey: "backupFolderBookmark")
+                
+                if selectedURL.startAccessingSecurityScopedResource() {
+                    defer { selectedURL.stopAccessingSecurityScopedResource() }
+                    
+                    // Create backups directory
+                    try fileManager.createDirectory(at: backupsFolderPath, withIntermediateDirectories: true, attributes: nil)
+                    
+                    // Create and save the backup
+                    try createBackupFile(at: backupsFolderPath, originalFile: fileURL)
+                }
+            } catch {
+                print("❌ Error creating backup: \(error)")
+            }
+        } else {
+            print("❌ User denied access to create backups")
+        }
+    }
+    
+    private func createBackupFile(at folderPath: URL, originalFile: URL) throws {
+        // Create timestamp for filename
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        let timestamp = dateFormatter.string(from: Date())
+        
+        // Create backup file name based on original file name
+        let originalFileName = originalFile.deletingPathExtension().lastPathComponent
+        let backupFileName = "\(originalFileName)_backup_\(timestamp).md"
+        let backupFilePath = folderPath.appendingPathComponent(backupFileName)
+        print("Creating backup file at: \(backupFilePath.path)")
+        
+        // Prepare backup content
+        var backupContent = "# Goals\n\n\(goals)\n\n"
+        backupContent += "# Top 5 Week\n\n\(bigThingsMarkdown)\n\n"
+        backupContent += "# Todos\n\n"
+        for todo in todos {
+            let tagsString = todo.tags.isEmpty ? "" : " #" + todo.tags.joined(separator: " #")
+            let completionMark = todo.isCompleted ? "[x]" : "[ ]"
+            backupContent += "- \(completionMark) \(todo.title)\(tagsString)\n"
+        }
+        
+        // Save backup file
+        try backupContent.write(to: backupFilePath, atomically: true, encoding: .utf8)
+        print("✅ Backup created successfully at: \(backupFilePath.path)")
+        
+        // Clean up old backups (keep last 10)
+        cleanupOldBackups(in: folderPath)
+    }
+    
+    private func cleanupOldBackups(in folder: URL) {
+        let fileManager = FileManager.default
+        do {
+            let backupFiles = try fileManager.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.creationDateKey])
+                .filter { $0.lastPathComponent.hasPrefix("todo_backup_") }
+                .sorted { (file1, file2) -> Bool in
+                    let date1 = try? file1.resourceValues(forKeys: [.creationDateKey]).creationDate ?? Date.distantPast
+                    let date2 = try? file2.resourceValues(forKeys: [.creationDateKey]).creationDate ?? Date.distantPast
+                    return date1! > date2!
+                }
+            
+            // Keep only the 10 most recent backups
+            if backupFiles.count > 10 {
+                for file in backupFiles[10...] {
+                    try fileManager.removeItem(at: file)
+                }
+            }
+        } catch {
+            print("Error cleaning up old backups: \(error)")
+        }
+    }
+    
+    deinit {
+        backupTimer?.invalidate()
     }
 }
 
