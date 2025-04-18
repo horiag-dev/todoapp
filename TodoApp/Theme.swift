@@ -3,11 +3,16 @@ import SwiftUI
 enum Theme {
     // Colors
     static let background = Color(.windowBackgroundColor)
-    static let secondaryBackground = Color(NSColor(red: 0.96, green: 0.96, blue: 0.96, alpha: 1.0))
-    static let accent = Color(NSColor(red: 0.0, green: 0.48, blue: 1.0, alpha: 1.0)) // Things blue
+    static let secondaryBackground = Color(NSColor.controlAccentColor.withAlphaComponent(0.1))
+    static let accent = Color(NSColor.controlAccentColor)
     static let text = Color.primary
     static let secondaryText = Color(NSColor.secondaryLabelColor)
     static let divider = Color(NSColor.separatorColor)
+    
+    // Selection colors
+    static let selectionBackground = Color(NSColor.selectedContentBackgroundColor)
+    static let selectionInactiveBackground = Color(NSColor.unemphasizedSelectedContentBackgroundColor)
+    static let selectionText = Color(NSColor.selectedContentBackgroundColor)
     
     // Font sizes
     static let titleFont: Font = .title2.bold()
