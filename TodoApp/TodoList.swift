@@ -531,18 +531,8 @@ class TodoList: ObservableObject {
         let backupFilePath = folderPath.appendingPathComponent(backupFileName)
         print("Creating backup file at: \(backupFilePath.path)")
         
-        // Prepare backup content
-        var backupContent = "# Goals\n\n\(goals)\n\n"
-        backupContent += "# Top 5 Week\n\n\(bigThingsMarkdown)\n\n"
-        backupContent += "# Todos\n\n"
-        for todo in todos {
-            let tagsString = todo.tags.isEmpty ? "" : " #" + todo.tags.joined(separator: " #")
-            let completionMark = todo.isCompleted ? "[x]" : "[ ]"
-            backupContent += "- \(completionMark) \(todo.title)\(tagsString)\n"
-        }
-        
-        // Save backup file
-        try backupContent.write(to: backupFilePath, atomically: true, encoding: .utf8)
+        // Copy the original file to the backup location
+        try FileManager.default.copyItem(at: originalFile, to: backupFilePath)
         print("✅ Backup created successfully at: \(backupFilePath.path)")
     }
     
