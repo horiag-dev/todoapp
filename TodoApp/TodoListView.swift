@@ -450,11 +450,30 @@ struct TodoListSections: View {
     @ObservedObject var todoList: TodoList
     
     private func filterAndSortTodos(for priority: Priority) -> [Todo] {
-        let filteredTodos = todoList.todos.filter { $0.priority == priority && !$0.isCompleted }
+        let filteredTodos = todoList.todos.filter { todo in
+            if todo.isCompleted {
+                return false
+            }
+            
+            // Check if todo has urgent/today tags
+            let hasUrgentTag = todo.tags.contains { $0.lowercased() == "urgent" || $0.lowercased() == "today" }
+            
+            switch priority {
+            case .urgent:
+                // Include todos with urgent priority OR urgent/today tags
+                return todo.priority == .urgent || hasUrgentTag
+            case .normal:
+                // Only include normal priority todos WITHOUT urgent/today tags
+                return todo.priority == .normal && !hasUrgentTag
+            case .whenTime:
+                // Only include whenTime priority todos WITHOUT urgent/today tags
+                return todo.priority == .whenTime && !hasUrgentTag
+            }
+        }
         
         return filteredTodos.sorted { todo1, todo2 in
-            let todo1HasPriorityTags = todo1.tags.contains("urgent") || todo1.tags.contains("today")
-            let todo2HasPriorityTags = todo2.tags.contains("urgent") || todo2.tags.contains("today")
+            let todo1HasPriorityTags = todo1.tags.contains { $0.lowercased() == "urgent" || $0.lowercased() == "today" }
+            let todo2HasPriorityTags = todo2.tags.contains { $0.lowercased() == "urgent" || $0.lowercased() == "today" }
             
             if todo1HasPriorityTags == todo2HasPriorityTags {
                 return false
