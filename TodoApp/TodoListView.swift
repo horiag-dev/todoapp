@@ -243,58 +243,13 @@ struct TodoListView: View {
                             .background(Color(NSColor.textBackgroundColor))
                         
                         // New Todo Input - Left aligned
-                        HStack(spacing: 8) {
-                            TextField("New todo", text: $newTodoTitle)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .frame(width: 300)
-                                .onSubmit(createTodo)
-                            
-                            Menu {
-                                Button(action: { newTodoPriority = .urgent }) {
-                                    Label("Urgent", systemImage: "flag.fill")
-                                }
-                                Button(action: { newTodoPriority = .normal }) {
-                                    Label("Normal", systemImage: "flag")
-                                }
-                                Button(action: { newTodoPriority = .whenTime }) {
-                                    Label("When there's time", systemImage: "clock.fill")
-                                }
-                            } label: {
-                                Image(systemName: newTodoPriority.icon)
-                                    .foregroundColor(newTodoPriority.color)
-                                    .imageScale(.small)
-                            }
-                            .menuStyle(BorderlessButtonMenuStyle())
-                            .frame(width: 32)
-                            
-                            Button(action: { showingTagManagement = true }) {
-                                Image(systemName: "tag")
-                                    .imageScale(.small)
-                                    .foregroundColor(Theme.secondaryText)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .popover(isPresented: $showingTagManagement) {
-                                TagSelectionSheet(
-                                    todoList: todoList,
-                                    selectedTags: $selectedTags,
-                                    isPresented: $showingTagManagement
-                                )
-                            }
-                            .frame(width: 24)
-                            
-                            Button(action: createTodo) {
-                                Image(systemName: "plus.circle.fill")
-                                    .imageScale(.small)
-                                    .foregroundColor(Theme.accent)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .disabled(newTodoTitle.isEmpty)
-                            .frame(width: 24)
-                            
-                            Spacer()
-                        }
-                        .padding(.horizontal, Theme.contentPadding)
-                        .padding(.bottom, Theme.itemSpacing)
+                        NewTodoInput(
+                            todoList: todoList,
+                            newTodoTitle: $newTodoTitle,
+                            newTodoPriority: $newTodoPriority,
+                            showingTagManagement: $showingTagManagement,
+                            selectedTags: $selectedTags
+                        )
                         
                         ScrollView {
                             TodoListSections(todoList: todoList)
@@ -366,16 +321,54 @@ struct NewTodoInput: View {
     @Binding var showingTagManagement: Bool
     @Binding var selectedTags: Set<String>
     
+    // Get all unique tags from the todo list
+    private var availableTags: [String] {
+        todoList.allTags.sorted()
+    }
+    
     var body: some View {
         VStack(spacing: 8) {
-            HStack {
+            HStack(spacing: 12) {
                 TextField("New todo", text: $newTodoTitle)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .onSubmit(createTodo)
                 
+                // Quick priority buttons
+                HStack(spacing: 8) {
+                    Button(action: { newTodoPriority = .urgent }) {
+                        Image(systemName: "flag.fill")
+                            .foregroundColor(newTodoPriority == .urgent ? .red : .gray.opacity(0.3))
+                            .imageScale(.medium)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("Urgent")
+                    
+                    Button(action: { newTodoPriority = .normal }) {
+                        Image(systemName: "flag")
+                            .foregroundColor(newTodoPriority == .normal ? Theme.accent : .gray.opacity(0.3))
+                            .imageScale(.medium)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("Normal")
+                    
+                    Button(action: { newTodoPriority = .whenTime }) {
+                        Image(systemName: "clock.fill")
+                            .foregroundColor(newTodoPriority == .whenTime ? Theme.secondaryText : .gray.opacity(0.3))
+                            .imageScale(.medium)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("When there's time")
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Theme.secondaryBackground)
+                .cornerRadius(8)
+                
+                // Tag management button
                 Button(action: { showingTagManagement = true }) {
                     Image(systemName: "tag")
                         .foregroundColor(.blue)
+                        .imageScale(.medium)
                 }
                 .buttonStyle(PlainButtonStyle())
                 .popover(isPresented: $showingTagManagement) {
@@ -386,42 +379,66 @@ struct NewTodoInput: View {
                     )
                 }
                 
-                Menu {
-                    Button(action: { newTodoPriority = .urgent }) {
-                        Label("Urgent", systemImage: "flag.fill")
-                    }
-                    Button(action: { newTodoPriority = .normal }) {
-                        Label("Normal", systemImage: "flag")
-                    }
-                    Button(action: { newTodoPriority = .whenTime }) {
-                        Label("When there's time", systemImage: "clock.fill")
-                    }
-                } label: {
-                    Image(systemName: newTodoPriority.icon)
-                        .foregroundColor(newTodoPriority.color)
-                }
-                
+                // Add todo button
                 Button(action: createTodo) {
                     Image(systemName: "plus.circle.fill")
                         .foregroundColor(.blue)
+                        .imageScale(.medium)
                 }
                 .buttonStyle(PlainButtonStyle())
                 .disabled(newTodoTitle.isEmpty)
             }
+            .padding(.horizontal, 12)
             
-            if !selectedTags.isEmpty {
+            // Quick tag buttons
+            if !availableTags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack {
-                        ForEach(Array(selectedTags), id: \.self) { tag in
-                            Text(tag)
-                                .font(.caption)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.blue.opacity(0.2))
-                                .cornerRadius(8)
+                    HStack(spacing: 8) {
+                        ForEach(availableTags, id: \.self) { tag in
+                            Button(action: {
+                                if selectedTags.contains(tag) {
+                                    selectedTags.remove(tag)
+                                } else {
+                                    selectedTags.insert(tag)
+                                }
+                            }) {
+                                Text("#\(tag)")
+                                    .font(.caption)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(selectedTags.contains(tag) ? Color.blue.opacity(0.2) : Theme.secondaryBackground)
+                                    .foregroundColor(selectedTags.contains(tag) ? .blue : Theme.text)
+                                    .cornerRadius(8)
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         }
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, 12)
+                }
+                .frame(height: 30)
+            }
+            
+            // Selected tags display
+            if !selectedTags.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(selectedTags), id: \.self) { tag in
+                            HStack(spacing: 4) {
+                                Text(tag)
+                                    .font(.caption)
+                                Button(action: { selectedTags.remove(tag) }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.gray)
+                                        .imageScale(.small)
+                                }
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.blue.opacity(0.2))
+                            .cornerRadius(8)
+                        }
+                    }
+                    .padding(.horizontal, 12)
                 }
                 .frame(height: 30)
             }
