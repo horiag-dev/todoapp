@@ -1,64 +1,82 @@
 {
   "images" : [
     {
-      "filename" : "16.png",
+      "filename" : "icon_16x16.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "16x16"
     },
     {
-      "filename" : "32.png",
+      "filename" : "icon_16x16@2x.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "16x16"
     },
     {
-      "filename" : "32 1.png",
+      "filename" : "icon_32x32.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "32x32"
     },
     {
-      "filename" : "64.png",
+      "filename" : "ChatGPT Image Apr 18, 2025 at 09_59_46 AM_64x64.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "32x32"
     },
     {
-      "filename" : "128.png",
+      "filename" : "ChatGPT Image Apr 18, 2025 at 09_59_52 AM_256x256.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "128x128"
     },
     {
-      "filename" : "256.png",
+      "filename" : "ChatGPT Image Apr 18, 2025 at 09_59_52 AM_256x256 2.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "128x128"
     },
     {
-      "filename" : "256 1.png",
+      "filename" : "ChatGPT Image Apr 18, 2025 at 09_59_52 AM_256x256 1.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "256x256"
     },
     {
-      "filename" : "512.png",
+      "filename" : "ChatGPT Image Apr 18, 2025 at 09_59_52 AM_1024x1024.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "256x256"
     },
     {
-      "filename" : "512 1.png",
+      "filename" : "ChatGPT Image Apr 18, 2025 at 09_59_46 AM_512x512 1.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "512x512"
     },
     {
-      "filename" : "1024.png",
+      "filename" : "ChatGPT Image Apr 18, 2025 at 09_59_46 AM_1024x1024.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "512x512"
+    },
+    {
+      "filename" : "icon_64x64.png",
+      "idiom" : "mac",
+      "scale" : "1x",
+      "size" : "64x64"
+    },
+    {
+      "filename" : "icon_64x64@2x.png",
+      "idiom" : "mac",
+      "scale" : "2x",
+      "size" : "64x64"
+    },
+    {
+      "filename" : "ChatGPT Image Apr 18, 2025 at 09_59_46 AM_1024x1024 1.png",
+      "idiom" : "mac",
+      "scale" : "1x",
+      "size" : "1024x1024"
     }
   ],
   "info" : {
