@@ -488,15 +488,36 @@ struct TodoListSections: View {
             }
         }
         
+        // Sort the filtered todos
         return filteredTodos.sorted { todo1, todo2 in
+            // First, sort by urgent/today tags
             let todo1HasPriorityTags = todo1.tags.contains { $0.lowercased() == "urgent" || $0.lowercased() == "today" }
             let todo2HasPriorityTags = todo2.tags.contains { $0.lowercased() == "urgent" || $0.lowercased() == "today" }
             
-            if todo1HasPriorityTags == todo2HasPriorityTags {
-                return false
+            if todo1HasPriorityTags != todo2HasPriorityTags {
+                return todo1HasPriorityTags
             }
             
-            return todo1HasPriorityTags
+            // Then, group by common tags
+            let commonTags1 = Set(todo1.tags).intersection(todoList.allTags)
+            let commonTags2 = Set(todo2.tags).intersection(todoList.allTags)
+            
+            if !commonTags1.isEmpty && !commonTags2.isEmpty {
+                // If both todos have tags, sort by the first tag alphabetically
+                let firstTag1 = commonTags1.sorted().first!
+                let firstTag2 = commonTags2.sorted().first!
+                
+                if firstTag1 != firstTag2 {
+                    return firstTag1 < firstTag2
+                }
+            } else if !commonTags1.isEmpty {
+                return true // Todo with tags comes first
+            } else if !commonTags2.isEmpty {
+                return false // Todo with tags comes first
+            }
+            
+            // Finally, sort alphabetically by title
+            return todo1.title.localizedStandardCompare(todo2.title) == .orderedAscending
         }
     }
     
