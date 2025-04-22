@@ -236,6 +236,37 @@ struct TodoItemView: View {
             
             // Control buttons - always visible, right-aligned
             HStack(spacing: Theme.itemSpacing) {
+                // Priority change buttons
+                HStack(spacing: 4) {
+                    if todo.priority != .urgent {
+                        Button(action: {
+                            var updatedTodo = todo
+                            updatedTodo.priority = todo.priority == .whenTime ? .normal : .urgent
+                            todoList.updateTodo(updatedTodo)
+                        }) {
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 10))
+                                .foregroundColor(Theme.secondaryText)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .help("Increase priority")
+                    }
+                    
+                    if todo.priority != .whenTime {
+                        Button(action: {
+                            var updatedTodo = todo
+                            updatedTodo.priority = todo.priority == .urgent ? .normal : .whenTime
+                            todoList.updateTodo(updatedTodo)
+                        }) {
+                            Image(systemName: "arrow.down")
+                                .font(.system(size: 10))
+                                .foregroundColor(Theme.secondaryText)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .help("Decrease priority")
+                    }
+                }
+                
                 // Tag management button
                 Button(action: { showingTagManagement = true }) {
                     Image(systemName: "tag")
