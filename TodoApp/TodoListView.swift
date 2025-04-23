@@ -488,16 +488,35 @@ struct TodoListSections: View {
             }
         }
         
-        return filteredTodos.sorted { todo1, todo2 in
-            let todo1HasPriorityTags = todo1.tags.contains { $0.lowercased() == "urgent" || $0.lowercased() == "today" }
-            let todo2HasPriorityTags = todo2.tags.contains { $0.lowercased() == "urgent" || $0.lowercased() == "today" }
-            
-            if todo1HasPriorityTags == todo2HasPriorityTags {
-                return false
-            }
-            
-            return todo1HasPriorityTags
+        // Separate todos into tagged and untagged groups
+        let untaggedTodos = filteredTodos.filter { todo in
+            // Consider a todo untagged if it has no tags or only has the "today" tag
+            todo.tags.isEmpty || todo.tags.allSatisfy { $0.lowercased() == "today" }
         }
+        
+        let taggedTodos = filteredTodos.filter { todo in
+            // Consider a todo tagged if it has at least one non-"today" tag
+            todo.tags.contains { $0.lowercased() != "today" }
+        }
+        
+        // Group tagged todos by their first non-"today" tag
+        let groupedTodos = Dictionary(grouping: taggedTodos) { todo -> String in
+            // Get the first non-"today" tag
+            todo.tags.first { $0.lowercased() != "today" }!
+        }
+        
+        // First, get sorted tagged todos
+        let sortedTaggedTodos = groupedTodos.sorted { $0.key < $1.key }
+            .flatMap { _, todos in
+                // Within each tag group, sort todos alphabetically by title
+                todos.sorted { $0.title.lowercased() < $1.title.lowercased() }
+            }
+        
+        // Then append untagged todos, sorted alphabetically
+        let sortedUntaggedTodos = untaggedTodos.sorted { $0.title.lowercased() < $1.title.lowercased() }
+        
+        // Combine the results with untagged todos at the end
+        return sortedTaggedTodos + sortedUntaggedTodos
     }
     
     var body: some View {

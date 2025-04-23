@@ -167,6 +167,18 @@ struct TodoItemView: View {
         }
     }
     
+    // Add this computed property to sort tags
+    private var sortedTags: [String] {
+        let todayTag = todo.tags.first { $0.lowercased() == "today" }
+        let otherTags = todo.tags.filter { $0.lowercased() != "today" }.sorted()
+        
+        if let todayTag = todayTag {
+            return [todayTag] + otherTags
+        } else {
+            return otherTags
+        }
+    }
+    
     var body: some View {
         HStack(spacing: Theme.itemSpacing) {
             // Checkbox
@@ -224,7 +236,7 @@ struct TodoItemView: View {
                     
                     if !todo.tags.isEmpty {
                         HStack(spacing: 4) {
-                            ForEach(Array(todo.tags), id: \.self) { tag in
+                            ForEach(sortedTags, id: \.self) { tag in
                                 TagView(tag: tag)
                             }
                         }
