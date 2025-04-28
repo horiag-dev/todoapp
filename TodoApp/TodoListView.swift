@@ -318,6 +318,7 @@ struct NewTodoInput: View {
     @Binding var newTodoPriority: Priority
     @Binding var showingTagManagement: Bool
     @Binding var selectedTags: Set<String>
+    @FocusState private var isTextFieldFocused: Bool
     
     // Get all unique tags from the todo list
     private var availableTags: [String] {
@@ -327,8 +328,33 @@ struct NewTodoInput: View {
     var body: some View {
         VStack(spacing: 8) {
             HStack(spacing: 12) {
+                // Inline selected tags
+                ForEach(Array(selectedTags), id: \.self) { tag in
+                    HStack(spacing: 4) {
+                        Text(tag)
+                            .font(.caption)
+                        Button(action: { selectedTags.remove(tag) }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.gray)
+                                .imageScale(.small)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.blue.opacity(0.2))
+                    .cornerRadius(8)
+                }
                 TextField("New todo", text: $newTodoTitle)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .padding(8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(isTextFieldFocused ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: isTextFieldFocused ? 2 : 1)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color(.windowBackgroundColor))
+                            )
+                    )
+                    .focused($isTextFieldFocused)
                     .onSubmit(createTodo)
                 
                 // Quick priority buttons
@@ -409,31 +435,6 @@ struct NewTodoInput: View {
                                     .cornerRadius(8)
                             }
                             .buttonStyle(PlainButtonStyle())
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                }
-                .frame(height: 30)
-            }
-            
-            // Selected tags display
-            if !selectedTags.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(Array(selectedTags), id: \.self) { tag in
-                            HStack(spacing: 4) {
-                                Text(tag)
-                                    .font(.caption)
-                                Button(action: { selectedTags.remove(tag) }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundColor(.gray)
-                                        .imageScale(.small)
-                                }
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.blue.opacity(0.2))
-                            .cornerRadius(8)
                         }
                     }
                     .padding(.horizontal, 12)
