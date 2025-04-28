@@ -21,7 +21,7 @@ enum Theme {
     static let smallFont = Font.system(size: 11, weight: .regular)
     
     // Spacing
-    static let itemSpacing: CGFloat = 8
+    static let itemSpacing: CGFloat = 4
     static let sectionSpacing: CGFloat = 24
     static let contentPadding: CGFloat = 16
     
@@ -110,8 +110,8 @@ enum Theme {
             Color.blue.opacity(0.08),
             Color.white.opacity(0.95)
         ]),
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
+        startPoint: .top,
+        endPoint: .bottom
     )
     
     static let middleColumnGradient = LinearGradient(
@@ -119,8 +119,8 @@ enum Theme {
             Color.blue.opacity(0.08),
             Color.white.opacity(0.95)
         ]),
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
+        startPoint: .top,
+        endPoint: .bottom
     )
     
     static let rightColumnGradient = LinearGradient(
@@ -128,7 +128,17 @@ enum Theme {
             Color.blue.opacity(0.08),
             Color.white.opacity(0.95)
         ]),
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    // Main continuous background gradient (horizontal)
+    static let mainBackgroundGradient = LinearGradient(
+        gradient: Gradient(colors: [
+            Color.blue.opacity(0.08),
+            Color.white.opacity(0.95)
+        ]),
+        startPoint: .leading,
+        endPoint: .trailing
     )
 } 

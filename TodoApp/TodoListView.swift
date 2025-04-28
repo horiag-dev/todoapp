@@ -150,119 +150,116 @@ struct TodoListView: View {
     @State private var middleColumnWidth: CGFloat = 300
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Top Bar - File Management
-            HStack(spacing: 8) {
-                Button(action: { todoList.openFile() }) {
-                    Image(systemName: "folder.badge.plus")
-                }
-                .help("Open existing todo file")
-                
-                Button(action: { todoList.createNewFile() }) {
-                    Image(systemName: "doc.badge.plus")
-                }
-                .help("Create new todo file")
+        ZStack {
+            Theme.mainBackgroundGradient
+                .ignoresSafeArea()
+            VStack(spacing: 0) {
+                // Top Bar - File Management
+                HStack(spacing: 8) {
+                    Button(action: { todoList.openFile() }) {
+                        Image(systemName: "folder.badge.plus")
+                    }
+                    .help("Open existing todo file")
+                    
+                    Button(action: { todoList.createNewFile() }) {
+                        Image(systemName: "doc.badge.plus")
+                    }
+                    .help("Create new todo file")
 
-                Spacer()
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Color(.windowBackgroundColor))
-            
-            // Main Content with Resizable Columns
-            HStack(spacing: 0) {
-                // Left Column - Goals and Top 5
-                VStack(spacing: 0) {
-                    GeometryReader { geometry in
-                        VStack(spacing: 0) {
-                            // Goals Section
-                            VStack(alignment: .leading, spacing: Theme.itemSpacing) {
-                                Text("Goals")
-                                    .font(Theme.titleFont)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, Theme.contentPadding)
-                                    .padding(.vertical, Theme.contentPadding)
-                                    .background(Color(NSColor.textBackgroundColor))
+                    Spacer()
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                
+                // Main Content with Resizable Columns
+                HStack(spacing: 0) {
+                    // Left Column - Goals and Top 5
+                    VStack(spacing: 0) {
+                        GeometryReader { geometry in
+                            VStack(spacing: 0) {
+                                // Goals Section
+                                VStack(alignment: .leading, spacing: Theme.itemSpacing) {
+                                    Text("Goals")
+                                        .font(Theme.titleFont)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.horizontal, Theme.contentPadding)
+                                        .padding(.vertical, Theme.contentPadding)
+                                    
+                                    MarkdownEditor(text: todoList.goals, todoList: todoList)
+                                        .padding(.horizontal, Theme.contentPadding)
+                                }
+                                .frame(height: geometry.size.height * 0.75)
                                 
-                                MarkdownEditor(text: todoList.goals, todoList: todoList)
-                                    .padding(.horizontal, Theme.contentPadding)
-                            }
-                            .frame(height: geometry.size.height * 0.75)
-                            
-                            Divider()
-                            
-                            // Top 5 Week Section
-                            VStack(alignment: .leading, spacing: Theme.itemSpacing) {
-                                Text("Top 5 Week")
-                                    .font(Theme.titleFont)
-                                    .padding(.horizontal, Theme.contentPadding)
+                                Divider()
                                 
-                                MarkdownEditor(text: todoList.bigThingsMarkdown, todoList: todoList)
-                                    .padding(.horizontal, Theme.contentPadding)
+                                // Top 5 Week Section
+                                VStack(alignment: .leading, spacing: Theme.itemSpacing) {
+                                    Text("Top 5 Week")
+                                        .font(Theme.titleFont)
+                                        .padding(.horizontal, Theme.contentPadding)
+                                    
+                                    MarkdownEditor(text: todoList.bigThingsMarkdown, todoList: todoList)
+                                        .padding(.horizontal, Theme.contentPadding)
+                                }
+                                .padding(.vertical, Theme.contentPadding)
+                                .frame(height: geometry.size.height * 0.25)
                             }
-                            .padding(.vertical, Theme.contentPadding)
-                            .frame(height: geometry.size.height * 0.25)
                         }
                     }
-                }
-                .frame(width: leftColumnWidth)
-                .background(Theme.leftColumnGradient)
-                
-                // Resizable divider
-                ResizableBar(width: $leftColumnWidth, minWidth: 200, maxWidth: 500)
-                
-                Divider()
-                
-                // Middle Column - Tags
-                VStack(spacing: Theme.itemSpacing) {
-                    Text("Tags")
-                        .font(Theme.titleFont)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, Theme.contentPadding)
-                        .padding(.vertical, Theme.contentPadding)
-                        .background(Color(NSColor.textBackgroundColor))
+                    .frame(width: leftColumnWidth)
                     
-                    TagListView(todoList: todoList, selectedTag: $selectedTag)
-                }
-                .frame(width: middleColumnWidth)
-                .background(Theme.middleColumnGradient)
-                
-                // Resizable divider
-                ResizableBar(width: $middleColumnWidth, minWidth: 200, maxWidth: 500)
-                
-                Divider()
-                
-                // Right Column - Todos
-                VStack(spacing: Theme.itemSpacing) {
+                    // Resizable divider
+                    ResizableBar(width: $leftColumnWidth, minWidth: 200, maxWidth: 500)
+                    
+                    Divider()
+                    
+                    // Middle Column - Tags
                     VStack(spacing: Theme.itemSpacing) {
-                        Text("Todos")
+                        Text("Tags")
                             .font(Theme.titleFont)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, Theme.contentPadding)
                             .padding(.vertical, Theme.contentPadding)
+                        
+                        TagListView(todoList: todoList, selectedTag: $selectedTag)
+                    }
+                    .frame(width: middleColumnWidth)
+                    
+                    // Resizable divider
+                    ResizableBar(width: $middleColumnWidth, minWidth: 200, maxWidth: 500)
+                    
+                    Divider()
+                    
+                    // Right Column - Todos
+                    VStack(spacing: Theme.itemSpacing) {
+                        VStack(spacing: Theme.itemSpacing) {
+                            Text("Todos")
+                                .font(Theme.titleFont)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, Theme.contentPadding)
+                                .padding(.vertical, Theme.contentPadding)
+                            
+                            // New Todo Input - Left aligned
+                            NewTodoInput(
+                                todoList: todoList,
+                                newTodoTitle: $newTodoTitle,
+                                newTodoPriority: $newTodoPriority,
+                                showingTagManagement: $showingTagManagement,
+                                selectedTags: $selectedTags
+                            )
+                            
+                            ScrollView {
+                                TodoListSections(todoList: todoList)
+                            }
                             .background(Color(NSColor.textBackgroundColor))
-                        
-                        // New Todo Input - Left aligned
-                        NewTodoInput(
-                            todoList: todoList,
-                            newTodoTitle: $newTodoTitle,
-                            newTodoPriority: $newTodoPriority,
-                            showingTagManagement: $showingTagManagement,
-                            selectedTags: $selectedTags
-                        )
-                        
-                        ScrollView {
-                            TodoListSections(todoList: todoList)
+                            .cornerRadius(Theme.cornerRadius)
+                            .padding(.horizontal, Theme.contentPadding)
                         }
-                        .background(Color(NSColor.textBackgroundColor))
-                        .cornerRadius(Theme.cornerRadius)
-                        .padding(.horizontal, Theme.contentPadding)
                     }
                 }
-                .background(Theme.rightColumnGradient)
             }
+            .frame(minWidth: 900, minHeight: 600)
         }
-        .frame(minWidth: 900, minHeight: 600)
     }
     
     private func createTodo() {
@@ -630,7 +627,7 @@ struct TodoListSection: View {
                     TodoItemView(todoList: todoList, todo: todo)
                 }
             }
-            .padding(.vertical, Theme.itemSpacing)
+            .padding(.vertical, 2)
             .background(Color(NSColor.textBackgroundColor))
             .contentShape(Rectangle())
             .onTapGesture {
