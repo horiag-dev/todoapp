@@ -188,6 +188,7 @@ struct TodoListView: View {
                                     MarkdownEditor(text: todoList.goals, todoList: todoList)
                                         .padding(.horizontal, Theme.contentPadding)
                                 }
+                                .padding(.bottom, 20)
                                 .frame(height: geometry.size.height * 0.75)
                                 
                                 Divider()
