@@ -234,7 +234,9 @@ struct TodoListView: View {
                             )
                             
                             ScrollView {
-                                TodoListSections(todoList: todoList)
+                                LazyVStack(spacing: 0) {
+                                    TodoListSections(todoList: todoList)
+                                }
                             }
                             .background(Color(NSColor.textBackgroundColor))
                             .cornerRadius(Theme.cornerRadius)
@@ -503,7 +505,7 @@ struct TodoListSections: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
+        LazyVStack(spacing: 0) {
             // Top 5 of the week section
             if !todoList.top5Todos.isEmpty {
                 TodoListSection(todoList: todoList, priority: nil, todos: todoList.top5Todos, customTitle: "🗓️ Top 5 of the week")
