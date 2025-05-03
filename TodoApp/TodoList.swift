@@ -388,7 +388,9 @@ class TodoList: ObservableObject {
                     isInTop5Section = false
                     isInDeletedSection = false
                     let sectionName = line.replacingOccurrences(of: "### ", with: "").trimmingCharacters(in: .whitespaces)
-                    if sectionName.trimmingCharacters(in: .whitespacesAndNewlines).localizedCaseInsensitiveContains("🔴 Top 5 of the week") {
+                    let trimmedSection = sectionName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if trimmedSection.localizedCaseInsensitiveContains("Top 5 of the week") &&
+                        (trimmedSection.contains("🔴") || trimmedSection.contains("🗓️")) {
                         isInTop5Section = true
                         isInDeletedSection = false
                         currentPriority = .normal // Not used for top5

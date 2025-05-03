@@ -506,8 +506,11 @@ struct TodoListSections: View {
         VStack(spacing: 0) {
             // Top 5 of the week section
             if !todoList.top5Todos.isEmpty {
-                TodoListSection(todoList: todoList, priority: nil, todos: todoList.top5Todos, customTitle: "🔴 Top 5 of the week")
-                Divider().padding(.vertical, Theme.itemSpacing)
+                TodoListSection(todoList: todoList, priority: nil, todos: todoList.top5Todos, customTitle: "🗓️ Top 5 of the week")
+                Rectangle()
+                    .fill(Theme.divider)
+                    .frame(height: 6)
+                    .padding(.vertical, Theme.itemSpacing * 2)
             }
             ForEach([Priority.urgent, Priority.normal, Priority.whenTime], id: \.self) { priority in
                 let todos = filterAndSortTodos(for: priority)
@@ -615,7 +618,7 @@ struct TodoListSection: View {
                 }
                 .padding(.horizontal, Theme.contentPadding)
                 ForEach(todos) { todo in
-                    TodoItemView(todoList: todoList, todo: todo, isTop5: customTitle == "🔴 Top 5 of the week")
+                    TodoItemView(todoList: todoList, todo: todo, isTop5: customTitle == "🗓️ Top 5 of the week")
                 }
             }
             .padding(.vertical, 2)
