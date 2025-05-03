@@ -86,7 +86,8 @@ struct TagManagementSheet: View {
 
 struct TodoItemView: View {
     @ObservedObject var todoList: TodoList
-    let todo: Todo
+    @State var todo: Todo
+    var isTop5: Bool = false
     @State private var isHovered = false
     @State private var isSelected = false
     @State private var isEditing = false
@@ -134,9 +135,10 @@ struct TodoItemView: View {
         return segments
     }
     
-    init(todoList: TodoList, todo: Todo) {
+    init(todoList: TodoList, todo: Todo, isTop5: Bool = false) {
         self.todoList = todoList
-        self.todo = todo
+        self._todo = State(initialValue: todo)
+        self.isTop5 = isTop5
         _editedTitle = State(initialValue: todo.title)
     }
     
@@ -159,14 +161,6 @@ struct TodoItemView: View {
             )
     }
     
-    private func nextPriority(_ current: Priority) -> Priority {
-        switch current {
-        case .whenTime: return .normal
-        case .normal: return .urgent
-        case .urgent: return .whenTime
-        }
-    }
-    
     // Add this computed property to sort tags
     private var sortedTags: [String] {
         let todayTag = todo.tags.first { $0.lowercased() == "today" }
@@ -185,7 +179,12 @@ struct TodoItemView: View {
             Button(action: {
                 var updatedTodo = todo
                 updatedTodo.isCompleted.toggle()
-                todoList.updateTodo(updatedTodo)
+                if isTop5 {
+                    todoList.toggleTop5Todo(updatedTodo)
+                } else {
+                    todoList.updateTodo(updatedTodo)
+                }
+                todo = updatedTodo
             }) {
                 Image(systemName: todo.isCompleted ? "checkmark.circle.fill" : "circle")
                     .foregroundColor(todo.isCompleted ? Theme.accent : Theme.secondaryText)
@@ -248,37 +247,36 @@ struct TodoItemView: View {
             
             // Control buttons - always visible, right-aligned
             HStack(spacing: Theme.itemSpacing) {
-                // Priority change buttons
-                HStack(spacing: 4) {
-                    if todo.priority != .urgent {
+                // Priority change buttons (only for non-top5, non-completed todos)
+                if !isTop5 && !todo.isCompleted {
+                    if todo.priority == .urgent {
                         Button(action: {
                             var updatedTodo = todo
-                            updatedTodo.priority = todo.priority == .whenTime ? .normal : .urgent
+                            updatedTodo.priority = .normal
                             todoList.updateTodo(updatedTodo)
-                        }) {
-                            Image(systemName: "arrow.up")
-                                .font(.system(size: 10))
-                                .foregroundColor(Theme.secondaryText)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .help("Increase priority")
-                    }
-                    
-                    if todo.priority != .whenTime {
-                        Button(action: {
-                            var updatedTodo = todo
-                            updatedTodo.priority = todo.priority == .urgent ? .normal : .whenTime
-                            todoList.updateTodo(updatedTodo)
+                            todo = updatedTodo
                         }) {
                             Image(systemName: "arrow.down")
-                                .font(.system(size: 10))
+                                .font(.system(size: 12))
                                 .foregroundColor(Theme.secondaryText)
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .help("Decrease priority")
+                        .help("Move to Normal priority")
+                    } else if todo.priority == .normal {
+                        Button(action: {
+                            var updatedTodo = todo
+                            updatedTodo.priority = .urgent
+                            todoList.updateTodo(updatedTodo)
+                            todo = updatedTodo
+                        }) {
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 12))
+                                .foregroundColor(Theme.secondaryText)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .help("Move to Urgent priority")
                     }
                 }
-                
                 // Tag management button
                 Button(action: { showingTagManagement = true }) {
                     Image(systemName: "tag")
@@ -287,13 +285,34 @@ struct TodoItemView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 .popover(isPresented: $showingTagManagement, arrowEdge: .bottom) {
-                    TagManagementPopover(todo: todo, todoList: todoList, isPresented: $showingTagManagement)
-                        .frame(width: 250, height: 300)
+                    TagManagementPopover(
+                        todo: todo,
+                        todoList: todoList,
+                        isPresented: $showingTagManagement,
+                        isTop5: isTop5,
+                        onTagChange: {
+                            // Refresh local todo from model after tag change
+                            if isTop5 {
+                                if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
+                                    todo = updated
+                                }
+                            } else {
+                                if let updated = todoList.todos.first(where: { $0.id == todo.id }) {
+                                    todo = updated
+                                }
+                            }
+                        }
+                    )
+                    .frame(width: 250, height: 300)
                 }
                 
                 // Delete button
                 Button(action: {
-                    todoList.deleteTodo(todo)
+                    if isTop5 {
+                        todoList.deleteTop5Todo(todo)
+                    } else {
+                        todoList.deleteTodo(todo)
+                    }
                 }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 12))
@@ -334,7 +353,12 @@ struct TodoItemView: View {
         if !editedTitle.isEmpty {
             var updatedTodo = todo
             updatedTodo.title = editedTitle
-            todoList.updateTodo(updatedTodo)
+            if isTop5 {
+                todoList.updateTop5Todo(updatedTodo)
+            } else {
+                todoList.updateTodo(updatedTodo)
+            }
+            todo = updatedTodo
         }
         isEditing = false
         focusField = false
@@ -346,6 +370,8 @@ struct TagManagementPopover: View {
     let todo: Todo
     @ObservedObject var todoList: TodoList
     @Binding var isPresented: Bool
+    var isTop5: Bool = false
+    var onTagChange: (() -> Void)? = nil
     @State private var newTag = ""
     
     var availableTags: [String] {
@@ -420,17 +446,32 @@ struct TagManagementPopover: View {
     
     private func addNewTag() {
         if !newTag.isEmpty {
-            todoList.addTag(to: todo, tag: newTag)
+            if isTop5 {
+                todoList.addTagToTop5Todo(todo, tag: newTag)
+            } else {
+                todoList.addTag(to: todo, tag: newTag)
+            }
             newTag = ""
+            onTagChange?()
         }
     }
     
     private func addTag(_ tag: String) {
-        todoList.addTag(to: todo, tag: tag)
+        if isTop5 {
+            todoList.addTagToTop5Todo(todo, tag: tag)
+        } else {
+            todoList.addTag(to: todo, tag: tag)
+        }
+        onTagChange?()
     }
     
     private func removeTag(_ tag: String) {
-        todoList.removeTag(from: todo, tag: tag)
+        if isTop5 {
+            todoList.removeTagFromTop5Todo(todo, tag: tag)
+        } else {
+            todoList.removeTag(from: todo, tag: tag)
+        }
+        onTagChange?()
     }
     
     private func TagRowView(tag: String, isCurrentTag: Bool) -> some View {

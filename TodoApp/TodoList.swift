@@ -16,6 +16,7 @@ class TodoList: ObservableObject {
     }
     @Published var isDeletedSectionCollapsed = true
     @Published var todosFileURL: URL?
+    @Published var top5Todos: [Todo] = [] // Top 5 of the week todos
     
     private var backupTimer: Timer?
     private let backupInterval: TimeInterval = 7200 // 2 hours in seconds
@@ -202,7 +203,7 @@ class TodoList: ObservableObject {
     }
     
     var allTags: [String] {
-        let tags = todos.flatMap { $0.tags }
+        let tags = todos.flatMap { $0.tags } + top5Todos.flatMap { $0.tags }
         return Array(Set(tags)).sorted()
     }
     
@@ -251,6 +252,15 @@ class TodoList: ObservableObject {
             markdownContent += "## 🎯 Goals\n\n"
             markdownContent += goals
             markdownContent += "\n\n"
+        }
+        
+        // Add Top 5 of the week section
+        if !top5Todos.isEmpty {
+            markdownContent += "### 🔴 Top 5 of the week\n\n"
+            for todo in top5Todos {
+                markdownContent += formatTodo(todo)
+            }
+            markdownContent += "\n"
         }
         
         // Add big things of the week
@@ -343,12 +353,14 @@ class TodoList: ObservableObject {
             
             var currentPriority: Priority = .normal
             var newTodos: [Todo] = []
+            var newTop5Todos: [Todo] = []
             var newDeletedTodos: [Todo] = []
             var newBigThings: [String] = []
             var newGoals: [String] = []
             var isInGoalsSection = false
             var isInDeletedSection = false
             var isInBigThingsSection = false
+            var isInTop5Section = false
             
             for line in lines {
                 if line.hasPrefix("## ") {
@@ -357,42 +369,79 @@ class TodoList: ObservableObject {
                         isInGoalsSection = true
                         isInDeletedSection = false
                         isInBigThingsSection = false
+                        isInTop5Section = false
                     } else if sectionName.contains("📋") {
                         isInGoalsSection = false
                         isInDeletedSection = false
                         isInBigThingsSection = true
+                        isInTop5Section = false
                     } else {
                         isInGoalsSection = false
                         isInDeletedSection = false
                         isInBigThingsSection = false
+                        isInTop5Section = false
                     }
                 } else if line.hasPrefix("### ") {
+                    // Always reset all section flags on new ### section
+                    isInGoalsSection = false
+                    isInBigThingsSection = false
+                    isInTop5Section = false
+                    isInDeletedSection = false
                     let sectionName = line.replacingOccurrences(of: "### ", with: "").trimmingCharacters(in: .whitespaces)
-                    if sectionName.contains("🔴") {
+                    if sectionName.trimmingCharacters(in: .whitespacesAndNewlines).localizedCaseInsensitiveContains("🔴 Top 5 of the week") {
+                        isInTop5Section = true
+                        isInDeletedSection = false
+                        currentPriority = .normal // Not used for top5
+                    } else if sectionName.contains("🔴") {
                         currentPriority = .urgent
+                        isInTop5Section = false
                         isInDeletedSection = false
                         isInBigThingsSection = false
                     } else if sectionName.contains("🔵") {
                         currentPriority = .normal
+                        isInTop5Section = false
                         isInDeletedSection = false
                         isInBigThingsSection = false
                     } else if sectionName.contains("⚪") {
                         currentPriority = .whenTime
+                        isInTop5Section = false
                         isInDeletedSection = false
                         isInBigThingsSection = false
                     } else if sectionName.contains("✅") {
                         currentPriority = .normal
+                        isInTop5Section = false
                         isInDeletedSection = false
                         isInBigThingsSection = false
                     } else if sectionName.contains("🗑️") {
                         isInDeletedSection = true
+                        isInTop5Section = false
+                        isInBigThingsSection = false
+                    } else {
+                        isInTop5Section = false
+                        isInDeletedSection = false
                         isInBigThingsSection = false
                     }
-                }
-                
-                if isInGoalsSection && !line.isEmpty && !line.hasPrefix("##") {
+                } else if isInGoalsSection && !line.isEmpty && !line.hasPrefix("##") {
                     newGoals.append(line)
-                } else if line.hasPrefix("- [") {
+                } else if isInTop5Section && line.hasPrefix("- [") {
+                    let components = line.components(separatedBy: "] ")
+                    guard components.count >= 2 else { continue }
+                    
+                    let isCompleted = components[0].contains("x")
+                    let rest = components[1]
+                    
+                    // Split title and tags
+                    let parts = rest.components(separatedBy: " #")
+                    let title = parts[0]
+                    let tags = parts.dropFirst().map { $0.trimmingCharacters(in: .whitespaces) }
+                    
+                    let todo = Todo(title: title, isCompleted: isCompleted, tags: tags, priority: .normal) // priority not used
+                    newTop5Todos.append(todo)
+                } else if isInBigThingsSection && line.range(of: #"^\d+\."#, options: .regularExpression) != nil {
+                    if let thing = line.split(separator: ".", maxSplits: 1).last {
+                        newBigThings.append(thing.trimmingCharacters(in: .whitespaces))
+                    }
+                } else if !isInGoalsSection && !isInTop5Section && !isInBigThingsSection && line.hasPrefix("- [") {
                     let components = line.components(separatedBy: "] ")
                     guard components.count >= 2 else { continue }
                     
@@ -411,19 +460,16 @@ class TodoList: ObservableObject {
                     } else {
                         newTodos.append(todo)
                     }
-                } else if isInBigThingsSection && line.range(of: #"^\d+\."#, options: .regularExpression) != nil {
-                    if let thing = line.split(separator: ".", maxSplits: 1).last {
-                        newBigThings.append(thing.trimmingCharacters(in: .whitespaces))
-                    }
                 }
             }
             
             todos = newTodos
+            top5Todos = newTop5Todos
             deletedTodos = newDeletedTodos
             bigThings = newBigThings
             goals = newGoals.joined(separator: "\n")
             
-            print("✅ Successfully loaded todos: \(newTodos.count) todos, \(newBigThings.count) big things")
+            print("✅ Successfully loaded todos: \(newTodos.count) todos, \(newTop5Todos.count) top 5 todos, \(newBigThings.count) big things")
             
             // Create initial backup after loading
             DispatchQueue.main.async {
@@ -433,6 +479,7 @@ class TodoList: ObservableObject {
         } catch {
             print("❌ Error loading todos: \(error)")
             todos = []
+            top5Todos = []
             deletedTodos = []
             bigThings = []
             goals = ""
@@ -538,6 +585,42 @@ class TodoList: ObservableObject {
     
     deinit {
         backupTimer?.invalidate()
+    }
+    
+    // --- Top 5 of the week methods ---
+    func addTop5Todo(_ todo: Todo) {
+        top5Todos.append(todo)
+        saveTodos()
+    }
+    func updateTop5Todo(_ updatedTodo: Todo) {
+        if let index = top5Todos.firstIndex(where: { $0.id == updatedTodo.id }) {
+            top5Todos[index] = updatedTodo
+            saveTodos()
+        }
+    }
+    func toggleTop5Todo(_ todo: Todo) {
+        if let index = top5Todos.firstIndex(where: { $0.id == todo.id }) {
+            top5Todos[index].isCompleted.toggle()
+            saveTodos()
+        }
+    }
+    func deleteTop5Todo(_ todo: Todo) {
+        top5Todos.removeAll { $0.id == todo.id }
+        saveTodos()
+    }
+    func addTagToTop5Todo(_ todo: Todo, tag: String) {
+        if let index = top5Todos.firstIndex(where: { $0.id == todo.id }) {
+            if !top5Todos[index].tags.contains(tag) {
+                top5Todos[index].tags.append(tag)
+                saveTodos()
+            }
+        }
+    }
+    func removeTagFromTop5Todo(_ todo: Todo, tag: String) {
+        if let index = top5Todos.firstIndex(where: { $0.id == todo.id }) {
+            top5Todos[index].tags.removeAll { $0 == tag }
+            saveTodos()
+        }
     }
 }
 

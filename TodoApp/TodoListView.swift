@@ -504,12 +504,15 @@ struct TodoListSections: View {
     
     var body: some View {
         VStack(spacing: 0) {
+            // Top 5 of the week section
+            if !todoList.top5Todos.isEmpty {
+                TodoListSection(todoList: todoList, priority: nil, todos: todoList.top5Todos, customTitle: "🔴 Top 5 of the week")
+                Divider().padding(.vertical, Theme.itemSpacing)
+            }
             ForEach([Priority.urgent, Priority.normal, Priority.whenTime], id: \.self) { priority in
                 let todos = filterAndSortTodos(for: priority)
-                
                 if !todos.isEmpty {
                     TodoListSection(todoList: todoList, priority: priority, todos: todos, customTitle: nil)
-                    
                     if priority != .whenTime {
                         Divider()
                             .padding(.vertical, Theme.itemSpacing)
@@ -574,6 +577,9 @@ struct TodoListSection: View {
     let customTitle: String?
     
     var title: String {
+        if let customTitle = customTitle {
+            return customTitle
+        }
         if let priority = priority {
             switch priority {
             case .urgent:
@@ -596,8 +602,7 @@ struct TodoListSection: View {
                         .font(Theme.headlineFont)
                         .foregroundColor(Theme.text)
                     Spacer()
-                    
-                    if priority == nil { // This is the completed section
+                    if priority == nil && customTitle == nil { // This is the completed section
                         Button(action: { todoList.moveAllCompletedToDeleted() }) {
                             HStack {
                                 Image(systemName: "trash")
@@ -609,9 +614,8 @@ struct TodoListSection: View {
                     }
                 }
                 .padding(.horizontal, Theme.contentPadding)
-                
                 ForEach(todos) { todo in
-                    TodoItemView(todoList: todoList, todo: todo)
+                    TodoItemView(todoList: todoList, todo: todo, isTop5: customTitle == "🔴 Top 5 of the week")
                 }
             }
             .padding(.vertical, 2)
