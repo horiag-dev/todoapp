@@ -143,7 +143,7 @@ struct TodoListView: View {
     @ObservedObject var todoList: TodoList
     @State private var selectedTag: String?
     @State private var newTodoTitle = ""
-    @State private var newTodoPriority: Priority = .normal
+    @State private var newTodoPriority: Priority = .urgent
     @State private var showingTagManagement = false
     @State private var selectedTags: Set<String> = []
     @State private var leftColumnWidth: CGFloat = 300
@@ -258,7 +258,7 @@ struct TodoListView: View {
             todoList.addTodo(todo)
             newTodoTitle = ""
             selectedTags.removeAll()
-            newTodoPriority = .normal
+            newTodoPriority = .urgent
         }
     }
 }
@@ -441,7 +441,7 @@ struct NewTodoInput: View {
             todoList.addTodo(todo)
             newTodoTitle = ""
             selectedTags.removeAll()
-            newTodoPriority = .normal
+            newTodoPriority = .urgent
         }
     }
 }
