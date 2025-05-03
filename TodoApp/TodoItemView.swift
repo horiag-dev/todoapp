@@ -476,39 +476,66 @@ struct TagManagementPopover: View {
     
     private func TagRowView(tag: String, isCurrentTag: Bool) -> some View {
         let tagColor = Theme.colorForTag(tag)
-        
-        return HStack {
-            HStack(spacing: 4) {
-                Circle()
-                    .fill(tagColor)
-                    .frame(width: 8, height: 8)
-                Text(tag)
-                    .font(Theme.bodyFont)
-                    .foregroundColor(Theme.text)
-            }
-            Spacer()
-            Button(action: { 
-                if isCurrentTag {
-                    removeTag(tag)
-                } else {
-                    addTag(tag)
+        if isCurrentTag {
+            return AnyView(
+                HStack {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(tagColor)
+                            .frame(width: 8, height: 8)
+                        Text(tag)
+                            .font(Theme.bodyFont)
+                            .foregroundColor(Theme.text)
+                    }
+                    Spacer()
+                    Button(action: { removeTag(tag) }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10))
+                            .foregroundColor(Theme.secondaryText)
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
-            }) {
-                Image(systemName: isCurrentTag ? "xmark" : "plus")
-                    .font(.system(size: 10))
-                    .foregroundColor(Theme.secondaryText)
-            }
-            .buttonStyle(PlainButtonStyle())
-        }
-        .padding(.vertical, 4)
-        .padding(.horizontal, 8)
-        .background(
-            RoundedRectangle(cornerRadius: Theme.cornerRadius)
-                .fill(Theme.secondaryBackground)
-                .overlay(
+                .padding(.vertical, 4)
+                .padding(.horizontal, 8)
+                .background(
                     RoundedRectangle(cornerRadius: Theme.cornerRadius)
-                        .stroke(tagColor.opacity(0.5), lineWidth: 1)
+                        .fill(Theme.secondaryBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                                .stroke(tagColor.opacity(0.5), lineWidth: 1)
+                        )
                 )
-        )
+            )
+        } else {
+            return AnyView(
+                Button(action: { addTag(tag) }) {
+                    HStack {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(tagColor)
+                                .frame(width: 8, height: 8)
+                            Text(tag)
+                                .font(Theme.bodyFont)
+                                .foregroundColor(Theme.text)
+                        }
+                        Spacer()
+                        Image(systemName: "plus")
+                            .font(.system(size: 10))
+                            .foregroundColor(Theme.secondaryText)
+                    }
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                            .fill(Theme.secondaryBackground)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                                    .stroke(tagColor.opacity(0.5), lineWidth: 1)
+                            )
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+            )
+        }
     }
 } 
