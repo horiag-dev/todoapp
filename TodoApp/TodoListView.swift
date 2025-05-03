@@ -173,7 +173,7 @@ struct TodoListView: View {
                 
                 // Main Content with Resizable Columns
                 HStack(spacing: 0) {
-                    // Left Column - Goals and Top 5
+                    // Left Column - Goals
                     VStack(spacing: 0) {
                         GeometryReader { geometry in
                             VStack(spacing: 0) {
@@ -184,26 +184,10 @@ struct TodoListView: View {
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                         .padding(.horizontal, Theme.contentPadding)
                                         .padding(.vertical, Theme.contentPadding)
-                                    
                                     MarkdownEditor(text: todoList.goals, todoList: todoList)
                                         .padding(.horizontal, Theme.contentPadding)
                                 }
-                                .padding(.bottom, 20)
-                                .frame(height: geometry.size.height * 0.75)
-                                
-                                Divider()
-                                
-                                // Top 5 Week Section
-                                VStack(alignment: .leading, spacing: Theme.itemSpacing) {
-                                    Text("Top 5 Week")
-                                        .font(Theme.titleFont)
-                                        .padding(.horizontal, Theme.contentPadding)
-                                    
-                                    MarkdownEditor(text: todoList.bigThingsMarkdown, todoList: todoList)
-                                        .padding(.horizontal, Theme.contentPadding)
-                                }
-                                .padding(.vertical, Theme.contentPadding)
-                                .frame(height: geometry.size.height * 0.25)
+                                .frame(height: geometry.size.height)
                             }
                         }
                     }
@@ -524,7 +508,7 @@ struct TodoListSections: View {
                 let todos = filterAndSortTodos(for: priority)
                 
                 if !todos.isEmpty {
-                    TodoListSection(todoList: todoList, priority: priority, todos: todos)
+                    TodoListSection(todoList: todoList, priority: priority, todos: todos, customTitle: nil)
                     
                     if priority != .whenTime {
                         Divider()
@@ -538,7 +522,7 @@ struct TodoListSections: View {
             if !completedTodos.isEmpty {
                 Divider()
                     .padding(.vertical, Theme.itemSpacing)
-                TodoListSection(todoList: todoList, priority: nil, todos: completedTodos)
+                TodoListSection(todoList: todoList, priority: nil, todos: completedTodos, customTitle: nil)
             }
             
             // Deleted section
@@ -587,6 +571,7 @@ struct TodoListSection: View {
     let todoList: TodoList
     let priority: Priority?
     let todos: [Todo]
+    let customTitle: String?
     
     var title: String {
         if let priority = priority {
