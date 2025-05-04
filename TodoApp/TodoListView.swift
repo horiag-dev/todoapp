@@ -298,6 +298,27 @@ struct FileManagementControls: View {
     }
 }
 
+// Reusable tag pill view for consistent tag styling
+struct TagPillView: View {
+    let tag: String
+    let isSelected: Bool
+    var body: some View {
+        Text("#\(tag)")
+            .font(.system(size: 11, weight: .medium))
+            .foregroundColor(tag.lowercased() == "today" ? .white : (isSelected ? .blue : Theme.text))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(tag.lowercased() == "today" ? Theme.urgentTagColor : (isSelected ? Color.blue.opacity(0.2) : Theme.colorForTag(tag).opacity(0.25)))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(tag.lowercased() == "today" ? Color.clear : Theme.colorForTag(tag).opacity(0.8), lineWidth: 1)
+            )
+    }
+}
+
 struct NewTodoInput: View {
     @ObservedObject var todoList: TodoList
     @Binding var newTodoTitle: String
@@ -317,18 +338,13 @@ struct NewTodoInput: View {
                 // Inline selected tags
                 ForEach(Array(selectedTags), id: \.self) { tag in
                     HStack(spacing: 4) {
-                        Text(tag)
-                            .font(.caption)
+                        TagPillView(tag: tag, isSelected: true)
                         Button(action: { selectedTags.remove(tag) }) {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundColor(.gray)
                                 .imageScale(.small)
                         }
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.blue.opacity(0.2))
-                    .cornerRadius(8)
                 }
                 TextField("New todo", text: $newTodoTitle)
                     .padding(8)
@@ -412,13 +428,7 @@ struct NewTodoInput: View {
                                     selectedTags.insert(tag)
                                 }
                             }) {
-                                Text("#\(tag)")
-                                    .font(.caption)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(selectedTags.contains(tag) ? Color.blue.opacity(0.2) : Theme.secondaryBackground)
-                                    .foregroundColor(selectedTags.contains(tag) ? .blue : Theme.text)
-                                    .cornerRadius(8)
+                                TagPillView(tag: tag, isSelected: selectedTags.contains(tag))
                             }
                             .buttonStyle(PlainButtonStyle())
                         }
