@@ -99,13 +99,26 @@ struct SettingsView: View {
     }
     
     private func testConnection() {
+        // Validate API key format first
+        guard apiKey.hasPrefix("sk-") else {
+            alertMessage = "Invalid API key format. OpenAI API keys should start with 'sk-'"
+            showingAlert = true
+            return
+        }
+        
+        guard apiKey.count > 20 else {
+            alertMessage = "API key seems too short. Please check your OpenAI API key."
+            showingAlert = true
+            return
+        }
+        
         Task {
             let response = await llmService.refactorTodo("test todo")
             await MainActor.run {
                 if response != nil {
                     alertMessage = "Connection successful! API key is working."
                 } else {
-                    alertMessage = "Connection failed. Please check your API key."
+                    alertMessage = "Connection failed. Please check your API key and try again."
                 }
                 showingAlert = true
             }

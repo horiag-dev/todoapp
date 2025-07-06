@@ -11,16 +11,20 @@ class LLMService: ObservableObject {
     @Published var isProcessing = false
     @Published var lastError: String?
     
-    private let apiKey: String
+    private var apiKey: String {
+        get {
+            return UserDefaults.standard.string(forKey: "openai_api_key") ?? ""
+        }
+    }
     private let baseURL = "https://api.openai.com/v1/chat/completions"
     
     init() {
-        // Get API key from environment or UserDefaults
-        self.apiKey = UserDefaults.standard.string(forKey: "openai_api_key") ?? ""
+        // API key is now retrieved dynamically from UserDefaults
     }
     
     func setAPIKey(_ key: String) {
         UserDefaults.standard.set(key, forKey: "openai_api_key")
+        print("🔑 API key updated: \(String(key.prefix(10)))...")
     }
     
     func refactorTodo(_ originalTitle: String, existingTags: [String] = []) async -> LLMResponse? {
@@ -82,22 +86,48 @@ class LLMService: ObservableObject {
             request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
             request.httpBody = jsonData
             
+            print("🔑 API Key (first 10 chars): \(String(apiKey.prefix(10)))...")
+            print("📤 Sending request to OpenAI...")
+            
             let (data, response) = try await URLSession.shared.data(for: request)
             
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
+            guard let httpResponse = response as? HTTPURLResponse else {
                 await MainActor.run {
-                    self.lastError = "API request failed"
+                    self.lastError = "Invalid response from server"
+                    self.isProcessing = false
+                }
+                return nil
+            }
+            
+            print("📥 Response status: \(httpResponse.statusCode)")
+            
+            if httpResponse.statusCode != 200 {
+                let errorString = String(data: data, encoding: .utf8) ?? "Unknown error"
+                print("❌ API Error: \(errorString)")
+                
+                await MainActor.run {
+                    if httpResponse.statusCode == 401 {
+                        self.lastError = "Invalid API key. Please check your OpenAI API key."
+                    } else if httpResponse.statusCode == 429 {
+                        self.lastError = "Rate limit exceeded. Please try again later."
+                    } else if httpResponse.statusCode == 400 {
+                        self.lastError = "Bad request. Please check your input."
+                    } else {
+                        self.lastError = "API request failed with status \(httpResponse.statusCode): \(errorString)"
+                    }
+                    self.isProcessing = false
                 }
                 return nil
             }
             
             let responseString = String(data: data, encoding: .utf8) ?? ""
-            print("LLM Response: \(responseString)")
+            print("📄 Full API Response: \(responseString)")
             
             // Parse the OpenAI response
             if let openAIResponse = try? JSONDecoder().decode(OpenAIResponse.self, from: data),
                let content = openAIResponse.choices.first?.message.content {
+                
+                print("🎯 Extracted content: \(content)")
                 
                 // Extract JSON from the content
                 let jsonStart = content.firstIndex(of: "{")
@@ -105,25 +135,35 @@ class LLMService: ObservableObject {
                 
                 if let start = jsonStart, let end = jsonEnd {
                     let jsonString = String(content[start...end])
+                    print("🔍 Extracted JSON: \(jsonString)")
+                    
                     if let jsonData = jsonString.data(using: .utf8),
                        let llmResponse = try? JSONDecoder().decode(LLMResponse.self, from: jsonData) {
                         await MainActor.run {
                             self.isProcessing = false
                         }
+                        print("✅ Successfully parsed LLM response")
                         return llmResponse
+                    } else {
+                        print("❌ Failed to decode JSON response")
                     }
+                } else {
+                    print("❌ Could not find JSON brackets in response")
                 }
+            } else {
+                print("❌ Failed to parse OpenAI response structure")
             }
             
             await MainActor.run {
-                self.lastError = "Failed to parse LLM response"
+                self.lastError = "Failed to parse LLM response. Check console for details."
                 self.isProcessing = false
             }
             return nil
             
         } catch {
+            print("❌ Network error: \(error)")
             await MainActor.run {
-                self.lastError = "Error: \(error.localizedDescription)"
+                self.lastError = "Network error: \(error.localizedDescription)"
                 self.isProcessing = false
             }
             return nil
