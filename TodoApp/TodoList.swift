@@ -19,7 +19,7 @@ class TodoList: ObservableObject {
     @Published var top5Todos: [Todo] = [] // Top 5 of the week todos
     
     private var backupTimer: Timer?
-    private let backupInterval: TimeInterval = 7200 // 2 hours in seconds
+    private let backupInterval: TimeInterval = 10800 // 3 hours in seconds
     
     var bigThingsMarkdown: String {
         var markdown = ""
@@ -500,71 +500,21 @@ class TodoList: ObservableObject {
             return
         }
         
-        // Get the directory of the original file
-        let originalFolder = fileURL.deletingLastPathComponent()
-        let backupsFolderPath = originalFolder.appendingPathComponent("TodoAppBackups")
+        print("Creating backup at \(Date())")
+        
+        // Use the app's documents directory for backups instead of the original file's directory
+        let backupsFolderPath = documentsDirectory.appendingPathComponent("TodoAppBackups")
         
         print("Creating backup in folder: \(backupsFolderPath.path)")
         
-        // Try to access existing bookmark first
-        if let bookmarkData = UserDefaults.standard.data(forKey: "backupFolderBookmark") {
-            var isStale = false
-            do {
-                let url = try URL(resolvingBookmarkData: bookmarkData,
-                                options: .withSecurityScope,
-                                relativeTo: nil,
-                                bookmarkDataIsStale: &isStale)
-                
-                if url.startAccessingSecurityScopedResource() {
-                    defer { url.stopAccessingSecurityScopedResource() }
-                    
-                    // Create backups directory
-                    try fileManager.createDirectory(at: backupsFolderPath, withIntermediateDirectories: true, attributes: nil)
-                    
-                    // Create and save the backup
-                    try createBackupFile(at: backupsFolderPath, originalFile: fileURL)
-                    return
-                }
-            } catch {
-                print("Failed to resolve bookmark: \(error)")
-                // Continue to request new access
-            }
-        }
-        
-        // If we don't have a valid bookmark, request access
-        let openPanel = NSOpenPanel()
-        openPanel.title = "Grant Access to Create Backups"
-        openPanel.message = "Please select the folder where you want to save backups"
-        openPanel.prompt = "Grant Access"
-        openPanel.canChooseFiles = false
-        openPanel.canChooseDirectories = true
-        openPanel.directoryURL = originalFolder
-        openPanel.canCreateDirectories = true
-        
-        if openPanel.runModal() == .OK {
-            guard let selectedURL = openPanel.url else { return }
+        do {
+            // Create backups directory if it doesn't exist
+            try fileManager.createDirectory(at: backupsFolderPath, withIntermediateDirectories: true, attributes: nil)
             
-            do {
-                // Create new bookmark
-                let bookmarkData = try selectedURL.bookmarkData(options: .withSecurityScope,
-                                                              includingResourceValuesForKeys: nil,
-                                                              relativeTo: nil)
-                UserDefaults.standard.set(bookmarkData, forKey: "backupFolderBookmark")
-                
-                if selectedURL.startAccessingSecurityScopedResource() {
-                    defer { selectedURL.stopAccessingSecurityScopedResource() }
-                    
-                    // Create backups directory
-                    try fileManager.createDirectory(at: backupsFolderPath, withIntermediateDirectories: true, attributes: nil)
-                    
-                    // Create and save the backup
-                    try createBackupFile(at: backupsFolderPath, originalFile: fileURL)
-                }
-            } catch {
-                print("❌ Error creating backup: \(error)")
-            }
-        } else {
-            print("❌ User denied access to create backups")
+            // Create and save the backup
+            try createBackupFile(at: backupsFolderPath, originalFile: fileURL)
+        } catch {
+            print("❌ Error creating backup: \(error)")
         }
     }
     
