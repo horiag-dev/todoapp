@@ -148,6 +148,7 @@ struct TodoListView: View {
     @State private var selectedTags: Set<String> = []
     @State private var leftColumnWidth: CGFloat = 300
     @State private var middleColumnWidth: CGFloat = 300
+    @State private var showingSettings = false
     
     var body: some View {
         ZStack {
@@ -167,6 +168,15 @@ struct TodoListView: View {
                     .help("Create new todo file")
 
                     Spacer()
+                    
+                    // Settings button for LLM configuration
+                    Button(action: { showingSettings = true }) {
+                        Image(systemName: "gearshape")
+                    }
+                    .help("Settings")
+                    .popover(isPresented: $showingSettings) {
+                        SettingsView(llmService: todoList.llmService)
+                    }
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
@@ -327,6 +337,11 @@ struct NewTodoInput: View {
     @Binding var selectedTags: Set<String>
     @FocusState private var isTextFieldFocused: Bool
     
+    // AI Refactoring states
+    @State private var showingAISuggestions = false
+    @State private var aiSuggestions: (title: String, tags: [String], priority: Priority)?
+    @State private var isRefactoring = false
+    
     // Get all unique tags from the todo list
     private var availableTags: [String] {
         todoList.allTags.sorted()
@@ -346,6 +361,7 @@ struct NewTodoInput: View {
                         }
                     }
                 }
+                
                 TextField("New todo", text: $newTodoTitle)
                     .padding(8)
                     .background(
@@ -358,6 +374,18 @@ struct NewTodoInput: View {
                     )
                     .focused($isTextFieldFocused)
                     .onSubmit(createTodo)
+                
+                // AI Refactor button
+                Button(action: refactorWithAI) {
+                    Image(systemName: isRefactoring ? "wand.and.stars.inverse" : "wand.and.stars")
+                        .foregroundColor(.purple)
+                        .imageScale(.medium)
+                        .rotationEffect(.degrees(isRefactoring ? 360 : 0))
+                        .animation(isRefactoring ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isRefactoring)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .disabled(newTodoTitle.isEmpty || isRefactoring)
+                .help("Refactor with AI")
                 
                 // Quick priority buttons
                 HStack(spacing: 8) {
@@ -416,6 +444,67 @@ struct NewTodoInput: View {
             }
             .padding(.horizontal, 12)
             
+            // AI Suggestions Preview
+            if let suggestions = aiSuggestions, showingAISuggestions {
+                VStack(spacing: 8) {
+                    HStack {
+                        Text("AI Suggestions:")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.purple)
+                        
+                        Spacer()
+                        
+                        Button("Apply") {
+                            applyAISuggestions(suggestions)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        
+                        Button("Dismiss") {
+                            showingAISuggestions = false
+                            aiSuggestions = nil
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Title: \(suggestions.title)")
+                            .font(.caption)
+                            .foregroundColor(.primary)
+                        
+                        HStack {
+                            Text("Tags:")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            ForEach(suggestions.tags, id: \.self) { tag in
+                                TagPillView(tag: tag, isSelected: false)
+                            }
+                        }
+                        
+                        HStack {
+                            Text("Priority:")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            Image(systemName: suggestions.priority.icon)
+                                .foregroundColor(suggestions.priority.color)
+                                .imageScale(.small)
+                            
+                            Text(suggestions.priority.rawValue)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(8)
+                    .background(Color.purple.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                .padding(.horizontal, 12)
+            }
+            
             // Quick tag buttons
             if !availableTags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -442,6 +531,39 @@ struct NewTodoInput: View {
         .background(Color(.windowBackgroundColor))
     }
     
+    private func refactorWithAI() {
+        guard !newTodoTitle.isEmpty else { return }
+        
+        isRefactoring = true
+        
+        Task {
+            let suggestions = await todoList.refactorTodoWithAI(newTodoTitle)
+            
+            await MainActor.run {
+                isRefactoring = false
+                
+                if let suggestions = suggestions {
+                    aiSuggestions = suggestions
+                    showingAISuggestions = true
+                } else {
+                    // Show error if available
+                    if let error = todoList.llmService.lastError {
+                        // You could show an alert here
+                        print("AI Refactoring error: \(error)")
+                    }
+                }
+            }
+        }
+    }
+    
+    private func applyAISuggestions(_ suggestions: (title: String, tags: [String], priority: Priority)) {
+        newTodoTitle = suggestions.title
+        selectedTags = Set(suggestions.tags)
+        newTodoPriority = suggestions.priority
+        showingAISuggestions = false
+        aiSuggestions = nil
+    }
+    
     private func createTodo() {
         if !newTodoTitle.isEmpty {
             let todo = Todo(
@@ -454,6 +576,8 @@ struct NewTodoInput: View {
             newTodoTitle = ""
             selectedTags.removeAll()
             newTodoPriority = .urgent
+            showingAISuggestions = false
+            aiSuggestions = nil
         }
     }
 }

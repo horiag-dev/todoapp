@@ -18,6 +18,9 @@ class TodoList: ObservableObject {
     @Published var todosFileURL: URL?
     @Published var top5Todos: [Todo] = [] // Top 5 of the week todos
     
+    // LLM Service for AI-powered todo refactoring
+    @Published var llmService = LLMService()
+    
     private var backupTimer: Timer?
     private let backupInterval: TimeInterval = 10800 // 3 hours in seconds
     
@@ -573,6 +576,29 @@ class TodoList: ObservableObject {
             top5Todos[index].tags.removeAll { $0 == tag }
             saveTodos()
         }
+    }
+    
+    // MARK: - LLM Integration
+    
+    func refactorTodoWithAI(_ originalTitle: String) async -> (title: String, tags: [String], priority: Priority)? {
+        let response = await llmService.refactorTodo(originalTitle, existingTags: allTags)
+        
+        guard let response = response else {
+            return nil
+        }
+        
+        // Convert priority string to enum
+        let priority: Priority
+        switch response.priority.lowercased() {
+        case "urgent":
+            priority = .urgent
+        case "whentime":
+            priority = .whenTime
+        default:
+            priority = .normal
+        }
+        
+        return (title: response.title, tags: response.tags, priority: priority)
     }
 }
 
