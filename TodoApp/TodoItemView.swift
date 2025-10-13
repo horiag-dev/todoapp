@@ -95,6 +95,7 @@ struct TodoItemView: View {
     @State private var showingTagManagement = false
     @FocusState private var focusField: Bool
     
+    
     // Helper struct to represent text segments
     private struct TextSegment: Identifiable {
         let id = UUID()
@@ -134,6 +135,7 @@ struct TodoItemView: View {
         
         return segments
     }
+    
     
     init(todoList: TodoList, todo: Todo, isTop5: Bool = false) {
         self.todoList = todoList
@@ -347,6 +349,8 @@ struct TodoItemView: View {
                 saveChanges()
             }
         }
+        .id("\(todo.id)-\(todo.isCompleted)-\(todo.priority.rawValue)") // Stable view identity for better performance
+        .drawingGroup() // Optimize rendering performance
     }
     
     private func saveChanges() {

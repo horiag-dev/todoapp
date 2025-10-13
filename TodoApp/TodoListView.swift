@@ -244,10 +244,10 @@ struct TodoListView: View {
                             )
                             
                             ScrollView {
-                                LazyVStack(spacing: 0) {
-                                    TodoListSections(todoList: todoList)
-                                }
+                                TodoListSections(todoList: todoList)
                             }
+                            .scrollIndicators(.hidden) // Hide scroll indicators for cleaner look
+                            .clipped() // Ensure content is clipped for better performance
                             .background(Color(NSColor.textBackgroundColor))
                             .cornerRadius(Theme.cornerRadius)
                             .padding(.horizontal, Theme.contentPadding)
@@ -585,7 +585,24 @@ struct NewTodoInput: View {
 struct TodoListSections: View {
     @ObservedObject var todoList: TodoList
     
+    // Cache for filtered and sorted todos to improve performance
+    @State private var cachedFilteredTodos: [Priority: [Todo]] = [:]
+    @State private var lastTodoListHash: Int = 0
+    
     private func filterAndSortTodos(for priority: Priority) -> [Todo] {
+        // Create a simple hash of the todo list to detect changes
+        let currentHash = todoList.todos.map { "\($0.id)\($0.isCompleted)\($0.priority.rawValue)\($0.tags.joined())" }.joined().hashValue
+        
+        // Return cached result if nothing has changed
+        if currentHash == lastTodoListHash, let cached = cachedFilteredTodos[priority] {
+            return cached
+        }
+        
+        // Update cache if needed
+        if currentHash != lastTodoListHash {
+            cachedFilteredTodos.removeAll()
+            lastTodoListHash = currentHash
+        }
         let filteredTodos = todoList.todos.filter { todo in
             if todo.isCompleted {
                 return false
@@ -635,11 +652,16 @@ struct TodoListSections: View {
         let sortedUntaggedTodos = untaggedTodos.sorted { $0.title.lowercased() < $1.title.lowercased() }
         
         // Combine the results with untagged todos at the end
-        return sortedTaggedTodos + sortedUntaggedTodos
+        let result = sortedTaggedTodos + sortedUntaggedTodos
+        
+        // Cache the result
+        cachedFilteredTodos[priority] = result
+        
+        return result
     }
     
     var body: some View {
-        LazyVStack(spacing: 0) {
+        VStack(spacing: 0) {
             // Top 5 of the week section
             if !todoList.top5Todos.isEmpty {
                 TodoListSection(todoList: todoList, priority: nil, todos: todoList.top5Todos, customTitle: "🗓️ Top 5 of the week")
@@ -706,6 +728,7 @@ struct TodoListSections: View {
             }
         }
         .padding(.vertical)
+        .drawingGroup() // Optimize rendering performance for smooth scrolling
     }
 }
 
@@ -753,8 +776,10 @@ struct TodoListSection: View {
                     }
                 }
                 .padding(.horizontal, Theme.contentPadding)
-                ForEach(todos) { todo in
-                    TodoItemView(todoList: todoList, todo: todo, isTop5: customTitle == "🗓️ Top 5 of the week")
+                LazyVStack(spacing: 0) {
+                    ForEach(todos) { todo in
+                        TodoItemView(todoList: todoList, todo: todo, isTop5: customTitle == "🗓️ Top 5 of the week")
+                    }
                 }
             }
             .padding(.vertical, 2)
