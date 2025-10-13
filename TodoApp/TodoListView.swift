@@ -700,14 +700,6 @@ struct TodoListSections: View {
                                     .strikethrough()
                                     .foregroundColor(.secondary)
                                 Spacer()
-                                Button(action: { todoList.restoreTodo(todo) }) {
-                                    Image(systemName: "arrow.uturn.backward")
-                                        .foregroundColor(.blue)
-                                }
-                                Button(action: { todoList.permanentlyDeleteTodo(todo) }) {
-                                    Image(systemName: "trash.fill")
-                                        .foregroundColor(.red)
-                                }
                             }
                             .padding(.vertical, 4)
                             .padding(.horizontal, Theme.contentPadding)
@@ -715,8 +707,7 @@ struct TodoListSections: View {
                     },
                     label: {
                         HStack {
-                            Image(systemName: "trash")
-                            Text("🗑️ Deleted Items")
+                            Text("Deleted Items")
                             Text("(\(todoList.deletedTodos.count))")
                                 .foregroundColor(.secondary)
                         }

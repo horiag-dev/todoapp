@@ -616,21 +616,12 @@ struct DeletedTodosView: View {
                                 .strikethrough()
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Button(action: { todoList.restoreTodo(todo) }) {
-                                Image(systemName: "arrow.uturn.backward")
-                                    .foregroundColor(.blue)
-                            }
-                            Button(action: { todoList.permanentlyDeleteTodo(todo) }) {
-                                Image(systemName: "trash.fill")
-                                    .foregroundColor(.red)
-                            }
                         }
                         .padding(.vertical, 4)
                     }
                 },
                 label: {
                     HStack {
-                        Image(systemName: "trash")
                         Text("Deleted Items")
                         Text("(\(todoList.deletedTodos.count))")
                             .foregroundColor(.secondary)
