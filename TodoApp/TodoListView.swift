@@ -719,7 +719,6 @@ struct TodoListSections: View {
             }
         }
         .padding(.vertical)
-        .drawingGroup() // Optimize rendering performance for smooth scrolling
     }
 }
 
