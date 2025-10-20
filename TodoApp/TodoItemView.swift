@@ -350,7 +350,6 @@ struct TodoItemView: View {
             }
         }
         .id("\(todo.id)-\(todo.isCompleted)-\(todo.priority.rawValue)") // Stable view identity for better performance
-        .drawingGroup() // Optimize rendering performance
     }
     
     private func saveChanges() {
