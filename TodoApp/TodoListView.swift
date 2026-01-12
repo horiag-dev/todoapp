@@ -470,8 +470,6 @@ struct TodoListView: View {
                     // Resizable divider for Goals
                     ResizableBar(width: $leftColumnWidth, minWidth: 200, maxWidth: 500)
 
-                    Divider()
-
                     // Middle Column - Tags (Collapsible)
                     if isTagsColumnVisible {
                         VStack(spacing: Theme.itemSpacing) {
@@ -505,8 +503,6 @@ struct TodoListView: View {
 
                         // Resizable divider for Tags
                         ResizableBar(width: $middleColumnWidth, minWidth: 200, maxWidth: 400)
-
-                        Divider()
                     }
                     
                     // Right Column - Todos
@@ -1168,42 +1164,48 @@ struct Top5WeekSection: View {
     private let accentColor = Color.blue
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Compact header
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header matching section style
+            HStack(spacing: 10) {
                 Image(systemName: "star.fill")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 14))
                     .foregroundColor(accentColor)
 
                 Text("Top 5 of the Week")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundColor(Theme.text)
 
-                Spacer()
-
                 Text("\(todoList.top5Todos.count)")
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.white)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
                     .background(Capsule().fill(accentColor))
-            }
 
-            // Compact items list
+                Spacer()
+            }
+            .padding(.horizontal, Theme.contentPadding)
+            .padding(.vertical, 12)
+            .background(accentColor.opacity(0.05))
+
+            // Colored line under header
+            Rectangle()
+                .fill(accentColor.opacity(0.5))
+                .frame(height: 2)
+
+            // Items list
             VStack(spacing: 2) {
                 ForEach(Array(todoList.top5Todos.enumerated()), id: \.element.id) { index, todo in
                     Top5ItemRow(todoList: todoList, todo: todo, rank: index + 1)
                 }
             }
+            .padding(.vertical, 4)
         }
-        .padding(10)
-        .background(
+        .background(Color(NSColor.textBackgroundColor))
+        .cornerRadius(Theme.cornerRadiusMd)
+        .overlay(
             RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
-                .fill(accentColor.opacity(0.04))
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
-                        .stroke(accentColor.opacity(0.12), lineWidth: 1)
-                )
+                .stroke(accentColor.opacity(0.15), lineWidth: 1)
         )
         .padding(.horizontal, Theme.contentPadding)
         .padding(.bottom, 6)
@@ -1221,12 +1223,6 @@ struct Top5ItemRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            // Rank number
-            Text("\(rank)")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundColor(accentColor)
-                .frame(width: 14)
-
             // Checkbox
             Button(action: { todoList.toggleTop5Todo(todo) }) {
                 Image(systemName: todo.isCompleted ? "checkmark.circle.fill" : "circle")
@@ -1435,23 +1431,34 @@ struct TodoListSection: View {
             VStack(alignment: .leading, spacing: 0) {
                 // Section header with colored accent
                 HStack(spacing: 10) {
-                    // Colored dot indicator
-                    Circle()
-                        .fill(sectionColor)
-                        .frame(width: 8, height: 8)
+                    // Icon for priority sections
+                    if let priority = priority {
+                        Image(systemName: priority == .urgent ? "exclamationmark.circle.fill" : (priority == .normal ? "circle.fill" : "clock"))
+                            .font(.system(size: 14))
+                            .foregroundColor(sectionColor)
+                    } else if customTitle == nil {
+                        // Completed section
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(sectionColor)
+                    } else {
+                        Circle()
+                            .fill(sectionColor)
+                            .frame(width: 10, height: 10)
+                    }
 
                     Text(title)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(Theme.text)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(priority == .urgent ? sectionColor : Theme.text)
 
                     Text("\(todos.count)")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(Theme.secondaryText)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
                         .background(
                             Capsule()
-                                .fill(sectionColor.opacity(0.15))
+                                .fill(sectionColor)
                         )
 
                     Spacer()
@@ -1470,19 +1477,32 @@ struct TodoListSection: View {
                     }
                 }
                 .padding(.horizontal, Theme.contentPadding)
-                .padding(.vertical, 10)
+                .padding(.vertical, 12)
                 .background(
-                    sectionColor.opacity(0.05)
+                    sectionColor.opacity(priority == .urgent ? 0.1 : 0.05)
                 )
 
-                // Thin colored line under header
+                // Colored line under header
                 Rectangle()
-                    .fill(sectionColor.opacity(0.3))
-                    .frame(height: 1)
+                    .fill(sectionColor.opacity(0.5))
+                    .frame(height: 2)
 
-                // Todo items
+                // Todo items grouped by primary tag
                 LazyVStack(spacing: 0) {
-                    ForEach(todos) { todo in
+                    ForEach(Array(todos.enumerated()), id: \.element.id) { index, todo in
+                        // Check if this is a new tag group
+                        let currentTag = todo.tags.first
+                        let previousTag = index > 0 ? todos[index - 1].tags.first : nil
+
+                        if index > 0 && currentTag != previousTag {
+                            // Divider between tag groups
+                            Rectangle()
+                                .fill(Theme.divider)
+                                .frame(height: 1)
+                                .padding(.horizontal, Theme.contentPadding)
+                                .padding(.vertical, 4)
+                        }
+
                         TodoItemView(todoList: todoList, todo: todo, isTop5: customTitle == "🗓️ Top 5 of the week")
                     }
                 }
@@ -1651,9 +1671,9 @@ struct ResizableBar: View {
                 .frame(width: 12)
                 .contentShape(Rectangle())
 
-            // Visible indicator
+            // Visible indicator - always show subtle line
             RoundedRectangle(cornerRadius: 1)
-                .fill(isDragging ? Theme.accent : (isHovered ? Theme.divider : Color.clear))
+                .fill(isDragging ? Theme.accent : (isHovered ? Theme.accent.opacity(0.5) : Theme.divider.opacity(0.5)))
                 .frame(width: isDragging ? 3 : (isHovered ? 2 : 1))
                 .animation(Theme.Animation.quickFade, value: isHovered)
                 .animation(Theme.Animation.quickFade, value: isDragging)
