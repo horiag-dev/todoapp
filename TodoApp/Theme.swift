@@ -159,13 +159,14 @@ enum Theme {
         endPoint: .bottom
     )
 
-    // Main continuous background gradient (horizontal)
+    // Main continuous background gradient - subtle and refined
     static let mainBackgroundGradient = LinearGradient(
-        gradient: Gradient(colors: [
-            Color.blue.opacity(0.08),
-            Color.white.opacity(0.95)
+        gradient: Gradient(stops: [
+            .init(color: Color(NSColor(red: 0.96, green: 0.97, blue: 0.98, alpha: 1.0)), location: 0.0),
+            .init(color: Color(NSColor(red: 0.98, green: 0.98, blue: 0.99, alpha: 1.0)), location: 0.5),
+            .init(color: Color(NSColor(red: 0.97, green: 0.97, blue: 0.98, alpha: 1.0)), location: 1.0)
         ]),
-        startPoint: .leading,
-        endPoint: .trailing
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
     )
 } 

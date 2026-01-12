@@ -1161,15 +1161,16 @@ struct QuotesSection: View {
 struct Top5WeekSection: View {
     @ObservedObject var todoList: TodoList
 
-    private let accentColor = Color.blue
+    private let sectionColor = Color.blue
+    private let accentLineColor = Color(NSColor(red: 0.90, green: 0.25, blue: 0.25, alpha: 1.0))  // Red accent line
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header matching section style
+            // Section header matching Urgent/Normal style
             HStack(spacing: 10) {
                 Image(systemName: "star.fill")
                     .font(.system(size: 14))
-                    .foregroundColor(accentColor)
+                    .foregroundColor(sectionColor)
 
                 Text("Top 5 of the Week")
                     .font(.system(size: 14, weight: .bold))
@@ -1180,35 +1181,43 @@ struct Top5WeekSection: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
-                    .background(Capsule().fill(accentColor))
+                    .background(Capsule().fill(sectionColor))
 
                 Spacer()
             }
             .padding(.horizontal, Theme.contentPadding)
             .padding(.vertical, 12)
-            .background(accentColor.opacity(0.05))
+            .background(sectionColor.opacity(0.05))
 
             // Colored line under header
             Rectangle()
-                .fill(accentColor.opacity(0.5))
+                .fill(sectionColor.opacity(0.5))
                 .frame(height: 2)
 
             // Items list
-            VStack(spacing: 2) {
+            VStack(spacing: 0) {
                 ForEach(Array(todoList.top5Todos.enumerated()), id: \.element.id) { index, todo in
                     Top5ItemRow(todoList: todoList, todo: todo, rank: index + 1)
                 }
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 2)
         }
         .background(Color(NSColor.textBackgroundColor))
         .cornerRadius(Theme.cornerRadiusMd)
         .overlay(
-            RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
-                .stroke(accentColor.opacity(0.15), lineWidth: 1)
+            Rectangle()
+                .fill(accentLineColor)
+                .frame(width: 3),
+            alignment: .leading
         )
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusMd))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
+                .stroke(sectionColor.opacity(0.15), lineWidth: 1)
+        )
+        .padding(.top, 6)
+        .padding(.bottom, 16)
         .padding(.horizontal, Theme.contentPadding)
-        .padding(.bottom, 6)
     }
 }
 
@@ -1247,8 +1256,8 @@ struct Top5ItemRow: View {
                     .foregroundColor(Theme.colorForTag(firstTag))
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 3)
         .background(
             RoundedRectangle(cornerRadius: 4)
                 .fill(isHovered ? accentColor.opacity(0.06) : Color.clear)
