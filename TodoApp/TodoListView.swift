@@ -389,8 +389,6 @@ struct TodoListView: View {
     @State private var selectedTag: String?
     @State private var newTodoTitle = ""
     @State private var newTodoPriority: Priority = .urgent
-    @State private var showingTagManagement = false
-    @State private var selectedTags: Set<String> = []
     @State private var leftColumnWidth: CGFloat = 380
     @State private var middleColumnWidth: CGFloat = 280
     @State private var showingSettings = false
@@ -513,13 +511,11 @@ struct TodoListView: View {
                             .padding(.horizontal, Theme.contentPadding)
                             .padding(.vertical, Theme.contentPadding)
 
-                        // New Todo Input - Left aligned
+                        // New Todo Input
                         NewTodoInput(
                             todoList: todoList,
                             newTodoTitle: $newTodoTitle,
-                            newTodoPriority: $newTodoPriority,
-                            showingTagManagement: $showingTagManagement,
-                            selectedTags: $selectedTags
+                            newTodoPriority: $newTodoPriority
                         )
 
                         // Sticky Top 5 Section (outside ScrollView)
@@ -549,23 +545,14 @@ struct TodoListView: View {
             // Parse hashtags from title
             let (cleanTitle, parsedTags) = parseHashtags(from: newTodoTitle)
 
-            // Combine parsed tags with selected tags
-            var allTags = Array(selectedTags)
-            for tag in parsedTags {
-                if !allTags.contains(tag) {
-                    allTags.append(tag)
-                }
-            }
-
             let todo = Todo(
                 title: cleanTitle,
                 isCompleted: false,
-                tags: allTags,
+                tags: parsedTags,
                 priority: newTodoPriority
             )
             todoList.addTodo(todo)
             newTodoTitle = ""
-            selectedTags.removeAll()
             newTodoPriority = .urgent
         }
     }
@@ -727,132 +714,95 @@ struct NewTodoInput: View {
     @ObservedObject var todoList: TodoList
     @Binding var newTodoTitle: String
     @Binding var newTodoPriority: Priority
-    @Binding var showingTagManagement: Bool
-    @Binding var selectedTags: Set<String>
     @FocusState private var isTextFieldFocused: Bool
-    
+    @State private var selectedTags: Set<String> = []
+
     // AI Refactoring states
     @State private var showingAISuggestions = false
     @State private var aiSuggestions: (title: String, tags: [String], priority: Priority)?
     @State private var isRefactoring = false
-    
-    // Get all unique tags from the todo list
+
     private var availableTags: [String] {
         todoList.allTags.sorted()
     }
-    
+
     var body: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 12) {
-                // Inline selected tags
-                ForEach(Array(selectedTags), id: \.self) { tag in
-                    HStack(spacing: 4) {
-                        TagPillView(tag: tag, isSelected: true)
-                        Button(action: { selectedTags.remove(tag) }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.gray)
-                                .imageScale(.small)
+        VStack(spacing: 6) {
+            // Main input row
+            HStack(spacing: 10) {
+                // Priority indicator
+                Image(systemName: newTodoPriority == .urgent ? "flag.fill" : (newTodoPriority == .normal ? "flag" : "clock.fill"))
+                    .font(.system(size: 14))
+                    .foregroundColor(newTodoPriority == .urgent ? .red : (newTodoPriority == .normal ? Theme.accent : Theme.secondaryText))
+                    .onTapGesture {
+                        withAnimation(Theme.Animation.microSpring) {
+                            switch newTodoPriority {
+                            case .urgent: newTodoPriority = .normal
+                            case .normal: newTodoPriority = .whenTime
+                            case .whenTime: newTodoPriority = .urgent
+                            }
                         }
                     }
-                }
-                
-                TextField("New todo", text: $newTodoTitle)
-                    .padding(8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(isTextFieldFocused ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: isTextFieldFocused ? 2 : 1)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color(.windowBackgroundColor))
-                            )
-                    )
+
+                TextField("Add a new todo...", text: $newTodoTitle)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 14))
                     .focused($isTextFieldFocused)
                     .onSubmit(createTodo)
-                
+
                 // AI Refactor button
-                Button(action: refactorWithAI) {
-                    Image(systemName: isRefactoring ? "wand.and.stars.inverse" : "wand.and.stars")
-                        .foregroundColor(.purple)
-                        .imageScale(.medium)
-                        .rotationEffect(.degrees(isRefactoring ? 360 : 0))
-                        .animation(isRefactoring ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isRefactoring)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .disabled(newTodoTitle.isEmpty || isRefactoring)
-                .help("Refactor with AI")
-                
-                // Quick priority buttons with animations
-                HStack(spacing: 8) {
-                    Button(action: {
-                        withAnimation(Theme.Animation.microSpring) {
-                            newTodoPriority = .urgent
-                        }
-                    }) {
-                        Image(systemName: "flag.fill")
-                            .foregroundColor(newTodoPriority == .urgent ? .red : .gray.opacity(0.3))
-                            .imageScale(.medium)
-                            .scaleEffect(newTodoPriority == .urgent ? 1.15 : 1.0)
+                if !newTodoTitle.isEmpty {
+                    Button(action: refactorWithAI) {
+                        Image(systemName: isRefactoring ? "wand.and.stars.inverse" : "wand.and.stars")
+                            .font(.system(size: 14))
+                            .foregroundColor(.purple)
+                            .rotationEffect(.degrees(isRefactoring ? 360 : 0))
+                            .animation(isRefactoring ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isRefactoring)
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .help("Urgent")
-
-                    Button(action: {
-                        withAnimation(Theme.Animation.microSpring) {
-                            newTodoPriority = .normal
-                        }
-                    }) {
-                        Image(systemName: "flag")
-                            .foregroundColor(newTodoPriority == .normal ? Theme.accent : .gray.opacity(0.3))
-                            .imageScale(.medium)
-                            .scaleEffect(newTodoPriority == .normal ? 1.15 : 1.0)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .help("Normal")
-
-                    Button(action: {
-                        withAnimation(Theme.Animation.microSpring) {
-                            newTodoPriority = .whenTime
-                        }
-                    }) {
-                        Image(systemName: "clock.fill")
-                            .foregroundColor(newTodoPriority == .whenTime ? Theme.secondaryText : .gray.opacity(0.3))
-                            .imageScale(.medium)
-                            .scaleEffect(newTodoPriority == .whenTime ? 1.15 : 1.0)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .help("When there's time")
+                    .disabled(isRefactoring)
+                    .help("Refactor with AI")
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Theme.secondaryBackground)
-                .cornerRadius(Theme.cornerRadiusMd)
-                .animation(Theme.Animation.microSpring, value: newTodoPriority)
-                
-                // Tag management button
-                Button(action: { showingTagManagement = true }) {
-                    Image(systemName: "tag")
-                        .foregroundColor(.blue)
-                        .imageScale(.medium)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .popover(isPresented: $showingTagManagement) {
-                    TagSelectionSheet(
-                        todoList: todoList,
-                        selectedTags: $selectedTags,
-                        isPresented: $showingTagManagement
-                    )
-                }
-                
-                // Add todo button
-                Button(action: createTodo) {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundColor(.blue)
-                        .imageScale(.medium)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .disabled(newTodoTitle.isEmpty)
             }
             .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(Color(NSColor.textBackgroundColor))
+            .cornerRadius(Theme.cornerRadiusMd)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
+                    .stroke(isTextFieldFocused ? Theme.accent.opacity(0.5) : Color.gray.opacity(0.2), lineWidth: 1)
+            )
+            .padding(.horizontal, Theme.contentPadding)
+
+            // Quick tag buttons
+            if !availableTags.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(availableTags, id: \.self) { tag in
+                            Button(action: {
+                                if selectedTags.contains(tag) {
+                                    selectedTags.remove(tag)
+                                } else {
+                                    selectedTags.insert(tag)
+                                }
+                            }) {
+                                Text("#\(tag)")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(selectedTags.contains(tag) ? .white : Theme.colorForTag(tag))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        Capsule()
+                                            .fill(selectedTags.contains(tag) ? Theme.colorForTag(tag) : Theme.colorForTag(tag).opacity(0.15))
+                                    )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                    .padding(.horizontal, Theme.contentPadding)
+                }
+                .frame(height: 28)
+            }
             
             // AI Suggestions Preview with smooth animation
             if let suggestions = aiSuggestions, showingAISuggestions {
@@ -916,37 +866,14 @@ struct NewTodoInput: View {
                     .background(Color.purple.opacity(0.08))
                     .cornerRadius(Theme.cornerRadiusMd)
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, Theme.contentPadding)
                 .transition(.asymmetric(
                     insertion: .opacity.combined(with: .move(edge: .top)),
                     removal: .opacity
                 ))
             }
-            
-            // Quick tag buttons
-            if !availableTags.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(availableTags, id: \.self) { tag in
-                            Button(action: {
-                                if selectedTags.contains(tag) {
-                                    selectedTags.remove(tag)
-                                } else {
-                                    selectedTags.insert(tag)
-                                }
-                            }) {
-                                TagPillView(tag: tag, isSelected: selectedTags.contains(tag))
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                }
-                .frame(height: 30)
-            }
         }
         .padding(.vertical, 8)
-        .background(Color(.windowBackgroundColor))
     }
     
     private func refactorWithAI() {
@@ -981,7 +908,7 @@ struct NewTodoInput: View {
         showingAISuggestions = false
         aiSuggestions = nil
     }
-    
+
     private func createTodo() {
         if !newTodoTitle.isEmpty {
             // Parse hashtags from title
