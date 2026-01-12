@@ -1,10 +1,98 @@
 import SwiftUI
 import AppKit
 
-struct MarkdownEditor: View {
-    let text: String
+// Editable Goals view with markdown preview
+struct EditableGoalsView: View {
     @ObservedObject var todoList: TodoList
-    
+    @State private var isEditing: Bool = false
+    @State private var editText: String = ""
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        ZStack {
+            if isEditing {
+                // Edit mode - TextEditor for markdown
+                TextEditor(text: $editText)
+                    .font(Theme.bodyFont)
+                    .scrollContentBackground(.hidden)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .focused($isFocused)
+                    .onChange(of: isFocused) { _, newValue in
+                        if !newValue {
+                            saveAndExitEdit()
+                        }
+                    }
+                    .onAppear {
+                        editText = todoList.goals
+                        isFocused = true
+                    }
+            } else {
+                // View mode - Rendered markdown
+                ScrollView {
+                    if todoList.goals.isEmpty {
+                        Text("Double-click to add goals...")
+                            .font(Theme.bodyFont)
+                            .foregroundColor(Theme.secondaryText)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(8)
+                    } else {
+                        MarkdownRenderer(text: todoList.goals)
+                    }
+                }
+                .background(Color(NSColor.textBackgroundColor))
+            }
+        }
+        .cornerRadius(Theme.cornerRadiusMd)
+        .gesture(
+            TapGesture(count: 2).onEnded {
+                if !isEditing {
+                    editText = todoList.goals
+                    withAnimation(Theme.Animation.quickFade) {
+                        isEditing = true
+                    }
+                }
+            }
+        )
+        .overlay(
+            // Edit button in corner
+            Button(action: {
+                if isEditing {
+                    saveAndExitEdit()
+                } else {
+                    editText = todoList.goals
+                    withAnimation(Theme.Animation.quickFade) {
+                        isEditing = true
+                    }
+                }
+            }) {
+                Image(systemName: isEditing ? "checkmark" : "pencil")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(isEditing ? .green : Theme.secondaryText)
+                    .frame(width: 22, height: 22)
+                    .background(
+                        Circle()
+                            .fill(Theme.secondaryBackground)
+                    )
+            }
+            .buttonStyle(PlainButtonStyle())
+            .padding(8),
+            alignment: .topTrailing
+        )
+    }
+
+    private func saveAndExitEdit() {
+        todoList.goals = editText
+        todoList.saveTodos()
+        withAnimation(Theme.Animation.quickFade) {
+            isEditing = false
+        }
+    }
+}
+
+// Markdown renderer (read-only display)
+struct MarkdownRenderer: View {
+    let text: String
+
     private func processLines() -> [(isList: Bool, content: String, isNumbered: Bool, number: Int?, tags: [String])] {
         let lines = text.components(separatedBy: .newlines)
         var result: [(isList: Bool, content: String, isNumbered: Bool, number: Int?, tags: [String])] = []
@@ -194,7 +282,7 @@ struct TodoListView: View {
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                         .padding(.horizontal, Theme.contentPadding)
                                         .padding(.vertical, Theme.contentPadding)
-                                    MarkdownEditor(text: todoList.goals, todoList: todoList)
+                                    EditableGoalsView(todoList: todoList)
                                         .padding(.horizontal, Theme.contentPadding)
                                 }
                                 .frame(height: geometry.size.height)
