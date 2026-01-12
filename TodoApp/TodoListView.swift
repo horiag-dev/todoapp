@@ -1,60 +1,172 @@
 import SwiftUI
 import AppKit
 
-// Editable Goals view with markdown preview
+// Section with header and content items
+struct GoalSection: Identifiable {
+    let id = UUID()
+    var title: String
+    var items: [String]  // Sub-bullets or content lines
+
+    var accentColor: Color {
+        let colors: [Color] = [
+            .blue, .purple, .pink, .orange, .green, .teal, .indigo, .mint
+        ]
+        var hash = 0
+        for char in title.unicodeScalars {
+            hash = hash &+ Int(char.value)
+        }
+        return colors[abs(hash) % colors.count]
+    }
+}
+
+// Visual Goals view with sections
 struct EditableGoalsView: View {
     @ObservedObject var todoList: TodoList
     @State private var isEditing: Bool = false
     @State private var editText: String = ""
     @FocusState private var isFocused: Bool
 
+    // Parse markdown into sections (headers with their content)
+    private var sections: [GoalSection] {
+        let lines = todoList.goals.components(separatedBy: .newlines)
+        var result: [GoalSection] = []
+        var currentSection: GoalSection? = nil
+        var standaloneItems: [String] = []
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+            if trimmed.isEmpty {
+                continue
+            }
+
+            // Check for bold headers: **text** or **text** #tag
+            if trimmed.hasPrefix("**"), let endRange = trimmed.range(of: "**", range: trimmed.index(trimmed.startIndex, offsetBy: 2)..<trimmed.endIndex) {
+                // Save previous section
+                if let section = currentSection {
+                    result.append(section)
+                }
+                // Save standalone items as "General" section
+                if !standaloneItems.isEmpty && currentSection == nil {
+                    result.append(GoalSection(title: "General", items: standaloneItems))
+                    standaloneItems = []
+                }
+
+                // Extract header text (between ** and **)
+                let startIdx = trimmed.index(trimmed.startIndex, offsetBy: 2)
+                let headerText = String(trimmed[startIdx..<endRange.lowerBound])
+
+                currentSection = GoalSection(title: headerText, items: [])
+            }
+            // Also support # headers
+            else if trimmed.hasPrefix("#") {
+                if let section = currentSection {
+                    result.append(section)
+                }
+                if !standaloneItems.isEmpty && currentSection == nil {
+                    result.append(GoalSection(title: "General", items: standaloneItems))
+                    standaloneItems = []
+                }
+
+                var headerText = trimmed
+                while headerText.hasPrefix("#") {
+                    headerText = String(headerText.dropFirst())
+                }
+                headerText = headerText.trimmingCharacters(in: .whitespaces)
+
+                currentSection = GoalSection(title: headerText, items: [])
+            } else {
+                // Content line - clean up prefixes
+                var content = trimmed
+
+                // Remove list markers
+                if content.hasPrefix("- ") || content.hasPrefix("* ") {
+                    content = String(content.dropFirst(2))
+                } else if let match = content.range(of: #"^\d+\.\s+"#, options: .regularExpression) {
+                    content = String(content[match.upperBound...])
+                }
+
+                content = content.trimmingCharacters(in: .whitespaces)
+
+                if !content.isEmpty {
+                    if currentSection != nil {
+                        currentSection?.items.append(content)
+                    } else {
+                        standaloneItems.append(content)
+                    }
+                }
+            }
+        }
+
+        // Don't forget the last section
+        if let section = currentSection {
+            result.append(section)
+        }
+
+        // Add standalone items if any remain
+        if !standaloneItems.isEmpty {
+            result.insert(GoalSection(title: "Focus", items: standaloneItems), at: 0)
+        }
+
+        return result
+    }
+
     var body: some View {
         ZStack {
             if isEditing {
                 // Edit mode - TextEditor for markdown
-                TextEditor(text: $editText)
-                    .font(Theme.bodyFont)
-                    .scrollContentBackground(.hidden)
-                    .background(Color(NSColor.textBackgroundColor))
-                    .focused($isFocused)
-                    .onChange(of: isFocused) { _, newValue in
-                        if !newValue {
-                            saveAndExitEdit()
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Edit Goals")
+                        .font(Theme.smallFont)
+                        .foregroundColor(Theme.secondaryText)
+                        .padding(.horizontal, 4)
+
+                    TextEditor(text: $editText)
+                        .font(.system(size: 13, design: .monospaced))
+                        .scrollContentBackground(.hidden)
+                        .background(Color(NSColor.textBackgroundColor))
+                        .cornerRadius(Theme.cornerRadius)
+                        .focused($isFocused)
+                        .onAppear {
+                            editText = todoList.goals
+                            isFocused = true
                         }
-                    }
-                    .onAppear {
-                        editText = todoList.goals
-                        isFocused = true
-                    }
+
+                    Text("Use # for headers, - for bullets")
+                        .font(.system(size: 10))
+                        .foregroundColor(Theme.secondaryText.opacity(0.7))
+                        .padding(.horizontal, 4)
+                }
             } else {
-                // View mode - Rendered markdown
+                // View mode - Visual sections
                 ScrollView {
-                    if todoList.goals.isEmpty {
-                        Text("Double-click to add goals...")
-                            .font(Theme.bodyFont)
-                            .foregroundColor(Theme.secondaryText)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(8)
+                    if sections.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "text.alignleft")
+                                .font(.system(size: 32))
+                                .foregroundColor(Theme.secondaryText.opacity(0.5))
+                            Text("No goals yet")
+                                .font(Theme.bodyFont)
+                                .foregroundColor(Theme.secondaryText)
+                            Text("Click edit to add your goals")
+                                .font(Theme.smallFont)
+                                .foregroundColor(Theme.secondaryText.opacity(0.7))
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.top, 40)
                     } else {
-                        MarkdownRenderer(text: todoList.goals)
+                        LazyVStack(spacing: 14) {
+                            ForEach(sections) { section in
+                                GoalSectionCard(section: section)
+                            }
+                        }
+                        .padding(.vertical, 8)
                     }
                 }
-                .background(Color(NSColor.textBackgroundColor))
             }
         }
-        .cornerRadius(Theme.cornerRadiusMd)
-        .gesture(
-            TapGesture(count: 2).onEnded {
-                if !isEditing {
-                    editText = todoList.goals
-                    withAnimation(Theme.Animation.quickFade) {
-                        isEditing = true
-                    }
-                }
-            }
-        )
         .overlay(
-            // Edit button in corner
+            // Edit/Done button
             Button(action: {
                 if isEditing {
                     saveAndExitEdit()
@@ -67,17 +179,19 @@ struct EditableGoalsView: View {
             }) {
                 Image(systemName: isEditing ? "checkmark" : "pencil")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(isEditing ? .green : Theme.secondaryText)
-                    .frame(width: 22, height: 22)
+                    .foregroundColor(isEditing ? .white : Theme.secondaryText)
+                    .frame(width: 24, height: 24)
                     .background(
                         Circle()
-                            .fill(Theme.secondaryBackground)
+                            .fill(isEditing ? Color.green : Theme.secondaryBackground)
                     )
             }
             .buttonStyle(PlainButtonStyle())
+            .help(isEditing ? "Save" : "Edit goals")
             .padding(8),
             alignment: .topTrailing
         )
+        .animation(Theme.Animation.quickFade, value: isEditing)
     }
 
     private func saveAndExitEdit() {
@@ -85,6 +199,68 @@ struct EditableGoalsView: View {
         todoList.saveTodos()
         withAnimation(Theme.Animation.quickFade) {
             isEditing = false
+        }
+    }
+}
+
+// Visual section card with header and bullet items
+struct GoalSectionCard: View {
+    let section: GoalSection
+    @State private var isHovered: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Section header
+            HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(section.accentColor)
+                    .frame(width: 4, height: 18)
+
+                Text(section.title)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(Theme.text)
+            }
+
+            // Bullet items
+            if !section.items.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(section.items, id: \.self) { item in
+                        HStack(alignment: .top, spacing: 8) {
+                            Circle()
+                                .fill(section.accentColor.opacity(0.5))
+                                .frame(width: 5, height: 5)
+                                .padding(.top, 6)
+
+                            Text(item)
+                                .font(.system(size: 13))
+                                .foregroundColor(Theme.text.opacity(0.85))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+                .padding(.leading, 4)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
+                .fill(Color(NSColor.textBackgroundColor))
+                .shadow(
+                    color: isHovered ? Theme.Shadow.hoverColor : Theme.Shadow.cardColor,
+                    radius: isHovered ? Theme.Shadow.hoverRadius : Theme.Shadow.cardRadius,
+                    y: isHovered ? Theme.Shadow.hoverY : Theme.Shadow.cardY
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
+                .stroke(section.accentColor.opacity(isHovered ? 0.25 : 0.1), lineWidth: 1)
+        )
+        .scaleEffect(isHovered ? 1.01 : 1.0)
+        .animation(Theme.Animation.microSpring, value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
         }
     }
 }
@@ -215,7 +391,7 @@ struct TodoListView: View {
     @State private var newTodoPriority: Priority = .urgent
     @State private var showingTagManagement = false
     @State private var selectedTags: Set<String> = []
-    @State private var leftColumnWidth: CGFloat = 300
+    @State private var leftColumnWidth: CGFloat = 380
     @State private var middleColumnWidth: CGFloat = 280
     @State private var showingSettings = false
     @State private var isTagsColumnVisible: Bool = false  // Hidden by default
@@ -334,32 +510,37 @@ struct TodoListView: View {
                     }
                     
                     // Right Column - Todos
-                    VStack(spacing: Theme.itemSpacing) {
-                        VStack(spacing: Theme.itemSpacing) {
-                            Text("Todos")
-                                .font(Theme.titleFont)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, Theme.contentPadding)
-                                .padding(.vertical, Theme.contentPadding)
-                            
-                            // New Todo Input - Left aligned
-                            NewTodoInput(
-                                todoList: todoList,
-                                newTodoTitle: $newTodoTitle,
-                                newTodoPriority: $newTodoPriority,
-                                showingTagManagement: $showingTagManagement,
-                                selectedTags: $selectedTags
-                            )
-                            
-                            ScrollView {
-                                TodoListSections(todoList: todoList)
-                            }
-                            .scrollIndicators(.hidden) // Hide scroll indicators for cleaner look
-                            .clipped() // Ensure content is clipped for better performance
-                            .background(Color(NSColor.textBackgroundColor))
-                            .cornerRadius(Theme.cornerRadius)
+                    VStack(spacing: 0) {
+                        Text("Todos")
+                            .font(Theme.titleFont)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, Theme.contentPadding)
+                            .padding(.vertical, Theme.contentPadding)
+
+                        // New Todo Input - Left aligned
+                        NewTodoInput(
+                            todoList: todoList,
+                            newTodoTitle: $newTodoTitle,
+                            newTodoPriority: $newTodoPriority,
+                            showingTagManagement: $showingTagManagement,
+                            selectedTags: $selectedTags
+                        )
+
+                        // Sticky Top 5 Section (outside ScrollView)
+                        if !todoList.top5Todos.isEmpty {
+                            Top5WeekSection(todoList: todoList)
+                                .padding(.top, 8)
                         }
+
+                        // Scrollable todo list (without Top 5)
+                        ScrollView {
+                            TodoListSections(todoList: todoList, excludeTop5: true)
+                        }
+                        .scrollIndicators(.hidden)
+                        .clipped()
+                        .background(Color(NSColor.textBackgroundColor))
+                        .cornerRadius(Theme.cornerRadius)
+                        .padding(.horizontal, Theme.contentPadding)
                     }
                 }
             }
@@ -795,9 +976,110 @@ struct NewTodoInput: View {
     }
 }
 
+// Prominent sticky Top 5 section
+struct Top5WeekSection: View {
+    @ObservedObject var todoList: TodoList
+    @State private var isHovered: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // Compact header
+            HStack(spacing: 8) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.orange)
+
+                Text("Top 5 of the Week")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(Theme.text)
+
+                Spacer()
+
+                Text("\(todoList.top5Todos.count)")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.orange))
+            }
+
+            // Compact items list
+            VStack(spacing: 2) {
+                ForEach(Array(todoList.top5Todos.enumerated()), id: \.element.id) { index, todo in
+                    Top5ItemRow(todoList: todoList, todo: todo, rank: index + 1)
+                }
+            }
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
+                .fill(Color.orange.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
+                        .stroke(Color.orange.opacity(0.15), lineWidth: 1)
+                )
+        )
+        .padding(.horizontal, Theme.contentPadding)
+        .padding(.bottom, 6)
+    }
+}
+
+// Compact row for Top 5 items
+struct Top5ItemRow: View {
+    @ObservedObject var todoList: TodoList
+    let todo: Todo
+    let rank: Int
+    @State private var isHovered: Bool = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            // Rank number
+            Text("\(rank)")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.orange)
+                .frame(width: 14)
+
+            // Checkbox
+            Button(action: { todoList.toggleTop5Todo(todo) }) {
+                Image(systemName: todo.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 14))
+                    .foregroundColor(todo.isCompleted ? .green : Theme.secondaryText)
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            // Title
+            Text(todo.title)
+                .font(.system(size: 12))
+                .foregroundColor(todo.isCompleted ? Theme.secondaryText : Theme.text)
+                .strikethrough(todo.isCompleted)
+                .lineLimit(1)
+
+            Spacer()
+
+            // First tag only (compact)
+            if let firstTag = todo.tags.first {
+                Text("#\(firstTag)")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(Theme.colorForTag(firstTag))
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(isHovered ? Color.orange.opacity(0.08) : Color.clear)
+        )
+        .animation(Theme.Animation.quickFade, value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+}
+
 struct TodoListSections: View {
     @ObservedObject var todoList: TodoList
-    
+    var excludeTop5: Bool = false
+
     // Cache for filtered and sorted todos to improve performance
     @State private var cachedFilteredTodos: [Priority: [Todo]] = [:]
     @State private var lastTodoListHash: Int = 0
@@ -875,8 +1157,8 @@ struct TodoListSections: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Top 5 of the week section
-            if !todoList.top5Todos.isEmpty {
+            // Top 5 of the week section (only if not excluded - shown in sticky header instead)
+            if !excludeTop5 && !todoList.top5Todos.isEmpty {
                 TodoListSection(todoList: todoList, priority: nil, todos: todoList.top5Todos, customTitle: "🗓️ Top 5 of the week")
                 Rectangle()
                     .fill(Theme.divider)
