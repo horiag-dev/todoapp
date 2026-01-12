@@ -1,29 +1,29 @@
 import SwiftUI
 
-struct TagView: View {
+struct InteractiveTagView: View {
     let tag: String
     let todoList: TodoList
     @Binding var selectedTag: String?
     @State private var isHovered = false
     @State private var showingRenameSheet = false
     @State private var newTagName = ""
-    
+
+    private var tagColor: Color {
+        Theme.colorForTag(tag)
+    }
+
     var body: some View {
         HStack {
-            Text("#\(tag)")
-                .font(.system(size: 14))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(isHovered ? Color.blue.opacity(0.2) : Color.blue.opacity(0.1))
-                .cornerRadius(8)
+            TagPillView(tag: tag, isSelected: selectedTag == tag)
+                .opacity(isHovered ? 0.8 : 1.0)
                 .onHover { hovering in
                     isHovered = hovering
                 }
-            
+
             if isHovered {
                 Button(action: { showingRenameSheet = true }) {
                     Image(systemName: "pencil")
-                        .foregroundColor(.blue)
+                        .foregroundColor(tagColor)
                 }
                 .buttonStyle(PlainButtonStyle())
             }
@@ -77,7 +77,7 @@ struct TagCloudView: View {
             ScrollView {
                 FlowLayout(spacing: 8) {
                     ForEach(Array(todoList.allTags).sorted(), id: \.self) { tag in
-                        TagView(tag: tag, todoList: todoList, selectedTag: $selectedTag)
+                        InteractiveTagView(tag: tag, todoList: todoList, selectedTag: $selectedTag)
                     }
                 }
             }

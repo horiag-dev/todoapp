@@ -94,6 +94,18 @@ struct TodoItemView: View {
     @State private var editedTitle: String
     @State private var showingTagManagement = false
     @FocusState private var focusField: Bool
+
+    // Static cached NSDataDetector for link detection (expensive to create)
+    private static let linkDetector: NSDataDetector? = {
+        try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
+    }()
+    
+    // Function to get the primary tag color for background
+    private var primaryTagColor: Color? {
+        guard todo.priority == .urgent, !todo.tags.isEmpty else { return nil }
+        // Use the first tag as the primary tag for background color
+        return Theme.colorForTag(todo.tags.first!)
+    }
     
     
     // Helper struct to represent text segments
@@ -107,11 +119,10 @@ struct TodoItemView: View {
     // Function to split text into segments
     private func splitIntoSegments(text: String) -> [TextSegment] {
         var segments: [TextSegment] = []
-        let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
         let nsString = text as NSString
         var currentIndex = 0
-        
-        let matches = detector?.matches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count)) ?? []
+
+        let matches = Self.linkDetector?.matches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count)) ?? []
         
         for match in matches {
             // Add text before link if any
@@ -143,26 +154,7 @@ struct TodoItemView: View {
         self.isTop5 = isTop5
         _editedTitle = State(initialValue: todo.title)
     }
-    
-    private func TagView(tag: String) -> some View {
-        let isSpecialTag = tag.lowercased() == "urgent" || tag.lowercased() == "today"
-        let tagColor = Theme.colorForTag(tag)
-        
-        return Text("#\(tag)")
-            .font(Theme.smallFont)
-            .foregroundColor(isSpecialTag ? .white : Theme.text)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(
-                RoundedRectangle(cornerRadius: Theme.cornerRadius)
-                    .fill(isSpecialTag ? tagColor : tagColor.opacity(0.25))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.cornerRadius)
-                    .stroke(isSpecialTag ? Color.clear : tagColor.opacity(0.8), lineWidth: 1)
-            )
-    }
-    
+
     // Add this computed property to sort tags
     private var sortedTags: [String] {
         let todayTag = todo.tags.first { $0.lowercased() == "today" }
@@ -238,7 +230,7 @@ struct TodoItemView: View {
                     if !todo.tags.isEmpty {
                         HStack(spacing: 4) {
                             ForEach(sortedTags, id: \.self) { tag in
-                                TagView(tag: tag)
+                                TagPillView(tag: tag, size: .small)
                             }
                         }
                     }
@@ -322,18 +314,29 @@ struct TodoItemView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
             }
-            .opacity(isHovered ? 1 : 0.5)
+            .opacity(isHovered ? 1 : 0.6)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
         .padding(.horizontal, Theme.contentPadding)
         .background(
-            RoundedRectangle(cornerRadius: Theme.cornerRadius)
+            RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
                 .fill(
                     isEditing ? Theme.accent.opacity(0.1) :
-                    (isSelected ? Theme.accent.opacity(0.08) : 
-                    (isHovered ? Theme.secondaryBackground : Color.clear))
+                    (isSelected ? Theme.accent.opacity(0.08) :
+                    (isHovered ? Theme.secondaryBackground :
+                    (primaryTagColor?.opacity(0.12) ?? Color.clear)))
+                )
+                .shadow(
+                    color: isHovered ? Theme.Shadow.hoverColor : Color.clear,
+                    radius: isHovered ? Theme.Shadow.hoverRadius : 0,
+                    x: 0,
+                    y: isHovered ? Theme.Shadow.hoverY : 0
                 )
         )
+        .scaleEffect(isHovered ? 1.005 : 1.0)
+        .animation(Theme.Animation.microSpring, value: isHovered)
+        .animation(Theme.Animation.microSpring, value: isSelected)
+        .animation(Theme.Animation.microSpring, value: isEditing)
         .onHover { hovering in
             isHovered = hovering
         }

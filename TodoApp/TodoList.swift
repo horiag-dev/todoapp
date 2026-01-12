@@ -23,6 +23,14 @@ class TodoList: ObservableObject {
     
     private var backupTimer: Timer?
     private let backupInterval: TimeInterval = 10800 // 3 hours in seconds
+
+    // Debounce save operations to reduce disk I/O
+    private var saveWorkItem: DispatchWorkItem?
+    private let saveDebounceInterval: TimeInterval = 0.5
+
+    // Cached allTags to avoid recalculating on every access
+    private var _cachedAllTags: [String]?
+    private var _lastTagsHash: Int = 0
     
     var bigThingsMarkdown: String {
         var markdown = ""
@@ -206,8 +214,22 @@ class TodoList: ObservableObject {
     }
     
     var allTags: [String] {
+        // Calculate hash to detect changes
+        let currentHash = (todos.flatMap { $0.tags } + top5Todos.flatMap { $0.tags }).hashValue
+
+        if let cached = _cachedAllTags, currentHash == _lastTagsHash {
+            return cached
+        }
+
         let tags = todos.flatMap { $0.tags } + top5Todos.flatMap { $0.tags }
-        return Array(Set(tags)).sorted()
+        let result = Array(Set(tags)).sorted()
+        _cachedAllTags = result
+        _lastTagsHash = currentHash
+        return result
+    }
+
+    private func invalidateTagsCache() {
+        _cachedAllTags = nil
     }
     
     func todosByTag(_ tag: String) -> [Todo] {
@@ -243,8 +265,21 @@ class TodoList: ObservableObject {
     }
     
     func saveTodos() {
+        // Cancel any pending save operation
+        saveWorkItem?.cancel()
+
+        // Create a new debounced save operation
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.performSave()
+        }
+        saveWorkItem = workItem
+
+        // Schedule the save after the debounce interval
+        DispatchQueue.main.asyncAfter(deadline: .now() + saveDebounceInterval, execute: workItem)
+    }
+
+    private func performSave() {
         guard let fileURL = todosFileURL else {
-            print("No file selected")
             return
         }
         
@@ -348,7 +383,6 @@ class TodoList: ObservableObject {
             return
         }
         
-        print("📝 Loading todos from: \(fileURL.path)")
         
         do {
             let markdownContent = try String(contentsOf: fileURL, encoding: .utf8)
@@ -474,7 +508,6 @@ class TodoList: ObservableObject {
             bigThings = newBigThings
             goals = newGoals.joined(separator: "\n")
             
-            print("✅ Successfully loaded todos: \(newTodos.count) todos, \(newTop5Todos.count) top 5 todos, \(newBigThings.count) big things")
             
             // Create initial backup after loading
             DispatchQueue.main.async {
@@ -503,12 +536,10 @@ class TodoList: ObservableObject {
             return
         }
         
-        print("Creating backup at \(Date())")
         
         // Use the app's documents directory for backups instead of the original file's directory
         let backupsFolderPath = documentsDirectory.appendingPathComponent("TodoAppBackups")
         
-        print("Creating backup in folder: \(backupsFolderPath.path)")
         
         do {
             // Create backups directory if it doesn't exist
@@ -531,11 +562,9 @@ class TodoList: ObservableObject {
         let originalFileName = originalFile.deletingPathExtension().lastPathComponent
         let backupFileName = "\(originalFileName)_backup_\(timestamp).md"
         let backupFilePath = folderPath.appendingPathComponent(backupFileName)
-        print("Creating backup file at: \(backupFilePath.path)")
         
         // Copy the original file to the backup location
         try FileManager.default.copyItem(at: originalFile, to: backupFilePath)
-        print("✅ Backup created successfully at: \(backupFilePath.path)")
     }
     
     deinit {

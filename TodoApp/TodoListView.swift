@@ -57,25 +57,6 @@ struct MarkdownEditor: View {
         return result
     }
     
-    private func TagView(tag: String) -> some View {
-        let isSpecialTag = tag.lowercased() == "urgent" || tag.lowercased() == "today"
-        let tagColor = Theme.colorForTag(tag)
-        
-        return Text("#\(tag)")
-            .font(Theme.smallFont)
-            .foregroundColor(isSpecialTag ? .white : Theme.text)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(
-                RoundedRectangle(cornerRadius: Theme.cornerRadius)
-                    .fill(isSpecialTag ? tagColor : tagColor.opacity(0.25))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.cornerRadius)
-                    .stroke(isSpecialTag ? Color.clear : tagColor.opacity(0.8), lineWidth: 1)
-            )
-    }
-    
     private func renderContent() -> some View {
         VStack(alignment: .leading, spacing: 8) {
             let processedLines = processLines()
@@ -93,7 +74,7 @@ struct MarkdownEditor: View {
                                 Text(try! AttributedString(markdown: item.content))
                                 if !item.tags.isEmpty {
                                     ForEach(item.tags, id: \.self) { tag in
-                                        TagView(tag: tag)
+                                        TagPillView(tag: tag, size: .small)
                                     }
                                 }
                             }
@@ -107,7 +88,7 @@ struct MarkdownEditor: View {
                                 Text(try! AttributedString(markdown: item.content))
                                 if !item.tags.isEmpty {
                                     ForEach(item.tags, id: \.self) { tag in
-                                        TagView(tag: tag)
+                                        TagPillView(tag: tag, size: .small)
                                     }
                                 }
                             }
@@ -119,7 +100,7 @@ struct MarkdownEditor: View {
                         Text(try! AttributedString(markdown: item.content))
                         if !item.tags.isEmpty {
                             ForEach(item.tags, id: \.self) { tag in
-                                TagView(tag: tag)
+                                TagPillView(tag: tag, size: .small)
                             }
                         }
                     }
@@ -147,8 +128,9 @@ struct TodoListView: View {
     @State private var showingTagManagement = false
     @State private var selectedTags: Set<String> = []
     @State private var leftColumnWidth: CGFloat = 300
-    @State private var middleColumnWidth: CGFloat = 300
+    @State private var middleColumnWidth: CGFloat = 280
     @State private var showingSettings = false
+    @State private var isTagsColumnVisible: Bool = false  // Hidden by default
     
     var body: some View {
         ZStack {
@@ -156,19 +138,37 @@ struct TodoListView: View {
                 .ignoresSafeArea()
             VStack(spacing: 0) {
                 // Top Bar - File Management
-                HStack(spacing: 8) {
+                HStack(spacing: 12) {
                     Button(action: { todoList.openFile() }) {
                         Image(systemName: "folder.badge.plus")
                     }
                     .help("Open existing todo file")
-                    
+
                     Button(action: { todoList.createNewFile() }) {
                         Image(systemName: "doc.badge.plus")
                     }
                     .help("Create new todo file")
 
                     Spacer()
-                    
+
+                    // Tags column toggle button
+                    Button(action: {
+                        withAnimation(Theme.Animation.panelSlide) {
+                            isTagsColumnVisible.toggle()
+                        }
+                    }) {
+                        Image(systemName: "tag")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(isTagsColumnVisible ? Theme.accent : Theme.secondaryText)
+                            .frame(width: 28, height: 28)
+                            .background(
+                                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                                    .fill(isTagsColumnVisible ? Theme.accent.opacity(0.15) : Color.clear)
+                            )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help(isTagsColumnVisible ? "Hide Tags" : "Show Tags")
+
                     // Settings button for LLM configuration
                     Button(action: { showingSettings = true }) {
                         Image(systemName: "gearshape")
@@ -178,8 +178,8 @@ struct TodoListView: View {
                         SettingsView(llmService: todoList.llmService)
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
                 
                 // Main Content with Resizable Columns
                 HStack(spacing: 0) {
@@ -203,27 +203,47 @@ struct TodoListView: View {
                     }
                     .frame(width: leftColumnWidth)
                     
-                    // Resizable divider
+                    // Resizable divider for Goals
                     ResizableBar(width: $leftColumnWidth, minWidth: 200, maxWidth: 500)
-                    
+
                     Divider()
-                    
-                    // Middle Column - Tags
-                    VStack(spacing: Theme.itemSpacing) {
-                        Text("Tags")
-                            .font(Theme.titleFont)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                    // Middle Column - Tags (Collapsible)
+                    if isTagsColumnVisible {
+                        VStack(spacing: Theme.itemSpacing) {
+                            HStack {
+                                Text("Tags")
+                                    .font(Theme.titleFont)
+                                Spacer()
+                                Button(action: {
+                                    withAnimation(Theme.Animation.panelSlide) {
+                                        isTagsColumnVisible = false
+                                    }
+                                }) {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundColor(Theme.secondaryText)
+                                        .frame(width: 20, height: 20)
+                                        .background(
+                                            Circle()
+                                                .fill(Theme.secondaryText.opacity(0.1))
+                                        )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
                             .padding(.horizontal, Theme.contentPadding)
                             .padding(.vertical, Theme.contentPadding)
-                        
-                        TagListView(todoList: todoList, selectedTag: $selectedTag)
+
+                            TagListView(todoList: todoList, selectedTag: $selectedTag)
+                        }
+                        .frame(width: middleColumnWidth)
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+
+                        // Resizable divider for Tags
+                        ResizableBar(width: $middleColumnWidth, minWidth: 200, maxWidth: 400)
+
+                        Divider()
                     }
-                    .frame(width: middleColumnWidth)
-                    
-                    // Resizable divider
-                    ResizableBar(width: $middleColumnWidth, minWidth: 200, maxWidth: 500)
-                    
-                    Divider()
                     
                     // Right Column - Todos
                     VStack(spacing: Theme.itemSpacing) {
@@ -308,24 +328,105 @@ struct FileManagementControls: View {
     }
 }
 
-// Reusable tag pill view for consistent tag styling
+// Unified tag pill view for consistent tag styling across the app
 struct TagPillView: View {
     let tag: String
-    let isSelected: Bool
+    var isSelected: Bool = false
+    var size: TagPillSize = .regular
+    var interactive: Bool = true  // Enable hover effects
+
+    @State private var isHovered: Bool = false
+
+    enum TagPillSize {
+        case small   // For inline display in todo items
+        case regular // For tag selection, lists
+    }
+
+    private var isSpecialTag: Bool {
+        let lowercased = tag.lowercased()
+        return lowercased == "urgent" || lowercased == "today"
+    }
+
+    private var tagColor: Color {
+        Theme.colorForTag(tag)
+    }
+
+    private var fontSize: Font {
+        switch size {
+        case .small: return Theme.smallFont
+        case .regular: return .system(size: 11, weight: .medium)
+        }
+    }
+
+    private var horizontalPadding: CGFloat {
+        switch size {
+        case .small: return 6
+        case .regular: return 8
+        }
+    }
+
+    private var verticalPadding: CGFloat {
+        switch size {
+        case .small: return 3
+        case .regular: return 4
+        }
+    }
+
     var body: some View {
         Text("#\(tag)")
-            .font(.system(size: 11, weight: .medium))
-            .foregroundColor(tag.lowercased() == "today" ? .white : (isSelected ? .blue : Theme.text))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .font(fontSize)
+            .foregroundColor(foregroundColor)
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, verticalPadding)
             .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(tag.lowercased() == "today" ? Theme.urgentTagColor : (isSelected ? Color.blue.opacity(0.2) : Theme.colorForTag(tag).opacity(0.25)))
+                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                    .fill(backgroundColor)
+                    .shadow(
+                        color: isHovered && interactive ? Theme.Shadow.cardColor : Color.clear,
+                        radius: isHovered ? Theme.Shadow.cardRadius : 0,
+                        y: isHovered ? Theme.Shadow.cardY : 0
+                    )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(tag.lowercased() == "today" ? Color.clear : Theme.colorForTag(tag).opacity(0.8), lineWidth: 1)
+                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                    .stroke(borderColor, lineWidth: 1)
             )
+            .scaleEffect(isHovered && interactive ? 1.05 : 1.0)
+            .animation(Theme.Animation.microSpring, value: isHovered)
+            .animation(Theme.Animation.microSpring, value: isSelected)
+            .onHover { hovering in
+                if interactive {
+                    isHovered = hovering
+                }
+            }
+    }
+
+    private var foregroundColor: Color {
+        if isSpecialTag {
+            return .white
+        } else if isSelected {
+            return .blue
+        } else {
+            return Theme.text
+        }
+    }
+
+    private var backgroundColor: Color {
+        if isSpecialTag {
+            return tagColor
+        } else if isSelected {
+            return Color.blue.opacity(0.2)
+        } else {
+            return tagColor.opacity(0.25)
+        }
+    }
+
+    private var borderColor: Color {
+        if isSpecialTag {
+            return Color.clear
+        } else {
+            return tagColor.opacity(0.8)
+        }
     }
 }
 
@@ -387,28 +488,43 @@ struct NewTodoInput: View {
                 .disabled(newTodoTitle.isEmpty || isRefactoring)
                 .help("Refactor with AI")
                 
-                // Quick priority buttons
+                // Quick priority buttons with animations
                 HStack(spacing: 8) {
-                    Button(action: { newTodoPriority = .urgent }) {
+                    Button(action: {
+                        withAnimation(Theme.Animation.microSpring) {
+                            newTodoPriority = .urgent
+                        }
+                    }) {
                         Image(systemName: "flag.fill")
                             .foregroundColor(newTodoPriority == .urgent ? .red : .gray.opacity(0.3))
                             .imageScale(.medium)
+                            .scaleEffect(newTodoPriority == .urgent ? 1.15 : 1.0)
                     }
                     .buttonStyle(PlainButtonStyle())
                     .help("Urgent")
-                    
-                    Button(action: { newTodoPriority = .normal }) {
+
+                    Button(action: {
+                        withAnimation(Theme.Animation.microSpring) {
+                            newTodoPriority = .normal
+                        }
+                    }) {
                         Image(systemName: "flag")
                             .foregroundColor(newTodoPriority == .normal ? Theme.accent : .gray.opacity(0.3))
                             .imageScale(.medium)
+                            .scaleEffect(newTodoPriority == .normal ? 1.15 : 1.0)
                     }
                     .buttonStyle(PlainButtonStyle())
                     .help("Normal")
-                    
-                    Button(action: { newTodoPriority = .whenTime }) {
+
+                    Button(action: {
+                        withAnimation(Theme.Animation.microSpring) {
+                            newTodoPriority = .whenTime
+                        }
+                    }) {
                         Image(systemName: "clock.fill")
                             .foregroundColor(newTodoPriority == .whenTime ? Theme.secondaryText : .gray.opacity(0.3))
                             .imageScale(.medium)
+                            .scaleEffect(newTodoPriority == .whenTime ? 1.15 : 1.0)
                     }
                     .buttonStyle(PlainButtonStyle())
                     .help("When there's time")
@@ -416,7 +532,8 @@ struct NewTodoInput: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(Theme.secondaryBackground)
-                .cornerRadius(8)
+                .cornerRadius(Theme.cornerRadiusMd)
+                .animation(Theme.Animation.microSpring, value: newTodoPriority)
                 
                 // Tag management button
                 Button(action: { showingTagManagement = true }) {
@@ -444,7 +561,7 @@ struct NewTodoInput: View {
             }
             .padding(.horizontal, 12)
             
-            // AI Suggestions Preview
+            // AI Suggestions Preview with smooth animation
             if let suggestions = aiSuggestions, showingAISuggestions {
                 VStack(spacing: 8) {
                     HStack {
@@ -452,57 +569,65 @@ struct NewTodoInput: View {
                             .font(.caption)
                             .fontWeight(.semibold)
                             .foregroundColor(.purple)
-                        
+
                         Spacer()
-                        
+
                         Button("Apply") {
-                            applyAISuggestions(suggestions)
+                            withAnimation(Theme.Animation.spring) {
+                                applyAISuggestions(suggestions)
+                            }
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
-                        
+
                         Button("Dismiss") {
-                            showingAISuggestions = false
-                            aiSuggestions = nil
+                            withAnimation(Theme.Animation.spring) {
+                                showingAISuggestions = false
+                                aiSuggestions = nil
+                            }
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Title: \(suggestions.title)")
                             .font(.caption)
                             .foregroundColor(.primary)
-                        
+
                         HStack {
                             Text("Tags:")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            
+
                             ForEach(suggestions.tags, id: \.self) { tag in
-                                TagPillView(tag: tag, isSelected: false)
+                                TagPillView(tag: tag, isSelected: false, interactive: false)
                             }
                         }
-                        
+
                         HStack {
                             Text("Priority:")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            
+
                             Image(systemName: suggestions.priority.icon)
                                 .foregroundColor(suggestions.priority.color)
                                 .imageScale(.small)
-                            
+
                             Text(suggestions.priority.rawValue)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     }
-                    .padding(8)
-                    .background(Color.purple.opacity(0.1))
-                    .cornerRadius(8)
+                    .padding(10)
+                    .background(Color.purple.opacity(0.08))
+                    .cornerRadius(Theme.cornerRadiusMd)
                 }
                 .padding(.horizontal, 12)
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .move(edge: .top)),
+                    removal: .opacity
+                ))
             }
             
             // Quick tag buttons
@@ -592,12 +717,12 @@ struct TodoListSections: View {
     private func filterAndSortTodos(for priority: Priority) -> [Todo] {
         // Create a simple hash of the todo list to detect changes
         let currentHash = todoList.todos.map { "\($0.id)\($0.isCompleted)\($0.priority.rawValue)\($0.tags.joined())" }.joined().hashValue
-        
+
         // Return cached result if nothing has changed
         if currentHash == lastTodoListHash, let cached = cachedFilteredTodos[priority] {
             return cached
         }
-        
+
         // Update cache if needed
         if currentHash != lastTodoListHash {
             cachedFilteredTodos.removeAll()
@@ -626,21 +751,21 @@ struct TodoListSections: View {
         
         // Separate todos into tagged and untagged groups
         let untaggedTodos = filteredTodos.filter { todo in
-            // Consider a todo untagged if it has no tags or only has the "today" tag
-            todo.tags.isEmpty || todo.tags.allSatisfy { $0.lowercased() == "today" }
+            // Consider a todo untagged if it has no tags
+            todo.tags.isEmpty
         }
         
         let taggedTodos = filteredTodos.filter { todo in
-            // Consider a todo tagged if it has at least one non-"today" tag
-            todo.tags.contains { $0.lowercased() != "today" }
+            // Consider a todo tagged if it has at least one tag
+            !todo.tags.isEmpty
         }
         
-        // Group tagged todos by their first non-"today" tag
+        // Group tagged todos by their primary tag (first tag, or "today" if it exists)
         let groupedTodos = Dictionary(grouping: taggedTodos) { todo -> String in
-            // Get the first non-"today" tag
-            todo.tags.first { $0.lowercased() != "today" }!
+            // Prioritize "today" tag if it exists, otherwise use first tag
+            return todo.tags.first { $0.lowercased() == "today" } ?? todo.tags.first!
         }
-        
+
         // First, get sorted tagged todos
         let sortedTaggedTodos = groupedTodos.sorted { $0.key < $1.key }
             .flatMap { _, todos in
@@ -789,7 +914,18 @@ struct TagListView: View {
     @State private var exportMessage = ""
     @State private var editingTag: String? = nil
     @State private var editedTagName: String = ""
-    
+
+    // Pre-compute todos grouped by tag to avoid O(n*m) filtering
+    private var todosByTag: [String: [Todo]] {
+        var result: [String: [Todo]] = [:]
+        for todo in todoList.todos {
+            for tag in todo.tags {
+                result[tag, default: []].append(todo)
+            }
+        }
+        return result
+    }
+
     var body: some View {
         List {
             ForEach(todoList.allTags, id: \.self) { tag in
@@ -804,19 +940,7 @@ struct TagListView: View {
                                 editingTag = nil
                             }
                         } else {
-                            Text("#\(tag)")
-                                .font(Theme.smallFont)
-                                .foregroundColor(tag.lowercased() == "today" ? .white : Theme.text)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 3)
-                                .background(
-                                    RoundedRectangle(cornerRadius: Theme.cornerRadius)
-                                        .fill(tag.lowercased() == "today" ? Theme.urgentTagColor : Theme.colorForTag(tag).opacity(0.25))
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: Theme.cornerRadius)
-                                        .stroke(tag.lowercased() == "today" ? Color.clear : Theme.colorForTag(tag).opacity(0.8), lineWidth: 1)
-                                )
+                            TagPillView(tag: tag, size: .small)
                                 .onTapGesture(count: 2) {
                                     editingTag = tag
                                     editedTagName = tag
@@ -833,7 +957,7 @@ struct TagListView: View {
                         .help("Export to Notes")
                     }
                 ) {
-                    ForEach(todoList.todos.filter { $0.tags.contains(tag) }) { todo in
+                    ForEach(todosByTag[tag] ?? []) { todo in
                         SimpleTodoItemView(todo: todo, todoList: todoList)
                     }
                 }
@@ -914,31 +1038,52 @@ struct SimpleTodoItemView: View {
     }
 }
 
-// Add a resizable bar between columns
+// Add a resizable bar between columns with visual feedback
 struct ResizableBar: View {
     @Binding var width: CGFloat
     let minWidth: CGFloat
     let maxWidth: CGFloat
-    @State private var isResizing = false
-    
+    @State private var isHovered = false
+    @State private var isDragging = false
+
     var body: some View {
-        Rectangle()
-            .fill(Color.clear)
-            .frame(width: 4)
-            .contentShape(Rectangle())
-            .onHover { hovering in
-                if hovering {
-                    NSCursor.resizeLeftRight.push()
-                } else {
-                    NSCursor.pop()
-                }
+        ZStack {
+            // Wider invisible hit area
+            Rectangle()
+                .fill(Color.clear)
+                .frame(width: 12)
+                .contentShape(Rectangle())
+
+            // Visible indicator
+            RoundedRectangle(cornerRadius: 1)
+                .fill(isDragging ? Theme.accent : (isHovered ? Theme.divider : Color.clear))
+                .frame(width: isDragging ? 3 : (isHovered ? 2 : 1))
+                .animation(Theme.Animation.quickFade, value: isHovered)
+                .animation(Theme.Animation.quickFade, value: isDragging)
+        }
+        .onHover { hovering in
+            isHovered = hovering
+            if hovering {
+                NSCursor.resizeLeftRight.push()
+            } else if !isDragging {
+                NSCursor.pop()
             }
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        let newWidth = width + value.translation.width
-                        width = min(max(minWidth, newWidth), maxWidth)
+        }
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    if !isDragging {
+                        isDragging = true
                     }
-            )
+                    let newWidth = width + value.translation.width
+                    width = min(max(minWidth, newWidth), maxWidth)
+                }
+                .onEnded { _ in
+                    isDragging = false
+                    if !isHovered {
+                        NSCursor.pop()
+                    }
+                }
+        )
     }
 } 

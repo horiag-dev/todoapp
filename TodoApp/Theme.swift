@@ -27,6 +27,32 @@ enum Theme {
     
     // Corners
     static let cornerRadius: CGFloat = 6
+    static let cornerRadiusMd: CGFloat = 8
+    static let cornerRadiusLg: CGFloat = 12
+
+    // MARK: - Animations
+    enum Animation {
+        /// Primary spring animation for most interactions
+        static let spring = SwiftUI.Animation.spring(response: 0.35, dampingFraction: 0.7)
+        /// Faster spring for micro-interactions (hover, press)
+        static let microSpring = SwiftUI.Animation.spring(response: 0.2, dampingFraction: 0.8)
+        /// Smooth easing for panel slides
+        static let panelSlide = SwiftUI.Animation.easeInOut(duration: 0.25)
+        /// Quick fade for opacity changes
+        static let quickFade = SwiftUI.Animation.easeOut(duration: 0.15)
+    }
+
+    // MARK: - Shadows
+    enum Shadow {
+        /// Subtle card shadow for depth
+        static let cardColor = Color.black.opacity(0.04)
+        static let cardRadius: CGFloat = 8
+        static let cardY: CGFloat = 2
+        /// Hover state shadow
+        static let hoverColor = Color.black.opacity(0.06)
+        static let hoverRadius: CGFloat = 12
+        static let hoverY: CGFloat = 3
+    }
     
     // Updated Tag Colors - More like Things3
     private static let tagColors: [Color] = [

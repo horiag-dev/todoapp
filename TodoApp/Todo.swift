@@ -24,17 +24,21 @@ enum Priority: String, Codable, CaseIterable {
 }
 
 struct Todo: Identifiable, Codable {
+    // Static cached NSDataDetector for link detection (expensive to create)
+    private static let linkDetector: NSDataDetector? = {
+        try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
+    }()
+
     var id = UUID()
     var title: String
     var isCompleted: Bool
     var createdAt: Date
     var tags: [String]
     var priority: Priority
-    
-    // Add computed property to detect links
+
+    // Add computed property to detect links (uses cached detector)
     var containsLinks: Bool {
-        let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
-        let matches = detector?.matches(in: title, options: [], range: NSRange(location: 0, length: title.utf16.count))
+        let matches = Self.linkDetector?.matches(in: title, options: [], range: NSRange(location: 0, length: title.utf16.count))
         return (matches?.count ?? 0) > 0
     }
     
