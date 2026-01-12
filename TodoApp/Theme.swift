@@ -131,40 +131,39 @@ enum Theme {
         tagColorMap.removeAll()
     }
     
-    // Gradient backgrounds
+    // Gradient backgrounds - using system colors for dark mode support
     static let leftColumnGradient = LinearGradient(
         gradient: Gradient(colors: [
-            Color.blue.opacity(0.08),
-            Color.white.opacity(0.95)
-        ]),
-        startPoint: .top,
-        endPoint: .bottom
-    )
-    
-    static let middleColumnGradient = LinearGradient(
-        gradient: Gradient(colors: [
-            Color.blue.opacity(0.08),
-            Color.white.opacity(0.95)
-        ]),
-        startPoint: .top,
-        endPoint: .bottom
-    )
-    
-    static let rightColumnGradient = LinearGradient(
-        gradient: Gradient(colors: [
-            Color.blue.opacity(0.08),
-            Color.white.opacity(0.95)
+            Color(NSColor.controlAccentColor).opacity(0.05),
+            Color(NSColor.windowBackgroundColor)
         ]),
         startPoint: .top,
         endPoint: .bottom
     )
 
-    // Main continuous background gradient - subtle and refined
+    static let middleColumnGradient = LinearGradient(
+        gradient: Gradient(colors: [
+            Color(NSColor.controlAccentColor).opacity(0.05),
+            Color(NSColor.windowBackgroundColor)
+        ]),
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    static let rightColumnGradient = LinearGradient(
+        gradient: Gradient(colors: [
+            Color(NSColor.controlAccentColor).opacity(0.05),
+            Color(NSColor.windowBackgroundColor)
+        ]),
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    // Main continuous background gradient - adapts to dark mode
     static let mainBackgroundGradient = LinearGradient(
-        gradient: Gradient(stops: [
-            .init(color: Color(NSColor(red: 0.96, green: 0.97, blue: 0.98, alpha: 1.0)), location: 0.0),
-            .init(color: Color(NSColor(red: 0.98, green: 0.98, blue: 0.99, alpha: 1.0)), location: 0.5),
-            .init(color: Color(NSColor(red: 0.97, green: 0.97, blue: 0.98, alpha: 1.0)), location: 1.0)
+        gradient: Gradient(colors: [
+            Color(NSColor.windowBackgroundColor),
+            Color(NSColor.windowBackgroundColor)
         ]),
         startPoint: .topLeading,
         endPoint: .bottomTrailing
