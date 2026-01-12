@@ -92,7 +92,8 @@ struct TodoItemView: View {
     @State private var isSelected = false
     @State private var isEditing = false
     @State private var editedTitle: String
-    @State private var showingTagManagement = false
+    @State private var showingNewTagAlert = false
+    @State private var newTagText = ""
     @FocusState private var focusField: Bool
 
     // Static cached NSDataDetector for link detection (expensive to create)
@@ -238,107 +239,168 @@ struct TodoItemView: View {
             }
             
             Spacer()
-            
-            // Control buttons - always visible, right-aligned
-            HStack(spacing: Theme.itemSpacing) {
-                // Priority change buttons (only for non-top5, non-completed todos)
-                if !isTop5 && !todo.isCompleted {
-                    if todo.priority == .urgent {
-                        Button(action: {
-                            var updatedTodo = todo
-                            updatedTodo.priority = .normal
-                            todoList.updateTodo(updatedTodo)
-                            todo = updatedTodo
-                        }) {
-                            Image(systemName: "arrow.down")
-                                .font(.system(size: 12))
-                                .foregroundColor(Theme.secondaryText)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .help("Move to Normal priority")
-                    } else if todo.priority == .normal {
-                        Button(action: {
-                            var updatedTodo = todo
-                            updatedTodo.priority = .urgent
-                            todoList.updateTodo(updatedTodo)
-                            todo = updatedTodo
-                        }) {
-                            Image(systemName: "arrow.up")
-                                .font(.system(size: 12))
-                                .foregroundColor(Theme.secondaryText)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .help("Move to Urgent priority")
-                    }
-                }
-                // Tag management button
-                Button(action: { showingTagManagement = true }) {
-                    Image(systemName: "tag")
-                        .font(.system(size: 12))
-                        .foregroundColor(Theme.secondaryText)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .popover(isPresented: $showingTagManagement, arrowEdge: .bottom) {
-                    TagManagementPopover(
-                        todo: todo,
-                        todoList: todoList,
-                        isPresented: $showingTagManagement,
-                        isTop5: isTop5,
-                        onTagChange: {
-                            // Refresh local todo from model after tag change
-                            if isTop5 {
-                                if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
-                                    todo = updated
-                                }
-                            } else {
-                                if let updated = todoList.todos.first(where: { $0.id == todo.id }) {
-                                    todo = updated
-                                }
-                            }
-                        }
-                    )
-                    .frame(width: 250, height: 300)
-                }
-                
-                // Delete button
-                Button(action: {
-                    if isTop5 {
-                        todoList.deleteTop5Todo(todo)
-                    } else {
-                        todoList.deleteTodo(todo)
-                    }
-                }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12))
-                        .foregroundColor(Theme.secondaryText)
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-            .opacity(isHovered ? 1 : 0.6)
         }
         .padding(.vertical, 8)
         .padding(.horizontal, Theme.contentPadding)
         .background(
-            RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
-                .fill(
-                    isEditing ? Theme.accent.opacity(0.1) :
-                    (isSelected ? Theme.accent.opacity(0.08) :
-                    (isHovered ? Theme.secondaryBackground :
-                    (primaryTagColor?.opacity(0.12) ?? Color.clear)))
-                )
-                .shadow(
-                    color: isHovered ? Theme.Shadow.hoverColor : Color.clear,
-                    radius: isHovered ? Theme.Shadow.hoverRadius : 0,
-                    x: 0,
-                    y: isHovered ? Theme.Shadow.hoverY : 0
-                )
+            isEditing ? Theme.accent.opacity(0.1) :
+            (isSelected ? Theme.accent.opacity(0.08) :
+            (isHovered ? Theme.secondaryBackground :
+            (primaryTagColor?.opacity(0.12) ?? Color.clear)))
         )
-        .scaleEffect(isHovered ? 1.005 : 1.0)
         .animation(Theme.Animation.microSpring, value: isHovered)
         .animation(Theme.Animation.microSpring, value: isSelected)
         .animation(Theme.Animation.microSpring, value: isEditing)
         .onHover { hovering in
             isHovered = hovering
+        }
+        .contextMenu {
+            // Priority actions
+            if !isTop5 && !todo.isCompleted {
+                Menu("Priority") {
+                    Button {
+                        var updatedTodo = todo
+                        updatedTodo.priority = .urgent
+                        todoList.updateTodo(updatedTodo)
+                        todo = updatedTodo
+                    } label: {
+                        Label("Urgent", systemImage: "flag.fill")
+                    }
+                    .disabled(todo.priority == .urgent)
+
+                    Button {
+                        var updatedTodo = todo
+                        updatedTodo.priority = .normal
+                        todoList.updateTodo(updatedTodo)
+                        todo = updatedTodo
+                    } label: {
+                        Label("Normal", systemImage: "flag")
+                    }
+                    .disabled(todo.priority == .normal)
+
+                    Button {
+                        var updatedTodo = todo
+                        updatedTodo.priority = .whenTime
+                        todoList.updateTodo(updatedTodo)
+                        todo = updatedTodo
+                    } label: {
+                        Label("When there's time", systemImage: "clock")
+                    }
+                    .disabled(todo.priority == .whenTime)
+                }
+            }
+
+            // Tags submenu
+            Menu("Tags") {
+                // Current tags (to remove)
+                if !todo.tags.isEmpty {
+                    ForEach(todo.tags, id: \.self) { tag in
+                        Button {
+                            if isTop5 {
+                                todoList.removeTagFromTop5Todo(todo, tag: tag)
+                            } else {
+                                todoList.removeTag(from: todo, tag: tag)
+                            }
+                            // Refresh
+                            if isTop5 {
+                                if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
+                                    self.todo = updated
+                                }
+                            } else {
+                                if let updated = todoList.todos.first(where: { $0.id == todo.id }) {
+                                    self.todo = updated
+                                }
+                            }
+                        } label: {
+                            Label("Remove #\(tag)", systemImage: "minus.circle")
+                        }
+                    }
+                    Divider()
+                }
+
+                // Available tags (to add)
+                let availableTags = todoList.allTags.filter { !todo.tags.contains($0) }
+                if !availableTags.isEmpty {
+                    ForEach(availableTags, id: \.self) { tag in
+                        Button {
+                            if isTop5 {
+                                todoList.addTagToTop5Todo(todo, tag: tag)
+                            } else {
+                                todoList.addTag(to: todo, tag: tag)
+                            }
+                            // Refresh
+                            if isTop5 {
+                                if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
+                                    self.todo = updated
+                                }
+                            } else {
+                                if let updated = todoList.todos.first(where: { $0.id == todo.id }) {
+                                    self.todo = updated
+                                }
+                            }
+                        } label: {
+                            Label("Add #\(tag)", systemImage: "plus.circle")
+                        }
+                    }
+                }
+
+                Divider()
+
+                Button {
+                    showingNewTagAlert = true
+                } label: {
+                    Label("New Tag...", systemImage: "plus")
+                }
+            }
+
+            Divider()
+
+            // Edit
+            Button {
+                isEditing = true
+                editedTitle = todo.title
+                focusField = true
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+
+            // Complete/Uncomplete
+            Button {
+                var updatedTodo = todo
+                updatedTodo.isCompleted.toggle()
+                if isTop5 {
+                    todoList.toggleTop5Todo(updatedTodo)
+                } else {
+                    todoList.updateTodo(updatedTodo)
+                }
+                todo = updatedTodo
+            } label: {
+                Label(todo.isCompleted ? "Mark Incomplete" : "Mark Complete", systemImage: todo.isCompleted ? "circle" : "checkmark.circle")
+            }
+
+            Divider()
+
+            // Delete
+            Button(role: .destructive) {
+                if isTop5 {
+                    todoList.deleteTop5Todo(todo)
+                } else {
+                    todoList.deleteTodo(todo)
+                }
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+        .alert("New Tag", isPresented: $showingNewTagAlert) {
+            TextField("Tag name", text: $newTagText)
+            Button("Cancel", role: .cancel) {
+                newTagText = ""
+            }
+            Button("Add") {
+                addNewTag()
+            }
+        } message: {
+            Text("Enter a name for the new tag")
         }
         .gesture(
             TapGesture(count: 2).onEnded {
@@ -352,7 +414,7 @@ struct TodoItemView: View {
                 saveChanges()
             }
         }
-        .id("\(todo.id)-\(todo.isCompleted)-\(todo.priority.rawValue)") // Stable view identity for better performance
+        .id("\(todo.id)-\(todo.isCompleted)-\(todo.priority.rawValue)")
     }
     
     private func saveChanges() {
@@ -368,6 +430,25 @@ struct TodoItemView: View {
         }
         isEditing = false
         focusField = false
+    }
+
+    private func addNewTag() {
+        let tag = newTagText.trimmingCharacters(in: .whitespaces)
+        guard !tag.isEmpty else { return }
+
+        if isTop5 {
+            todoList.addTagToTop5Todo(todo, tag: tag)
+            if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
+                todo = updated
+            }
+        } else {
+            todoList.addTag(to: todo, tag: tag)
+            if let updated = todoList.todos.first(where: { $0.id == todo.id }) {
+                todo = updated
+            }
+        }
+
+        newTagText = ""
     }
 }
 

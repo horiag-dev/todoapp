@@ -550,10 +550,21 @@ struct TodoListView: View {
     
     private func createTodo() {
         if !newTodoTitle.isEmpty {
+            // Parse hashtags from title
+            let (cleanTitle, parsedTags) = parseHashtags(from: newTodoTitle)
+
+            // Combine parsed tags with selected tags
+            var allTags = Array(selectedTags)
+            for tag in parsedTags {
+                if !allTags.contains(tag) {
+                    allTags.append(tag)
+                }
+            }
+
             let todo = Todo(
-                title: newTodoTitle,
+                title: cleanTitle,
                 isCompleted: false,
-                tags: Array(selectedTags),
+                tags: allTags,
                 priority: newTodoPriority
             )
             todoList.addTodo(todo)
@@ -561,6 +572,23 @@ struct TodoListView: View {
             selectedTags.removeAll()
             newTodoPriority = .urgent
         }
+    }
+
+    private func parseHashtags(from text: String) -> (cleanTitle: String, tags: [String]) {
+        let words = text.components(separatedBy: " ")
+        var cleanWords: [String] = []
+        var tags: [String] = []
+
+        for word in words {
+            if word.hasPrefix("#") && word.count > 1 {
+                let tag = String(word.dropFirst())
+                tags.append(tag)
+            } else {
+                cleanWords.append(word)
+            }
+        }
+
+        return (cleanWords.joined(separator: " "), tags)
     }
 }
 
@@ -960,10 +988,21 @@ struct NewTodoInput: View {
     
     private func createTodo() {
         if !newTodoTitle.isEmpty {
+            // Parse hashtags from title
+            let (cleanTitle, parsedTags) = parseHashtags(from: newTodoTitle)
+
+            // Combine parsed tags with selected tags
+            var allTags = Array(selectedTags)
+            for tag in parsedTags {
+                if !allTags.contains(tag) {
+                    allTags.append(tag)
+                }
+            }
+
             let todo = Todo(
-                title: newTodoTitle,
+                title: cleanTitle,
                 isCompleted: false,
-                tags: Array(selectedTags),
+                tags: allTags,
                 priority: newTodoPriority
             )
             todoList.addTodo(todo)
@@ -973,6 +1012,23 @@ struct NewTodoInput: View {
             showingAISuggestions = false
             aiSuggestions = nil
         }
+    }
+
+    private func parseHashtags(from text: String) -> (cleanTitle: String, tags: [String]) {
+        let words = text.components(separatedBy: " ")
+        var cleanWords: [String] = []
+        var tags: [String] = []
+
+        for word in words {
+            if word.hasPrefix("#") && word.count > 1 {
+                let tag = String(word.dropFirst())
+                tags.append(tag)
+            } else {
+                cleanWords.append(word)
+            }
+        }
+
+        return (cleanWords.joined(separator: " "), tags)
     }
 }
 
@@ -1108,15 +1164,16 @@ struct QuotesSection: View {
 // Prominent sticky Top 5 section
 struct Top5WeekSection: View {
     @ObservedObject var todoList: TodoList
-    @State private var isHovered: Bool = false
+
+    private let accentColor = Color.blue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             // Compact header
             HStack(spacing: 8) {
-                Image(systemName: "flame.fill")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.orange)
+                Image(systemName: "star.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(accentColor)
 
                 Text("Top 5 of the Week")
                     .font(.system(size: 12, weight: .bold))
@@ -1129,7 +1186,7 @@ struct Top5WeekSection: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(Capsule().fill(Color.orange))
+                    .background(Capsule().fill(accentColor))
             }
 
             // Compact items list
@@ -1142,10 +1199,10 @@ struct Top5WeekSection: View {
         .padding(10)
         .background(
             RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
-                .fill(Color.orange.opacity(0.06))
+                .fill(accentColor.opacity(0.04))
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
-                        .stroke(Color.orange.opacity(0.15), lineWidth: 1)
+                        .stroke(accentColor.opacity(0.12), lineWidth: 1)
                 )
         )
         .padding(.horizontal, Theme.contentPadding)
@@ -1160,12 +1217,14 @@ struct Top5ItemRow: View {
     let rank: Int
     @State private var isHovered: Bool = false
 
+    private let accentColor = Color.blue
+
     var body: some View {
         HStack(spacing: 8) {
             // Rank number
             Text("\(rank)")
                 .font(.system(size: 10, weight: .bold))
-                .foregroundColor(.orange)
+                .foregroundColor(accentColor)
                 .frame(width: 14)
 
             // Checkbox
@@ -1178,7 +1237,7 @@ struct Top5ItemRow: View {
 
             // Title
             Text(todo.title)
-                .font(.system(size: 12))
+                .font(Theme.bodyFont)
                 .foregroundColor(todo.isCompleted ? Theme.secondaryText : Theme.text)
                 .strikethrough(todo.isCompleted)
                 .lineLimit(1)
@@ -1196,7 +1255,7 @@ struct Top5ItemRow: View {
         .padding(.vertical, 5)
         .background(
             RoundedRectangle(cornerRadius: 4)
-                .fill(isHovered ? Color.orange.opacity(0.08) : Color.clear)
+                .fill(isHovered ? accentColor.opacity(0.06) : Color.clear)
         )
         .animation(Theme.Animation.quickFade, value: isHovered)
         .onHover { hovering in
@@ -1289,27 +1348,17 @@ struct TodoListSections: View {
             // Top 5 of the week section (only if not excluded - shown in sticky header instead)
             if !excludeTop5 && !todoList.top5Todos.isEmpty {
                 TodoListSection(todoList: todoList, priority: nil, todos: todoList.top5Todos, customTitle: "🗓️ Top 5 of the week")
-                Rectangle()
-                    .fill(Theme.divider)
-                    .frame(height: 6)
-                    .padding(.vertical, Theme.itemSpacing * 2)
             }
             ForEach([Priority.urgent, Priority.normal, Priority.whenTime], id: \.self) { priority in
                 let todos = filterAndSortTodos(for: priority)
                 if !todos.isEmpty {
                     TodoListSection(todoList: todoList, priority: priority, todos: todos, customTitle: nil)
-                    if priority != .whenTime {
-                        Divider()
-                            .padding(.vertical, Theme.itemSpacing)
-                    }
                 }
             }
-            
+
             // Completed section
             let completedTodos = todoList.todos.filter { $0.isCompleted }
             if !completedTodos.isEmpty {
-                Divider()
-                    .padding(.vertical, Theme.itemSpacing)
                 TodoListSection(todoList: todoList, priority: nil, todos: completedTodos, customTitle: nil)
             }
             
@@ -1342,7 +1391,7 @@ struct TodoListSections: View {
                 .background(Color(NSColor.textBackgroundColor))
             }
         }
-        .padding(.vertical)
+        .padding(.bottom)
     }
 }
 
@@ -1351,7 +1400,18 @@ struct TodoListSection: View {
     let priority: Priority?
     let todos: [Todo]
     let customTitle: String?
-    
+
+    private var sectionColor: Color {
+        if let priority = priority {
+            switch priority {
+            case .urgent: return .red
+            case .normal: return .blue
+            case .whenTime: return .gray
+            }
+        }
+        return .green // Completed
+    }
+
     var title: String {
         if let customTitle = customTitle {
             return customTitle
@@ -1359,44 +1419,82 @@ struct TodoListSection: View {
         if let priority = priority {
             switch priority {
             case .urgent:
-                return "🔴 Urgent"
+                return "Urgent"
             case .normal:
-                return "🔵 Normal"
+                return "Normal"
             case .whenTime:
-                return "⚪ When there's time"
+                return "When there's time"
             }
         } else {
-            return "✅ Completed"
+            return "Completed"
         }
     }
-    
+
     var body: some View {
         if !todos.isEmpty {
-            VStack(alignment: .leading, spacing: Theme.itemSpacing) {
-                HStack {
+            VStack(alignment: .leading, spacing: 0) {
+                // Section header with colored accent
+                HStack(spacing: 10) {
+                    // Colored dot indicator
+                    Circle()
+                        .fill(sectionColor)
+                        .frame(width: 8, height: 8)
+
                     Text(title)
-                        .font(Theme.headlineFont)
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Theme.text)
+
+                    Text("\(todos.count)")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Theme.secondaryText)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(sectionColor.opacity(0.15))
+                        )
+
                     Spacer()
-                    if priority == nil && customTitle == nil { // This is the completed section
+
+                    if priority == nil && customTitle == nil {
                         Button(action: { todoList.moveAllCompletedToDeleted() }) {
-                            HStack {
+                            HStack(spacing: 4) {
                                 Image(systemName: "trash")
-                                Text("Move to Deleted")
+                                    .font(.system(size: 11))
+                                Text("Clear")
+                                    .font(.system(size: 11, weight: .medium))
                             }
-                            .foregroundColor(.red)
+                            .foregroundColor(.red.opacity(0.7))
                         }
                         .buttonStyle(PlainButtonStyle())
                     }
                 }
                 .padding(.horizontal, Theme.contentPadding)
+                .padding(.vertical, 10)
+                .background(
+                    sectionColor.opacity(0.05)
+                )
+
+                // Thin colored line under header
+                Rectangle()
+                    .fill(sectionColor.opacity(0.3))
+                    .frame(height: 1)
+
+                // Todo items
                 LazyVStack(spacing: 0) {
                     ForEach(todos) { todo in
                         TodoItemView(todoList: todoList, todo: todo, isTop5: customTitle == "🗓️ Top 5 of the week")
                     }
                 }
+                .padding(.vertical, 4)
             }
-            .padding(.vertical, 2)
+            .background(Color(NSColor.textBackgroundColor))
+            .cornerRadius(Theme.cornerRadiusMd)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
+                    .stroke(sectionColor.opacity(0.15), lineWidth: 1)
+            )
+            .padding(.vertical, 6)
             .background(Color(NSColor.textBackgroundColor))
             .contentShape(Rectangle())
             .onTapGesture {
