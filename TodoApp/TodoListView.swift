@@ -335,7 +335,7 @@ struct MarkdownRenderer: View {
                                 .foregroundColor(.secondary)
                                 .frame(width: 25, alignment: .trailing)
                             HStack {
-                                Text(try! AttributedString(markdown: item.content))
+                                Text((try? AttributedString(markdown: item.content)) ?? AttributedString(item.content))
                                 if !item.tags.isEmpty {
                                     ForEach(item.tags, id: \.self) { tag in
                                         TagPillView(tag: tag, size: .small)
@@ -349,7 +349,7 @@ struct MarkdownRenderer: View {
                             Text("•")
                                 .foregroundColor(.secondary)
                             HStack {
-                                Text(try! AttributedString(markdown: item.content))
+                                Text((try? AttributedString(markdown: item.content)) ?? AttributedString(item.content))
                                 if !item.tags.isEmpty {
                                     ForEach(item.tags, id: \.self) { tag in
                                         TagPillView(tag: tag, size: .small)
@@ -361,7 +361,7 @@ struct MarkdownRenderer: View {
                     }
                 } else {
                     HStack {
-                        Text(try! AttributedString(markdown: item.content))
+                        Text((try? AttributedString(markdown: item.content)) ?? AttributedString(item.content))
                         if !item.tags.isEmpty {
                             ForEach(item.tags, id: \.self) { tag in
                                 TagPillView(tag: tag, size: .small)
@@ -391,7 +391,6 @@ struct TodoListView: View {
     @State private var newTodoPriority: Priority = .urgent
     @State private var leftColumnWidth: CGFloat = 380
     @State private var middleColumnWidth: CGFloat = 280
-    @State private var showingSettings = false
     @State private var isTagsColumnVisible: Bool = false  // Hidden by default
     
     var body: some View {
@@ -430,15 +429,6 @@ struct TodoListView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     .help(isTagsColumnVisible ? "Hide Tags" : "Show Tags")
-
-                    // Settings button for LLM configuration
-                    Button(action: { showingSettings = true }) {
-                        Image(systemName: "gearshape")
-                    }
-                    .help("Settings")
-                    .popover(isPresented: $showingSettings) {
-                        SettingsView(llmService: todoList.llmService)
-                    }
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
@@ -717,11 +707,6 @@ struct NewTodoInput: View {
     @FocusState private var isTextFieldFocused: Bool
     @State private var selectedTags: Set<String> = []
 
-    // AI Refactoring states
-    @State private var showingAISuggestions = false
-    @State private var aiSuggestions: (title: String, tags: [String], priority: Priority)?
-    @State private var isRefactoring = false
-
     private var availableTags: [String] {
         todoList.allTags.sorted()
     }
@@ -749,20 +734,6 @@ struct NewTodoInput: View {
                     .font(.system(size: 14))
                     .focused($isTextFieldFocused)
                     .onSubmit(createTodo)
-
-                // AI Refactor button
-                if !newTodoTitle.isEmpty {
-                    Button(action: refactorWithAI) {
-                        Image(systemName: isRefactoring ? "wand.and.stars.inverse" : "wand.and.stars")
-                            .font(.system(size: 14))
-                            .foregroundColor(.purple)
-                            .rotationEffect(.degrees(isRefactoring ? 360 : 0))
-                            .animation(isRefactoring ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isRefactoring)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .disabled(isRefactoring)
-                    .help("Refactor with AI")
-                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
@@ -803,110 +774,8 @@ struct NewTodoInput: View {
                 }
                 .frame(height: 28)
             }
-            
-            // AI Suggestions Preview with smooth animation
-            if let suggestions = aiSuggestions, showingAISuggestions {
-                VStack(spacing: 8) {
-                    HStack {
-                        Text("AI Suggestions:")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.purple)
-
-                        Spacer()
-
-                        Button("Apply") {
-                            withAnimation(Theme.Animation.spring) {
-                                applyAISuggestions(suggestions)
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-
-                        Button("Dismiss") {
-                            withAnimation(Theme.Animation.spring) {
-                                showingAISuggestions = false
-                                aiSuggestions = nil
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Title: \(suggestions.title)")
-                            .font(.caption)
-                            .foregroundColor(.primary)
-
-                        HStack {
-                            Text("Tags:")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-
-                            ForEach(suggestions.tags, id: \.self) { tag in
-                                TagPillView(tag: tag, isSelected: false, interactive: false)
-                            }
-                        }
-
-                        HStack {
-                            Text("Priority:")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-
-                            Image(systemName: suggestions.priority.icon)
-                                .foregroundColor(suggestions.priority.color)
-                                .imageScale(.small)
-
-                            Text(suggestions.priority.rawValue)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .padding(10)
-                    .background(Color.purple.opacity(0.08))
-                    .cornerRadius(Theme.cornerRadiusMd)
-                }
-                .padding(.horizontal, Theme.contentPadding)
-                .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .move(edge: .top)),
-                    removal: .opacity
-                ))
-            }
         }
         .padding(.vertical, 8)
-    }
-    
-    private func refactorWithAI() {
-        guard !newTodoTitle.isEmpty else { return }
-        
-        isRefactoring = true
-        
-        Task {
-            let suggestions = await todoList.refactorTodoWithAI(newTodoTitle)
-            
-            await MainActor.run {
-                isRefactoring = false
-                
-                if let suggestions = suggestions {
-                    aiSuggestions = suggestions
-                    showingAISuggestions = true
-                } else {
-                    // Show error if available
-                    if let error = todoList.llmService.lastError {
-                        // You could show an alert here
-                        print("AI Refactoring error: \(error)")
-                    }
-                }
-            }
-        }
-    }
-    
-    private func applyAISuggestions(_ suggestions: (title: String, tags: [String], priority: Priority)) {
-        newTodoTitle = suggestions.title
-        selectedTags = Set(suggestions.tags)
-        newTodoPriority = suggestions.priority
-        showingAISuggestions = false
-        aiSuggestions = nil
     }
 
     private func createTodo() {
@@ -932,8 +801,6 @@ struct NewTodoInput: View {
             newTodoTitle = ""
             selectedTags.removeAll()
             newTodoPriority = .urgent
-            showingAISuggestions = false
-            aiSuggestions = nil
         }
     }
 
@@ -1253,7 +1120,7 @@ struct TodoListSections: View {
         // Group tagged todos by their primary tag (first tag, or "today" if it exists)
         let groupedTodos = Dictionary(grouping: taggedTodos) { todo -> String in
             // Prioritize "today" tag if it exists, otherwise use first tag
-            return todo.tags.first { $0.lowercased() == "today" } ?? todo.tags.first!
+            return todo.tags.first { $0.lowercased() == "today" } ?? todo.tags.first ?? "uncategorized"
         }
 
         // First, get sorted tagged todos

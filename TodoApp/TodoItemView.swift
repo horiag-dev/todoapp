@@ -103,9 +103,9 @@ struct TodoItemView: View {
     
     // Function to get the primary tag color for background
     private var primaryTagColor: Color? {
-        guard todo.priority == .urgent, !todo.tags.isEmpty else { return nil }
+        guard todo.priority == .urgent, let firstTag = todo.tags.first else { return nil }
         // Use the first tag as the primary tag for background color
-        return Theme.colorForTag(todo.tags.first!)
+        return Theme.colorForTag(firstTag)
     }
     
     
