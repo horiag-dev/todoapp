@@ -956,7 +956,6 @@ struct Top5WeekSection: View {
     @ObservedObject var todoList: TodoList
 
     private let sectionColor = Color.blue
-    private let accentLineColor = Color(NSColor(red: 0.90, green: 0.25, blue: 0.25, alpha: 1.0))  // Red accent line
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1000,7 +999,7 @@ struct Top5WeekSection: View {
         .cornerRadius(Theme.cornerRadiusMd)
         .overlay(
             Rectangle()
-                .fill(accentLineColor)
+                .fill(sectionColor)
                 .frame(width: 3),
             alignment: .leading
         )
@@ -1314,11 +1313,17 @@ struct TodoListSection: View {
             .background(Color(NSColor.textBackgroundColor))
             .cornerRadius(Theme.cornerRadiusMd)
             .overlay(
+                Rectangle()
+                    .fill(sectionColor)
+                    .frame(width: 3),
+                alignment: .leading
+            )
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusMd))
+            .overlay(
                 RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
                     .stroke(sectionColor.opacity(0.15), lineWidth: 1)
             )
             .padding(.vertical, 6)
-            .background(Color(NSColor.textBackgroundColor))
             .contentShape(Rectangle())
             .onTapGesture {
                 NSApp.keyWindow?.makeFirstResponder(nil)
