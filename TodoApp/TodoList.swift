@@ -44,7 +44,10 @@ class TodoList: ObservableObject {
     private let documentsDirectory: URL
     
     init() {
-        documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        guard let docsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            fatalError("Unable to access documents directory")
+        }
+        documentsDirectory = docsDir
         
         // Try to load the last used file path
         if let lastPath = UserDefaults.standard.string(forKey: "lastTodoFilePath") {
@@ -91,7 +94,7 @@ class TodoList: ObservableObject {
         let openPanel = NSOpenPanel()
         openPanel.title = "Open Todo File"
         openPanel.message = "Select an existing .md file"
-        openPanel.allowedContentTypes = [UTType(filenameExtension: "md")!]
+        openPanel.allowedContentTypes = [UTType(filenameExtension: "md") ?? .plainText]
         openPanel.allowsMultipleSelection = false
         openPanel.canChooseFiles = true
         openPanel.canChooseDirectories = false
@@ -107,7 +110,7 @@ class TodoList: ObservableObject {
         let savePanel = NSSavePanel()
         savePanel.title = "Create New Todo File"
         savePanel.message = "Choose where to save your todo list"
-        savePanel.allowedContentTypes = [UTType(filenameExtension: "md")!]
+        savePanel.allowedContentTypes = [UTType(filenameExtension: "md") ?? .plainText]
         savePanel.nameFieldStringValue = "todos.md"
         savePanel.canCreateDirectories = true
         
@@ -206,7 +209,17 @@ class TodoList: ObservableObject {
                 todos[i].tags[index] = newTag
             }
         }
-        
+
+        // Update in top5Todos as well
+        for i in 0..<top5Todos.count {
+            if let index = top5Todos[i].tags.firstIndex(of: oldTag) {
+                top5Todos[i].tags[index] = newTag
+            }
+        }
+
+        // Invalidate tags cache
+        invalidateTagsCache()
+
         // Save changes
         saveTodos()
     }
@@ -263,6 +276,7 @@ class TodoList: ObservableObject {
     }
     
     func removeBigThing(at index: Int) {
+        guard index >= 0 && index < bigThings.count else { return }
         bigThings.remove(at: index)
         saveTodos()
     }
@@ -271,23 +285,50 @@ class TodoList: ObservableObject {
         // Cancel any pending save operation
         saveWorkItem?.cancel()
 
+        // Capture current state for background save
+        let currentTodos = todos
+        let currentTop5Todos = top5Todos
+        let currentDeletedTodos = deletedTodos
+        let currentBigThings = bigThings
+        let currentGoals = goals
+        let currentQuotes = quotes
+        let fileURL = todosFileURL
+
         // Create a new debounced save operation
         let workItem = DispatchWorkItem { [weak self] in
-            self?.performSave()
+            self?.performSave(
+                todos: currentTodos,
+                top5Todos: currentTop5Todos,
+                deletedTodos: currentDeletedTodos,
+                bigThings: currentBigThings,
+                goals: currentGoals,
+                quotes: currentQuotes,
+                fileURL: fileURL
+            )
         }
         saveWorkItem = workItem
 
-        // Schedule the save after the debounce interval
-        DispatchQueue.main.asyncAfter(deadline: .now() + saveDebounceInterval, execute: workItem)
+        // Schedule the save on a background queue after the debounce interval
+        DispatchQueue.main.asyncAfter(deadline: .now() + saveDebounceInterval) {
+            DispatchQueue.global(qos: .utility).async(execute: workItem)
+        }
     }
 
-    private func performSave() {
-        guard let fileURL = todosFileURL else {
+    private func performSave(
+        todos: [Todo],
+        top5Todos: [Todo],
+        deletedTodos: [Todo],
+        bigThings: [String],
+        goals: String,
+        quotes: [String],
+        fileURL: URL?
+    ) {
+        guard let fileURL = fileURL else {
             return
         }
-        
+
         var markdownContent = "# Todo List\n\n"
-        
+
         // Add goals notepad
         if !goals.isEmpty {
             markdownContent += "## 🎯 Goals\n\n"
@@ -316,7 +357,7 @@ class TodoList: ObservableObject {
             }
             markdownContent += "\n"
         }
-        
+
         // Add big things of the week
         if !bigThings.isEmpty {
             markdownContent += "## 📋 Big Things for the Week\n\n"
@@ -325,13 +366,28 @@ class TodoList: ObservableObject {
             }
             markdownContent += "\n"
         }
-        
-        // Group todos by priority
-        let urgentTodos = todos.filter { $0.priority == .urgent && !$0.isCompleted }
-        let normalTodos = todos.filter { $0.priority == .normal && !$0.isCompleted }
-        let lowPriorityTodos = todos.filter { $0.priority == .whenTime && !$0.isCompleted }
-        let completedTodos = todos.filter { $0.isCompleted }
-        
+
+        // Group todos by priority in a single pass
+        var urgentTodos: [Todo] = []
+        var normalTodos: [Todo] = []
+        var lowPriorityTodos: [Todo] = []
+        var completedTodos: [Todo] = []
+
+        for todo in todos {
+            if todo.isCompleted {
+                completedTodos.append(todo)
+            } else {
+                switch todo.priority {
+                case .urgent:
+                    urgentTodos.append(todo)
+                case .normal:
+                    normalTodos.append(todo)
+                case .whenTime:
+                    lowPriorityTodos.append(todo)
+                }
+            }
+        }
+
         // Add urgent todos
         if !urgentTodos.isEmpty {
             markdownContent += "### 🔴 Urgent\n\n"
@@ -340,7 +396,7 @@ class TodoList: ObservableObject {
             }
             markdownContent += "\n"
         }
-        
+
         // Add normal todos
         if !normalTodos.isEmpty {
             markdownContent += "### 🔵 Normal\n\n"
@@ -349,7 +405,7 @@ class TodoList: ObservableObject {
             }
             markdownContent += "\n"
         }
-        
+
         // Add low priority todos
         if !lowPriorityTodos.isEmpty {
             markdownContent += "### ⚪ When there's time\n\n"
@@ -358,7 +414,7 @@ class TodoList: ObservableObject {
             }
             markdownContent += "\n"
         }
-        
+
         // Add completed todos
         if !completedTodos.isEmpty {
             markdownContent += "### ✅ Completed\n\n"
@@ -367,7 +423,7 @@ class TodoList: ObservableObject {
             }
             markdownContent += "\n"
         }
-        
+
         // Add deleted todos
         if !deletedTodos.isEmpty {
             markdownContent += "### 🗑️ Deleted\n\n"
@@ -375,7 +431,7 @@ class TodoList: ObservableObject {
                 markdownContent += formatTodo(todo)
             }
         }
-        
+
         do {
             try markdownContent.write(to: fileURL, atomically: true, encoding: .utf8)
         } catch {

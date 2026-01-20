@@ -112,9 +112,10 @@ class MindMapDataBuilder {
         if let tagRange = workingLine.range(of: #"\s+#(\w+)\s*$"#, options: .regularExpression) {
             let tagMatch = workingLine[tagRange]
             // Extract just the tag name (without # and whitespace)
-            let tagStart = tagMatch.firstIndex(of: "#")!
-            extractedTag = String(tagMatch[tagMatch.index(after: tagStart)...]).trimmingCharacters(in: .whitespaces)
-            workingLine = String(workingLine[..<tagRange.lowerBound])
+            if let tagStart = tagMatch.firstIndex(of: "#") {
+                extractedTag = String(tagMatch[tagMatch.index(after: tagStart)...]).trimmingCharacters(in: .whitespaces)
+                workingLine = String(workingLine[..<tagRange.lowerBound])
+            }
         }
 
         // Now extract the title

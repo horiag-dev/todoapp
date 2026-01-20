@@ -893,11 +893,11 @@ struct QuotesSection: View {
                 Spacer()
 
                 if !isCollapsed {
-                    if !todoList.quotes.isEmpty && !isEditing {
-                        // Cycle button
+                    if todoList.quotes.count > 1 && !isEditing {
+                        // Cycle button (only show if more than one quote)
                         Button(action: {
                             withAnimation(Theme.Animation.quickFade) {
-                                currentIndex = (currentIndex + 1) % todoList.quotes.count
+                                currentIndex = (currentIndex + 1) % max(1, todoList.quotes.count)
                             }
                         }) {
                             Image(systemName: "arrow.trianglehead.2.clockwise")
@@ -955,14 +955,18 @@ struct QuotesSection: View {
                         .italic()
                 } else {
                     // Display current quote - expands naturally
-                    let safeIndex = min(currentIndex, todoList.quotes.count - 1)
-                    Text(todoList.quotes[max(0, safeIndex)])
-                        .font(.system(size: 12, weight: .medium, design: .serif))
-                        .italic()
-                        .foregroundColor(Theme.text.opacity(0.85))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .transition(.opacity)
+                    // Safe access: clamp index and verify array is not empty
+                    let quotes = todoList.quotes
+                    if !quotes.isEmpty {
+                        let safeIndex = min(max(0, currentIndex), quotes.count - 1)
+                        Text(quotes[safeIndex])
+                            .font(.system(size: 12, weight: .medium, design: .serif))
+                            .italic()
+                            .foregroundColor(Theme.text.opacity(0.85))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .transition(.opacity)
+                    }
                 }
             }
         }
