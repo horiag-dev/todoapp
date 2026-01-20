@@ -26,9 +26,6 @@ class TodoList: ObservableObject {
     private var saveWorkItem: DispatchWorkItem?
     private let saveDebounceInterval: TimeInterval = 0.5
 
-    // Cached allTags to avoid recalculating on every access
-    private var _cachedAllTags: [String]?
-    private var _lastTagsHash: Int = 0
     
     var bigThingsMarkdown: String {
         var markdown = ""
@@ -217,35 +214,18 @@ class TodoList: ObservableObject {
             }
         }
 
-        // Invalidate tags cache
-        invalidateTagsCache()
-
         // Save changes
         saveTodos()
     }
     
     var allTags: [String] {
-        // Calculate hash to detect changes
-        let currentHash = (todos.flatMap { $0.tags } + top5Todos.flatMap { $0.tags }).hashValue
-
-        if let cached = _cachedAllTags, currentHash == _lastTagsHash {
-            return cached
-        }
-
         let tags = todos.flatMap { $0.tags } + top5Todos.flatMap { $0.tags }
-        let result = Array(Set(tags)).sorted()
-        _cachedAllTags = result
-        _lastTagsHash = currentHash
-        return result
+        return Array(Set(tags)).sorted()
     }
 
     /// Builds the mind map tree from goals and todos
     var mindMapNodes: [MindMapNode] {
         MindMapDataBuilder.buildMindMapTree(goals: goals, todos: todos, top5Todos: top5Todos)
-    }
-
-    private func invalidateTagsCache() {
-        _cachedAllTags = nil
     }
     
     func todosByTag(_ tag: String) -> [Todo] {
