@@ -128,8 +128,10 @@ struct EditableGoalsView: View {
                         .cornerRadius(Theme.cornerRadius)
                         .focused($isFocused)
                         .onAppear {
-                            editText = todoList.goals
-                            isFocused = true
+                            DispatchQueue.main.async {
+                                editText = todoList.goals
+                                isFocused = true
+                            }
                         }
 
                     Text("Use # for headers, - for bullets")
@@ -942,7 +944,11 @@ struct QuotesSection: View {
                             .cornerRadius(4)
                             .frame(minHeight: 60, maxHeight: 200)
                             .focused($isFocused)
-                            .onAppear { isFocused = true }
+                            .onAppear {
+                                DispatchQueue.main.async {
+                                    isFocused = true
+                                }
+                            }
 
                         Text("One quote per line")
                             .font(.system(size: 9))

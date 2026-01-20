@@ -119,14 +119,20 @@ struct MindMapView: View {
         let canvasHeight = max(viewSize.height * 2, 900)
         let center = CGPoint(x: canvasWidth / 2, y: canvasHeight / 2)
 
-        positionedNodes = MindMapLayout.calculateLayout(
+        let newPositionedNodes = MindMapLayout.calculateLayout(
             nodes: nodes,
             center: center,
             expandedNodeIds: expandedNodeIds,
             expandedGoalIds: expandedGoalIds
         )
-        canvasSize = CGSize(width: canvasWidth, height: canvasHeight)
-        centerPoint = center
+        let newCanvasSize = CGSize(width: canvasWidth, height: canvasHeight)
+
+        // Defer state updates to avoid modifying state during view update
+        DispatchQueue.main.async {
+            positionedNodes = newPositionedNodes
+            canvasSize = newCanvasSize
+            centerPoint = center
+        }
     }
 
     private func resetView() {
