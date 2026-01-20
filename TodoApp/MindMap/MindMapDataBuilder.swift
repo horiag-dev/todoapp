@@ -82,7 +82,8 @@ class MindMapDataBuilder {
             }
         }
 
-        return Array(sectionsByTag.values)
+        // Return in sorted order by tag for consistent positioning
+        return sectionsByTag.values.sorted { $0.tag < $1.tag }
     }
 
     /// Extracts a tag from the end of a line

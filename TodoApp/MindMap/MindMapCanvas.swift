@@ -8,6 +8,7 @@ struct MindMapCanvas: View {
     let centerPoint: CGPoint
     @Binding var selectedNodeId: UUID?
     @Binding var expandedNodeIds: Set<UUID>
+    @Binding var expandedGoalIds: Set<UUID>
     var onToggleTodo: ((UUID) -> Void)?
 
     // Child node width for calculating connection endpoints
@@ -75,6 +76,7 @@ struct MindMapCanvas: View {
                 BranchNodeView(
                     node: node,
                     isExpanded: expandedNodeIds.contains(node.id),
+                    isGoalExpanded: expandedGoalIds.contains(node.id),
                     isRightSide: isRightSide,
                     onToggleExpand: {
                         withAnimation(Theme.Animation.spring) {
@@ -82,6 +84,15 @@ struct MindMapCanvas: View {
                                 expandedNodeIds.remove(node.id)
                             } else {
                                 expandedNodeIds.insert(node.id)
+                            }
+                        }
+                    },
+                    onToggleGoalExpand: {
+                        withAnimation(Theme.Animation.spring) {
+                            if expandedGoalIds.contains(node.id) {
+                                expandedGoalIds.remove(node.id)
+                            } else {
+                                expandedGoalIds.insert(node.id)
                             }
                         }
                     }

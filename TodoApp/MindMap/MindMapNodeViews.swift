@@ -1,39 +1,25 @@
 import SwiftUI
 
 // MARK: - Central Node View
-/// The main central node of the mind map
+/// The main central node of the mind map - simple circle with icon
 struct CentralNodeView: View {
     let title: String
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "list.bullet.clipboard")
-                .font(.system(size: 18))
-                .foregroundColor(Theme.accent)
-
-            Text(title)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(Theme.text)
-
-            Image(systemName: "checkmark.circle")
-                .font(.system(size: 16))
-                .foregroundColor(.green.opacity(0.7))
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
+        ZStack {
+            Circle()
                 .fill(Color(NSColor.textBackgroundColor))
-                .shadow(
-                    color: Color.black.opacity(0.1),
-                    radius: 15,
-                    y: 5
-                )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Theme.divider.opacity(0.3), lineWidth: 1)
-        )
+                .frame(width: 56, height: 56)
+                .shadow(color: Color.black.opacity(0.12), radius: 10, y: 4)
+
+            Circle()
+                .stroke(Theme.accent.opacity(0.4), lineWidth: 2)
+                .frame(width: 56, height: 56)
+
+            Image(systemName: "checklist")
+                .font(.system(size: 22, weight: .medium))
+                .foregroundColor(Theme.accent)
+        }
     }
 }
 
@@ -42,11 +28,12 @@ struct CentralNodeView: View {
 struct BranchNodeView: View {
     let node: MindMapNode
     var isExpanded: Bool = false
+    var isGoalExpanded: Bool = false
     var isRightSide: Bool = true
     var onToggleExpand: (() -> Void)? = nil
+    var onToggleGoalExpand: (() -> Void)? = nil
 
     @State private var isHovered = false
-    @State private var showGoalItems = false
 
     // Fixed width for the branch node component
     private let branchWidth: CGFloat = 220
@@ -57,7 +44,7 @@ struct BranchNodeView: View {
             branchHeader
 
             // Goal items box (shown when toggled)
-            if showGoalItems && !node.goalItems.isEmpty {
+            if isGoalExpanded && !node.goalItems.isEmpty {
                 goalItemsBox
                     .frame(width: branchWidth)
                     .transition(.scale(scale: 0.9).combined(with: .opacity))
@@ -65,7 +52,7 @@ struct BranchNodeView: View {
         }
         .scaleEffect(isHovered ? 1.02 : 1.0)
         .animation(Theme.Animation.quickFade, value: isHovered)
-        .animation(Theme.Animation.spring, value: showGoalItems)
+        .animation(Theme.Animation.spring, value: isGoalExpanded)
         .onHover { hovering in
             isHovered = hovering
         }
@@ -144,17 +131,15 @@ struct BranchNodeView: View {
 
     private var goalItemsToggle: some View {
         Button(action: {
-            withAnimation(Theme.Animation.spring) {
-                showGoalItems.toggle()
-            }
+            onToggleGoalExpand?()
         }) {
-            Image(systemName: showGoalItems ? "target" : "target")
+            Image(systemName: "target")
                 .font(.system(size: 12))
-                .foregroundColor(showGoalItems ? .white : node.color.opacity(0.7))
+                .foregroundColor(isGoalExpanded ? .white : node.color.opacity(0.7))
                 .padding(6)
                 .background(
                     Circle()
-                        .fill(showGoalItems ? node.color.opacity(0.8) : node.color.opacity(0.15))
+                        .fill(isGoalExpanded ? node.color.opacity(0.8) : node.color.opacity(0.15))
                 )
         }
         .buttonStyle(PlainButtonStyle())
@@ -167,7 +152,8 @@ struct BranchNodeView: View {
                     Circle()
                         .fill(node.color)
                         .frame(width: 5, height: 5)
-                        .padding(.top, 4)
+                        .padding(.top, 5)
+
                     Text(item.title)
                         .font(.system(size: 11))
                         .foregroundColor(Theme.text)
@@ -369,3 +355,4 @@ struct ChildNodeView: View {
         )
     }
 }
+

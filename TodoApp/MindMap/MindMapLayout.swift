@@ -13,8 +13,8 @@ struct MindMapLayout {
     /// Horizontal spacing from main branch to children
     static let branchToChildSpacing: CGFloat = 200
 
-    /// Vertical spacing between sibling main branches
-    static let mainBranchSpacing: CGFloat = 80
+    /// Vertical spacing between sibling main branches (when collapsed)
+    static let mainBranchSpacing: CGFloat = 20
 
     /// Vertical spacing between child nodes
     static let childSpacing: CGFloat = 44
@@ -27,8 +27,12 @@ struct MindMapLayout {
 
     // MARK: - Layout Calculation
 
+    /// Height per goal item in the goal box
+    static let goalItemHeight: CGFloat = 20
+
     /// Calculates positions for all nodes in a horizontal tree layout
-    static func calculateLayout(nodes: [MindMapNode], center: CGPoint) -> [MindMapNode] {
+    /// Pass expandedNodeIds and expandedGoalIds to dynamically adjust spacing
+    static func calculateLayout(nodes: [MindMapNode], center: CGPoint, expandedNodeIds: Set<UUID> = [], expandedGoalIds: Set<UUID> = []) -> [MindMapNode] {
         guard !nodes.isEmpty else { return [] }
 
         var positionedNodes = nodes
@@ -43,7 +47,9 @@ struct MindMapLayout {
             indices: rightIndices,
             nodes: &positionedNodes,
             center: center,
-            isRightSide: true
+            isRightSide: true,
+            expandedNodeIds: expandedNodeIds,
+            expandedGoalIds: expandedGoalIds
         )
 
         // Position left side nodes
@@ -51,7 +57,9 @@ struct MindMapLayout {
             indices: leftIndices,
             nodes: &positionedNodes,
             center: center,
-            isRightSide: false
+            isRightSide: false,
+            expandedNodeIds: expandedNodeIds,
+            expandedGoalIds: expandedGoalIds
         )
 
         return positionedNodes
@@ -62,14 +70,18 @@ struct MindMapLayout {
         indices: [Int],
         nodes: inout [MindMapNode],
         center: CGPoint,
-        isRightSide: Bool
+        isRightSide: Bool,
+        expandedNodeIds: Set<UUID>,
+        expandedGoalIds: Set<UUID>
     ) {
         guard !indices.isEmpty else { return }
 
         // Calculate total height needed for this side
         var totalHeight: CGFloat = 0
         for index in indices {
-            totalHeight += calculateBranchHeight(node: nodes[index])
+            let isExpanded = expandedNodeIds.contains(nodes[index].id)
+            let isGoalExpanded = expandedGoalIds.contains(nodes[index].id)
+            totalHeight += calculateBranchHeight(node: nodes[index], isExpanded: isExpanded, isGoalExpanded: isGoalExpanded)
         }
         totalHeight += CGFloat(indices.count - 1) * mainBranchSpacing
 
@@ -78,7 +90,9 @@ struct MindMapLayout {
         let direction: CGFloat = isRightSide ? 1 : -1
 
         for index in indices {
-            let branchHeight = calculateBranchHeight(node: nodes[index])
+            let isExpanded = expandedNodeIds.contains(nodes[index].id)
+            let isGoalExpanded = expandedGoalIds.contains(nodes[index].id)
+            let branchHeight = calculateBranchHeight(node: nodes[index], isExpanded: isExpanded, isGoalExpanded: isGoalExpanded)
 
             // Main branch position
             let branchX = center.x + (centerToMainBranch * direction)
@@ -92,8 +106,8 @@ struct MindMapLayout {
 
             if childCount > 0 {
                 let childX = branchX + (branchToChildSpacing * direction)
-                let totalHeight = CGFloat(childCount - 1) * childSpacing
-                var itemY = branchY - totalHeight / 2
+                let childrenHeight = CGFloat(childCount - 1) * childSpacing
+                var itemY = branchY - childrenHeight / 2
 
                 for i in 0..<childCount {
                     nodes[index].children[i].position = CGPoint(x: childX, y: itemY)
@@ -105,14 +119,26 @@ struct MindMapLayout {
         }
     }
 
-    /// Calculate the height needed for a branch including potential children
-    private static func calculateBranchHeight(node: MindMapNode) -> CGFloat {
-        let childCount = node.children.count
-        if childCount <= 1 {
-            return rootNodeHeight
+    /// Calculate the height needed for a branch
+    /// Accounts for: base height, expanded children, and expanded goal box
+    private static func calculateBranchHeight(node: MindMapNode, isExpanded: Bool, isGoalExpanded: Bool) -> CGFloat {
+        var height = rootNodeHeight
+
+        // Add height for expanded children
+        if isExpanded {
+            let childCount = node.children.count
+            if childCount > 1 {
+                height = max(height, CGFloat(childCount) * childSpacing)
+            }
         }
-        // Height based on number of children when expanded
-        return max(rootNodeHeight, CGFloat(childCount) * childSpacing)
+
+        // Add height for expanded goal box
+        if isGoalExpanded && !node.goalItems.isEmpty {
+            let goalBoxHeight = CGFloat(node.goalItems.count) * goalItemHeight + 30 // padding
+            height += goalBoxHeight
+        }
+
+        return height
     }
 
     // MARK: - Canvas Size Calculation

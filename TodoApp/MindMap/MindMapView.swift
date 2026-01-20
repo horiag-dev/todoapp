@@ -11,6 +11,7 @@ struct MindMapView: View {
     @State private var lastOffset: CGSize = .zero
     @State private var selectedNodeId: UUID? = nil
     @State private var expandedNodeIds: Set<UUID> = []
+    @State private var expandedGoalIds: Set<UUID> = []  // Track which goal boxes are open
 
     // Calculated layout
     @State private var positionedNodes: [MindMapNode] = []
@@ -43,6 +44,7 @@ struct MindMapView: View {
                                     centerPoint: centerPoint,
                                     selectedNodeId: $selectedNodeId,
                                     expandedNodeIds: $expandedNodeIds,
+                                    expandedGoalIds: $expandedGoalIds,
                                     onToggleTodo: toggleTodo
                                 )
                             }
@@ -98,6 +100,12 @@ struct MindMapView: View {
             .onChange(of: todoList.top5Todos) { _ in
                 updateLayout(viewSize: geometry.size)
             }
+            .onChange(of: expandedNodeIds) { _ in
+                updateLayout(viewSize: geometry.size)
+            }
+            .onChange(of: expandedGoalIds) { _ in
+                updateLayout(viewSize: geometry.size)
+            }
         }
     }
 
@@ -111,7 +119,12 @@ struct MindMapView: View {
         let canvasHeight = max(viewSize.height * 2, 900)
         let center = CGPoint(x: canvasWidth / 2, y: canvasHeight / 2)
 
-        positionedNodes = MindMapLayout.calculateLayout(nodes: nodes, center: center)
+        positionedNodes = MindMapLayout.calculateLayout(
+            nodes: nodes,
+            center: center,
+            expandedNodeIds: expandedNodeIds,
+            expandedGoalIds: expandedGoalIds
+        )
         canvasSize = CGSize(width: canvasWidth, height: canvasHeight)
         centerPoint = center
     }
