@@ -23,7 +23,7 @@ enum Priority: String, Codable, CaseIterable {
     }
 }
 
-struct Todo: Identifiable, Codable {
+struct Todo: Identifiable, Codable, Equatable {
     // Static cached NSDataDetector for link detection (expensive to create)
     private static let linkDetector: NSDataDetector? = {
         try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)

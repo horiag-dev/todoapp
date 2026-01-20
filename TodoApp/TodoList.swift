@@ -226,6 +226,11 @@ class TodoList: ObservableObject {
         return result
     }
 
+    /// Builds the mind map tree from goals and todos
+    var mindMapNodes: [MindMapNode] {
+        MindMapDataBuilder.buildMindMapTree(goals: goals, todos: todos, top5Todos: top5Todos)
+    }
+
     private func invalidateTagsCache() {
         _cachedAllTags = nil
     }

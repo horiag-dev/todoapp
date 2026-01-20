@@ -392,6 +392,7 @@ struct TodoListView: View {
     @State private var leftColumnWidth: CGFloat = 380
     @State private var middleColumnWidth: CGFloat = 280
     @State private var isTagsColumnVisible: Bool = false  // Hidden by default
+    @State private var isInMindMapMode: Bool = false  // Toggle between list and mind map views
     
     var body: some View {
         ZStack {
@@ -412,118 +413,146 @@ struct TodoListView: View {
 
                     Spacer()
 
-                    // Tags column toggle button
+                    // Mind map toggle button
                     Button(action: {
                         withAnimation(Theme.Animation.panelSlide) {
-                            isTagsColumnVisible.toggle()
+                            isInMindMapMode.toggle()
                         }
                     }) {
-                        Image(systemName: "tag")
+                        Image(systemName: isInMindMapMode ? "list.bullet" : "circle.grid.cross")
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(isTagsColumnVisible ? Theme.accent : Theme.secondaryText)
+                            .foregroundColor(isInMindMapMode ? Theme.accent : Theme.secondaryText)
                             .frame(width: 28, height: 28)
                             .background(
                                 RoundedRectangle(cornerRadius: Theme.cornerRadius)
-                                    .fill(isTagsColumnVisible ? Theme.accent.opacity(0.15) : Color.clear)
+                                    .fill(isInMindMapMode ? Theme.accent.opacity(0.15) : Color.clear)
                             )
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .help(isTagsColumnVisible ? "Hide Tags" : "Show Tags")
+                    .help(isInMindMapMode ? "Switch to List View" : "Switch to Mind Map View")
+
+                    // Tags column toggle button (only visible in list mode)
+                    if !isInMindMapMode {
+                        Button(action: {
+                            withAnimation(Theme.Animation.panelSlide) {
+                                isTagsColumnVisible.toggle()
+                            }
+                        }) {
+                            Image(systemName: "tag")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(isTagsColumnVisible ? Theme.accent : Theme.secondaryText)
+                                .frame(width: 28, height: 28)
+                                .background(
+                                    RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                                        .fill(isTagsColumnVisible ? Theme.accent.opacity(0.15) : Color.clear)
+                                )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .help(isTagsColumnVisible ? "Hide Tags" : "Show Tags")
+                    }
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 
-                // Main Content with Resizable Columns
-                HStack(spacing: 0) {
-                    // Left Column - Goals & Quotes
-                    VStack(spacing: 0) {
-                        Text("Goals")
-                            .font(Theme.titleFont)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, Theme.contentPadding)
-                            .padding(.top, Theme.contentPadding)
-                            .padding(.bottom, 8)
+                // Main Content - Either Mind Map or List View
+                if isInMindMapMode {
+                    // Mind Map View
+                    MindMapView(todoList: todoList)
+                        .transition(.opacity)
+                } else {
+                    // List View with Resizable Columns
+                    HStack(spacing: 0) {
+                        // Left Column - Goals & Quotes
+                        VStack(spacing: 0) {
+                            Text("Goals")
+                                .font(Theme.titleFont)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, Theme.contentPadding)
+                                .padding(.top, Theme.contentPadding)
+                                .padding(.bottom, 8)
 
-                        // Quotes section (compact, at top)
-                        QuotesSection(todoList: todoList)
-                            .padding(.horizontal, Theme.contentPadding)
-                            .padding(.bottom, 12)
+                            // Quotes section (compact, at top)
+                            QuotesSection(todoList: todoList)
+                                .padding(.horizontal, Theme.contentPadding)
+                                .padding(.bottom, 12)
 
-                        // Goals section (scrollable)
-                        EditableGoalsView(todoList: todoList)
-                            .padding(.horizontal, Theme.contentPadding)
-                    }
-                    .frame(width: leftColumnWidth)
-                    
-                    // Resizable divider for Goals
-                    ResizableBar(width: $leftColumnWidth, minWidth: 200, maxWidth: 500)
+                            // Goals section (scrollable)
+                            EditableGoalsView(todoList: todoList)
+                                .padding(.horizontal, Theme.contentPadding)
+                        }
+                        .frame(width: leftColumnWidth)
 
-                    // Middle Column - Tags (Collapsible)
-                    if isTagsColumnVisible {
-                        VStack(spacing: Theme.itemSpacing) {
-                            HStack {
-                                Text("Tags")
-                                    .font(Theme.titleFont)
-                                Spacer()
-                                Button(action: {
-                                    withAnimation(Theme.Animation.panelSlide) {
-                                        isTagsColumnVisible = false
+                        // Resizable divider for Goals
+                        ResizableBar(width: $leftColumnWidth, minWidth: 200, maxWidth: 500)
+
+                        // Middle Column - Tags (Collapsible)
+                        if isTagsColumnVisible {
+                            VStack(spacing: Theme.itemSpacing) {
+                                HStack {
+                                    Text("Tags")
+                                        .font(Theme.titleFont)
+                                    Spacer()
+                                    Button(action: {
+                                        withAnimation(Theme.Animation.panelSlide) {
+                                            isTagsColumnVisible = false
+                                        }
+                                    }) {
+                                        Image(systemName: "xmark")
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .foregroundColor(Theme.secondaryText)
+                                            .frame(width: 20, height: 20)
+                                            .background(
+                                                Circle()
+                                                    .fill(Theme.secondaryText.opacity(0.1))
+                                            )
                                     }
-                                }) {
-                                    Image(systemName: "xmark")
-                                        .font(.system(size: 10, weight: .semibold))
-                                        .foregroundColor(Theme.secondaryText)
-                                        .frame(width: 20, height: 20)
-                                        .background(
-                                            Circle()
-                                                .fill(Theme.secondaryText.opacity(0.1))
-                                        )
+                                    .buttonStyle(PlainButtonStyle())
                                 }
-                                .buttonStyle(PlainButtonStyle())
+                                .padding(.horizontal, Theme.contentPadding)
+                                .padding(.vertical, Theme.contentPadding)
+
+                                TagListView(todoList: todoList, selectedTag: $selectedTag)
                             }
+                            .frame(width: middleColumnWidth)
+                            .transition(.move(edge: .leading).combined(with: .opacity))
+
+                            // Resizable divider for Tags
+                            ResizableBar(width: $middleColumnWidth, minWidth: 200, maxWidth: 400)
+                        }
+
+                        // Right Column - Todos
+                        VStack(spacing: 0) {
+                            Text("Todos")
+                                .font(Theme.titleFont)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, Theme.contentPadding)
+                                .padding(.vertical, Theme.contentPadding)
+
+                            // New Todo Input
+                            NewTodoInput(
+                                todoList: todoList,
+                                newTodoTitle: $newTodoTitle,
+                                newTodoPriority: $newTodoPriority
+                            )
+
+                            // Sticky Top 5 Section (outside ScrollView)
+                            if !todoList.top5Todos.isEmpty {
+                                Top5WeekSection(todoList: todoList)
+                                    .padding(.top, 8)
+                            }
+
+                            // Scrollable todo list (without Top 5)
+                            ScrollView {
+                                TodoListSections(todoList: todoList, excludeTop5: true)
+                            }
+                            .scrollIndicators(.hidden)
+                            .clipped()
+                            .background(Color(NSColor.textBackgroundColor))
+                            .cornerRadius(Theme.cornerRadius)
                             .padding(.horizontal, Theme.contentPadding)
-                            .padding(.vertical, Theme.contentPadding)
-
-                            TagListView(todoList: todoList, selectedTag: $selectedTag)
                         }
-                        .frame(width: middleColumnWidth)
-                        .transition(.move(edge: .leading).combined(with: .opacity))
-
-                        // Resizable divider for Tags
-                        ResizableBar(width: $middleColumnWidth, minWidth: 200, maxWidth: 400)
                     }
-                    
-                    // Right Column - Todos
-                    VStack(spacing: 0) {
-                        Text("Todos")
-                            .font(Theme.titleFont)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, Theme.contentPadding)
-                            .padding(.vertical, Theme.contentPadding)
-
-                        // New Todo Input
-                        NewTodoInput(
-                            todoList: todoList,
-                            newTodoTitle: $newTodoTitle,
-                            newTodoPriority: $newTodoPriority
-                        )
-
-                        // Sticky Top 5 Section (outside ScrollView)
-                        if !todoList.top5Todos.isEmpty {
-                            Top5WeekSection(todoList: todoList)
-                                .padding(.top, 8)
-                        }
-
-                        // Scrollable todo list (without Top 5)
-                        ScrollView {
-                            TodoListSections(todoList: todoList, excludeTop5: true)
-                        }
-                        .scrollIndicators(.hidden)
-                        .clipped()
-                        .background(Color(NSColor.textBackgroundColor))
-                        .cornerRadius(Theme.cornerRadius)
-                        .padding(.horizontal, Theme.contentPadding)
-                    }
+                    .transition(.opacity)
                 }
             }
             .frame(minWidth: 900, minHeight: 600)
