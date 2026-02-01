@@ -253,32 +253,6 @@ class QuickAddWindowController: NSObject {
 
     func setup(todoList: TodoList) {
         self.todoList = todoList
-        setupGlobalHotkey()
-    }
-
-    private func setupGlobalHotkey() {
-        // Monitor for Cmd+Shift+T globally
-        NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handleKeyEvent(event)
-        }
-
-        // Also monitor locally when app is active
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handleKeyEvent(event)
-            return event
-        }
-    }
-
-    private func handleKeyEvent(_ event: NSEvent) {
-        // Check for Cmd+Shift+T
-        guard event.modifierFlags.contains([.command, .shift]),
-              event.charactersIgnoringModifiers?.lowercased() == "t" else {
-            return
-        }
-
-        DispatchQueue.main.async {
-            self.showQuickAddPanel()
-        }
     }
 
     func showQuickAddPanel() {
