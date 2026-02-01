@@ -388,14 +388,13 @@ struct MarkdownRenderer: View {
 
 struct TodoListView: View {
     @ObservedObject var todoList: TodoList
-    @State private var selectedTag: String?
     @State private var newTodoTitle = ""
     @State private var newTodoPriority: Priority = .urgent
     @State private var leftColumnWidth: CGFloat = 380
-    @State private var middleColumnWidth: CGFloat = 280
-    @State private var isTagsColumnVisible: Bool = false  // Hidden by default
     @State private var isInMindMapMode: Bool = false  // Toggle between list and mind map views
-    
+    @State private var showingSettings: Bool = false  // Settings sheet
+    @State private var groupingMode: GroupingMode = .contextMode  // Grouping mode toggle
+
     var body: some View {
         ZStack {
             Theme.mainBackgroundGradient
@@ -433,25 +432,40 @@ struct TodoListView: View {
                     .buttonStyle(PlainButtonStyle())
                     .help(isInMindMapMode ? "Switch to List View" : "Switch to Mind Map View")
 
-                    // Tags column toggle button (only visible in list mode)
+                    // Grouping mode toggle (only in list mode)
                     if !isInMindMapMode {
                         Button(action: {
-                            withAnimation(Theme.Animation.panelSlide) {
-                                isTagsColumnVisible.toggle()
+                            withAnimation(Theme.Animation.quickFade) {
+                                groupingMode = (groupingMode == .contextMode) ? .tagMode : .contextMode
                             }
                         }) {
-                            Image(systemName: "tag")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(isTagsColumnVisible ? Theme.accent : Theme.secondaryText)
-                                .frame(width: 28, height: 28)
-                                .background(
-                                    RoundedRectangle(cornerRadius: Theme.cornerRadius)
-                                        .fill(isTagsColumnVisible ? Theme.accent.opacity(0.15) : Color.clear)
-                                )
+                            HStack(spacing: 4) {
+                                Image(systemName: groupingMode == .contextMode ? "square.grid.2x2" : "tag")
+                                    .font(.system(size: 11, weight: .medium))
+                                Text(groupingMode == .contextMode ? "Context" : "Tags")
+                                    .font(.system(size: 10, weight: .medium))
+                            }
+                            .foregroundColor(Theme.secondaryText)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Theme.secondaryBackground)
+                            )
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .help(isTagsColumnVisible ? "Hide Tags" : "Show Tags")
+                        .help(groupingMode == .contextMode ? "Switch to Tag grouping" : "Switch to Context grouping")
                     }
+
+                    // Settings button
+                    Button(action: { showingSettings = true }) {
+                        Image(systemName: "gear")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(Theme.secondaryText)
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("Settings")
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
@@ -487,41 +501,6 @@ struct TodoListView: View {
                         // Resizable divider for Goals
                         ResizableBar(width: $leftColumnWidth, minWidth: 200, maxWidth: 500)
 
-                        // Middle Column - Tags (Collapsible)
-                        if isTagsColumnVisible {
-                            VStack(spacing: Theme.itemSpacing) {
-                                HStack {
-                                    Text("Tags")
-                                        .font(Theme.titleFont)
-                                    Spacer()
-                                    Button(action: {
-                                        withAnimation(Theme.Animation.panelSlide) {
-                                            isTagsColumnVisible = false
-                                        }
-                                    }) {
-                                        Image(systemName: "xmark")
-                                            .font(.system(size: 10, weight: .semibold))
-                                            .foregroundColor(Theme.secondaryText)
-                                            .frame(width: 20, height: 20)
-                                            .background(
-                                                Circle()
-                                                    .fill(Theme.secondaryText.opacity(0.1))
-                                            )
-                                    }
-                                    .buttonStyle(PlainButtonStyle())
-                                }
-                                .padding(.horizontal, Theme.contentPadding)
-                                .padding(.vertical, Theme.contentPadding)
-
-                                TagListView(todoList: todoList, selectedTag: $selectedTag)
-                            }
-                            .frame(width: middleColumnWidth)
-                            .transition(.move(edge: .leading).combined(with: .opacity))
-
-                            // Resizable divider for Tags
-                            ResizableBar(width: $middleColumnWidth, minWidth: 200, maxWidth: 400)
-                        }
-
                         // Right Column - Todos
                         VStack(spacing: 0) {
                             Text("Todos")
@@ -545,7 +524,7 @@ struct TodoListView: View {
 
                             // Scrollable todo list (without Top 5)
                             ScrollView {
-                                TodoListSections(todoList: todoList, excludeTop5: true)
+                                TodoListSections(todoList: todoList, excludeTop5: true, groupingMode: $groupingMode)
                             }
                             .scrollIndicators(.hidden)
                             .clipped()
@@ -559,8 +538,11 @@ struct TodoListView: View {
             }
             .frame(minWidth: 900, minHeight: 600)
         }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
+        }
     }
-    
+
     private func createTodo() {
         if !newTodoTitle.isEmpty {
             // Parse hashtags from title
@@ -738,8 +720,18 @@ struct NewTodoInput: View {
     @FocusState private var isTextFieldFocused: Bool
     @State private var selectedTags: Set<String> = []
 
+    // AI Suggestion state
+    @State private var suggestedContext: String? = nil
+    @State private var isLoadingSuggestions: Bool = false
+    @State private var suggestionError: String? = nil
+    @State private var showSuggestions: Bool = false
+
     private var availableTags: [String] {
         todoList.allTags.sorted()
+    }
+
+    private var hasAPIKey: Bool {
+        APIKeyManager.shared.hasAPIKey
     }
 
     var body: some View {
@@ -747,16 +739,13 @@ struct NewTodoInput: View {
             // Main input row
             HStack(spacing: 10) {
                 // Priority indicator
-                Image(systemName: newTodoPriority == .urgent ? "flag.fill" : (newTodoPriority == .normal ? "flag" : "clock.fill"))
+                Image(systemName: newTodoPriority == .urgent ? "flag.fill" : "flag")
                     .font(.system(size: 14))
-                    .foregroundColor(newTodoPriority == .urgent ? .red : (newTodoPriority == .normal ? Theme.accent : Theme.secondaryText))
+                    .foregroundColor(newTodoPriority == .urgent ? .red : Theme.accent)
                     .onTapGesture {
                         withAnimation(Theme.Animation.microSpring) {
-                            switch newTodoPriority {
-                            case .urgent: newTodoPriority = .normal
-                            case .normal: newTodoPriority = .whenTime
-                            case .whenTime: newTodoPriority = .urgent
-                            }
+                            // Toggle between urgent and normal
+                            newTodoPriority = (newTodoPriority == .urgent) ? .normal : .urgent
                         }
                     }
 
@@ -765,6 +754,31 @@ struct NewTodoInput: View {
                     .font(.system(size: 14))
                     .focused($isTextFieldFocused)
                     .onSubmit(createTodo)
+                    .onChange(of: newTodoTitle) { _, newValue in
+                        // Reset suggestions when title changes significantly
+                        if showSuggestions && newValue.count < 3 {
+                            showSuggestions = false
+                            suggestedContext = nil
+                        }
+                    }
+
+                // AI Suggest button (only show if API key exists and title has content)
+                if hasAPIKey && newTodoTitle.count >= 3 {
+                    Button(action: fetchSuggestions) {
+                        if isLoadingSuggestions {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                                .frame(width: 20, height: 20)
+                        } else {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 12))
+                                .foregroundColor(showSuggestions ? Theme.accent : Theme.secondaryText)
+                        }
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("Suggest tags with AI")
+                    .disabled(isLoadingSuggestions)
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
@@ -776,17 +790,71 @@ struct NewTodoInput: View {
             )
             .padding(.horizontal, Theme.contentPadding)
 
+            // AI Suggestions row
+            if showSuggestions && suggestedContext != nil {
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 10))
+                        .foregroundColor(.purple)
+
+                    Text("Context:")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(Theme.secondaryText)
+
+                    // Context tag suggestion
+                    if let context = suggestedContext {
+                        SuggestionChip(
+                            tag: context,
+                            isSelected: selectedTags.contains(context),
+                            isContext: true
+                        ) {
+                            toggleTag(context)
+                        }
+                    }
+
+                    Spacer()
+
+                    // Dismiss suggestions
+                    Button(action: {
+                        withAnimation(Theme.Animation.quickFade) {
+                            showSuggestions = false
+                        }
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 9))
+                            .foregroundColor(Theme.secondaryText)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                .padding(.horizontal, Theme.contentPadding)
+                .padding(.vertical, 4)
+                .background(Color.purple.opacity(0.05))
+                .cornerRadius(Theme.cornerRadius)
+                .padding(.horizontal, Theme.contentPadding)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            // Error message
+            if let error = suggestionError {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 10))
+                        .foregroundColor(.orange)
+                    Text(error)
+                        .font(.system(size: 10))
+                        .foregroundColor(.orange)
+                    Spacer()
+                }
+                .padding(.horizontal, Theme.contentPadding)
+            }
+
             // Quick tag buttons
             if !availableTags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
                         ForEach(availableTags, id: \.self) { tag in
                             Button(action: {
-                                if selectedTags.contains(tag) {
-                                    selectedTags.remove(tag)
-                                } else {
-                                    selectedTags.insert(tag)
-                                }
+                                toggleTag(tag)
                             }) {
                                 Text("#\(tag)")
                                     .font(.system(size: 11, weight: .medium))
@@ -807,6 +875,47 @@ struct NewTodoInput: View {
             }
         }
         .padding(.vertical, 8)
+        .animation(Theme.Animation.quickFade, value: showSuggestions)
+    }
+
+    private func toggleTag(_ tag: String) {
+        if selectedTags.contains(tag) {
+            selectedTags.remove(tag)
+        } else {
+            selectedTags.insert(tag)
+        }
+    }
+
+    private func fetchSuggestions() {
+        guard !isLoadingSuggestions else { return }
+
+        isLoadingSuggestions = true
+        suggestionError = nil
+
+        Task {
+            do {
+                let suggestion = try await ClaudeCategorizationService.shared.suggestTags(
+                    todoText: newTodoTitle,
+                    existingTags: todoList.allTags,
+                    goalSections: []
+                )
+
+                await MainActor.run {
+                    suggestedContext = suggestion.context
+                    // Auto-apply the context tag if found
+                    if let context = suggestion.context {
+                        selectedTags.insert(context)
+                    }
+                    showSuggestions = suggestion.context != nil
+                    isLoadingSuggestions = false
+                }
+            } catch {
+                await MainActor.run {
+                    suggestionError = error.localizedDescription
+                    isLoadingSuggestions = false
+                }
+            }
+        }
     }
 
     private func createTodo() {
@@ -831,6 +940,8 @@ struct NewTodoInput: View {
             todoList.addTodo(todo)
             newTodoTitle = ""
             selectedTags.removeAll()
+            suggestedContext = nil
+            showSuggestions = false
             newTodoPriority = .urgent
         }
     }
@@ -850,6 +961,49 @@ struct NewTodoInput: View {
         }
 
         return (cleanWords.joined(separator: " "), tags)
+    }
+}
+
+// Suggestion chip for AI-suggested tags
+struct SuggestionChip: View {
+    let tag: String
+    let isSelected: Bool
+    let isContext: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 3) {
+                if isContext {
+                    Image(systemName: iconForContext(tag))
+                        .font(.system(size: 8))
+                }
+                Text("#\(tag)")
+                    .font(.system(size: 10, weight: .medium))
+            }
+            .foregroundColor(isSelected ? .white : Theme.colorForTag(tag))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(
+                Capsule()
+                    .fill(isSelected ? Theme.colorForTag(tag) : Theme.colorForTag(tag).opacity(0.2))
+            )
+            .overlay(
+                Capsule()
+                    .stroke(isContext ? Color.purple.opacity(0.5) : Color.clear, lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private func iconForContext(_ context: String) -> String {
+        switch context.lowercased() {
+        case "prep": return "calendar"
+        case "reply": return "arrowshape.turn.up.left"
+        case "deep": return "brain.head.profile"
+        case "waiting": return "hourglass"
+        default: return "tag"
+        }
     }
 }
 
@@ -1101,104 +1255,181 @@ struct Top5ItemRow: View {
     }
 }
 
+// Grouping mode for todo list
+enum GroupingMode: String, CaseIterable {
+    case contextMode = "Context"   // Group by context tags (prep, reply, deep, waiting)
+    case tagMode = "Tags"          // Group by any tags, sorted by frequency
+}
+
+// Context section configuration
+struct ContextSection: Identifiable {
+    let id: String
+    let title: String
+    let icon: String
+    let color: Color
+    let contextTag: String? // nil for special sections like Today, Urgent, Other
+
+    static let today = ContextSection(id: "today", title: "Today", icon: "pin.fill", color: Theme.todayTagColor, contextTag: nil)
+    static let urgent = ContextSection(id: "urgent", title: "Urgent", icon: "flame.fill", color: Theme.urgentTagColor, contextTag: nil)
+    static let other = ContextSection(id: "other", title: "Other", icon: "tray", color: .gray, contextTag: nil)
+    static let completed = ContextSection(id: "completed", title: "Completed", icon: "checkmark.circle.fill", color: .green, contextTag: nil)
+
+    // Get context tags from configuration
+    static var contextTags: [String] {
+        ContextConfigManager.shared.contextTags
+    }
+
+    // Build context sections from configuration
+    static var contextSections: [ContextSection] {
+        var sections = ContextConfigManager.shared.contexts.map { config in
+            ContextSection(
+                id: config.id,
+                title: config.name,
+                icon: config.icon,
+                color: config.color,
+                contextTag: config.id
+            )
+        }
+        sections.append(.other)
+        return sections
+    }
+
+    // Get a section for a specific context tag
+    static func section(for contextTag: String) -> ContextSection? {
+        if let config = ContextConfigManager.shared.context(for: contextTag) {
+            return ContextSection(
+                id: config.id,
+                title: config.name,
+                icon: config.icon,
+                color: config.color,
+                contextTag: config.id
+            )
+        }
+        return nil
+    }
+}
+
 struct TodoListSections: View {
     @ObservedObject var todoList: TodoList
     var excludeTop5: Bool = false
+    @Binding var groupingMode: GroupingMode
 
-    // Cache for filtered and sorted todos to improve performance
-    @State private var cachedFilteredTodos: [Priority: [Todo]] = [:]
-    @State private var lastTodoListHash: Int = 0
-    
-    private func filterAndSortTodos(for priority: Priority) -> [Todo] {
-        // Create a simple hash of the todo list to detect changes
-        let currentHash = todoList.todos.map { "\($0.id)\($0.isCompleted)\($0.priority.rawValue)\($0.tags.joined())" }.joined().hashValue
+    // Get todos for a specific urgency level (Today or Urgent)
+    private func todosForUrgency(_ urgencyType: String) -> [Todo] {
+        let incompleteTodos = todoList.todos.filter { !$0.isCompleted }
 
-        // Return cached result if nothing has changed
-        if currentHash == lastTodoListHash, let cached = cachedFilteredTodos[priority] {
-            return cached
-        }
-
-        // Update cache if needed
-        if currentHash != lastTodoListHash {
-            cachedFilteredTodos.removeAll()
-            lastTodoListHash = currentHash
-        }
-        let filteredTodos = todoList.todos.filter { todo in
-            if todo.isCompleted {
-                return false
+        switch urgencyType {
+        case "today":
+            return incompleteTodos.filter { todo in
+                todo.tags.contains { $0.lowercased() == "today" }
             }
-            
-            // Check if todo has urgent/today tags
-            let hasUrgentTag = todo.tags.contains { $0.lowercased() == "urgent" || $0.lowercased() == "today" }
-            
-            switch priority {
-            case .urgent:
-                // Include todos with urgent priority OR urgent/today tags
-                return todo.priority == .urgent || hasUrgentTag
-            case .normal:
-                // Only include normal priority todos WITHOUT urgent/today tags
-                return todo.priority == .normal && !hasUrgentTag
-            case .whenTime:
-                // Only include whenTime priority todos WITHOUT urgent/today tags
-                return todo.priority == .whenTime && !hasUrgentTag
+        case "urgent":
+            return incompleteTodos.filter { todo in
+                let hasToday = todo.tags.contains { $0.lowercased() == "today" }
+                let hasUrgent = todo.tags.contains { $0.lowercased() == "urgent" }
+                return !hasToday && (hasUrgent || todo.priority == .urgent)
             }
+        default:
+            return []
         }
-        
-        // Separate todos into tagged and untagged groups
-        let untaggedTodos = filteredTodos.filter { todo in
-            // Consider a todo untagged if it has no tags
-            todo.tags.isEmpty
-        }
-        
-        let taggedTodos = filteredTodos.filter { todo in
-            // Consider a todo tagged if it has at least one tag
-            !todo.tags.isEmpty
-        }
-        
-        // Group tagged todos by their primary tag (first tag, or "today" if it exists)
-        let groupedTodos = Dictionary(grouping: taggedTodos) { todo -> String in
-            // Prioritize "today" tag if it exists, otherwise use first tag
-            return todo.tags.first { $0.lowercased() == "today" } ?? todo.tags.first ?? "uncategorized"
+    }
+
+    // Get todos grouped by context within an urgency level
+    private func todosByContext(from todos: [Todo], groupOtherByTags: Bool = false) -> [(context: ContextSection, todos: [Todo])] {
+        var result: [(context: ContextSection, todos: [Todo])] = []
+
+        for contextSection in ContextSection.contextSections {
+            let contextTodos: [Todo]
+            if contextSection.id == "other" {
+                // "Other" = todos without any context tag
+                contextTodos = todos.filter { todo in
+                    !todo.tags.contains { tag in
+                        ContextSection.contextTags.contains(tag.lowercased())
+                    }
+                }
+            } else if let contextTag = contextSection.contextTag {
+                contextTodos = todos.filter { todo in
+                    todo.tags.contains { $0.lowercased() == contextTag }
+                }
+            } else {
+                contextTodos = []
+            }
+
+            if !contextTodos.isEmpty {
+                result.append((contextSection, contextTodos.sorted { $0.title.lowercased() < $1.title.lowercased() }))
+            }
         }
 
-        // First, get sorted tagged todos
-        let sortedTaggedTodos = groupedTodos.sorted { $0.key < $1.key }
-            .flatMap { _, todos in
-                // Within each tag group, sort todos alphabetically by title
-                todos.sorted { $0.title.lowercased() < $1.title.lowercased() }
-            }
-        
-        // Then append untagged todos, sorted alphabetically
-        let sortedUntaggedTodos = untaggedTodos.sorted { $0.title.lowercased() < $1.title.lowercased() }
-        
-        // Combine the results with untagged todos at the end
-        let result = sortedTaggedTodos + sortedUntaggedTodos
-        
-        // Cache the result
-        cachedFilteredTodos[priority] = result
-        
         return result
     }
-    
+
+    // Get todos for flat context sections (context-first mode)
+    private func todosForSection(_ section: ContextSection) -> [Todo] {
+        let incompleteTodos = todoList.todos.filter { !$0.isCompleted }
+
+        switch section.id {
+        case "today":
+            return incompleteTodos.filter { todo in
+                todo.tags.contains { $0.lowercased() == "today" }
+            }.sorted { $0.title.lowercased() < $1.title.lowercased() }
+
+        case "urgent":
+            return incompleteTodos.filter { todo in
+                let hasToday = todo.tags.contains { $0.lowercased() == "today" }
+                let hasUrgent = todo.tags.contains { $0.lowercased() == "urgent" }
+                return !hasToday && (hasUrgent || todo.priority == .urgent)
+            }.sorted { $0.title.lowercased() < $1.title.lowercased() }
+
+        case "prep", "reply", "deep", "waiting":
+            guard let contextTag = section.contextTag else { return [] }
+            return incompleteTodos.filter { todo in
+                let hasToday = todo.tags.contains { $0.lowercased() == "today" }
+                let hasUrgent = todo.tags.contains { $0.lowercased() == "urgent" }
+                let isUrgentPriority = todo.priority == .urgent
+                let hasContextTag = todo.tags.contains { $0.lowercased() == contextTag }
+                return hasContextTag && !hasToday && !hasUrgent && !isUrgentPriority
+            }.sorted { $0.title.lowercased() < $1.title.lowercased() }
+
+        case "other":
+            return incompleteTodos.filter { todo in
+                let hasToday = todo.tags.contains { $0.lowercased() == "today" }
+                let hasUrgent = todo.tags.contains { $0.lowercased() == "urgent" }
+                let isUrgentPriority = todo.priority == .urgent
+                let hasContextTag = todo.tags.contains { tag in
+                    ContextSection.contextTags.contains(tag.lowercased())
+                }
+                return !hasToday && !hasUrgent && !isUrgentPriority && !hasContextTag
+            }.sorted { $0.title.lowercased() < $1.title.lowercased() }
+
+        case "completed":
+            return todoList.todos.filter { $0.isCompleted }
+                .sorted { $0.title.lowercased() < $1.title.lowercased() }
+
+        default:
+            return []
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            // Top 5 of the week section (only if not excluded - shown in sticky header instead)
+            // Top 5 of the week section
             if !excludeTop5 && !todoList.top5Todos.isEmpty {
-                TodoListSection(todoList: todoList, priority: nil, todos: todoList.top5Todos, customTitle: "🗓️ Top 5 of the week")
-            }
-            ForEach([Priority.urgent, Priority.normal, Priority.whenTime], id: \.self) { priority in
-                let todos = filterAndSortTodos(for: priority)
-                if !todos.isEmpty {
-                    TodoListSection(todoList: todoList, priority: priority, todos: todos, customTitle: nil)
-                }
+                ContextTodoSection(
+                    todoList: todoList,
+                    section: ContextSection(id: "top5", title: "Top 5 of the Week", icon: "star.fill", color: .blue, contextTag: nil),
+                    todos: todoList.top5Todos,
+                    isTop5: true
+                )
             }
 
-            // Completed section
-            let completedTodos = todoList.todos.filter { $0.isCompleted }
-            if !completedTodos.isEmpty {
-                TodoListSection(todoList: todoList, priority: nil, todos: completedTodos, customTitle: nil)
+            if groupingMode == .contextMode {
+                // CONTEXT MODE: Today/Urgent with context sub-groups
+                contextModeView
+            } else {
+                // TAG MODE: Group by any tags, sorted by frequency
+                tagModeView
             }
-            
+
             // Deleted section
             if !todoList.deletedTodos.isEmpty {
                 DisclosureGroup(
@@ -1230,67 +1461,468 @@ struct TodoListSections: View {
         }
         .padding(.bottom)
     }
+
+    // Context mode view - Today (flat), Urgent/Normal with context sub-groups
+    @ViewBuilder
+    private var contextModeView: some View {
+        // Today section - simple flat list, no context grouping
+        let todayTodos = todosForUrgency("today")
+        if !todayTodos.isEmpty {
+            ContextTodoSection(
+                todoList: todoList,
+                section: .today,
+                todos: todayTodos,
+                isTop5: false
+            )
+        }
+
+        // Urgent section with context sub-groups
+        let urgentTodos = todosForUrgency("urgent")
+        if !urgentTodos.isEmpty {
+            UrgencySectionWithContextGroups(
+                todoList: todoList,
+                urgencySection: .urgent,
+                todosByContext: todosByContextOnly(from: urgentTodos)
+            )
+        }
+
+        // Normal priority todos (not today, not urgent) - with context sub-groups
+        let normalTodos = todoList.todos.filter { todo in
+            !todo.isCompleted &&
+            !todo.tags.contains { $0.lowercased() == "today" } &&
+            !todo.tags.contains { $0.lowercased() == "urgent" } &&
+            todo.priority != .urgent
+        }
+        if !normalTodos.isEmpty {
+            UrgencySectionWithContextGroups(
+                todoList: todoList,
+                urgencySection: ContextSection(id: "normal", title: "Normal", icon: "tray.full", color: .gray, contextTag: nil),
+                todosByContext: todosByContextOnly(from: normalTodos)
+            )
+        }
+
+        // Completed section
+        let completedTodos = todoList.todos.filter { $0.isCompleted }
+        if !completedTodos.isEmpty {
+            ContextTodoSection(
+                todoList: todoList,
+                section: .completed,
+                todos: completedTodos,
+                isTop5: false
+            )
+        }
+    }
+
+    // Get todos grouped by context only - "Other" is a flat list (no tag headers)
+    private func todosByContextOnly(from todos: [Todo]) -> [(context: ContextSection, todos: [Todo])] {
+        var result: [(context: ContextSection, todos: [Todo])] = []
+        let contextTags = ContextSection.contextTags
+
+        // Group by context tags
+        for contextSection in ContextSection.contextSections {
+            if contextSection.id == "other" {
+                continue // Handle "Other" separately
+            }
+            if let contextTag = contextSection.contextTag {
+                let contextTodos = todos.filter { todo in
+                    todo.tags.contains { $0.lowercased() == contextTag }
+                }
+                if !contextTodos.isEmpty {
+                    result.append((contextSection, contextTodos.sorted { $0.title.lowercased() < $1.title.lowercased() }))
+                }
+            }
+        }
+
+        // "Other" - todos without context tags, grouped by primary tag but NO headers
+        let otherTodos = todos.filter { todo in
+            !todo.tags.contains { tag in contextTags.contains(tag.lowercased()) }
+        }
+
+        if !otherTodos.isEmpty {
+            // Count tag frequency
+            var tagCounts: [String: Int] = [:]
+            for todo in otherTodos {
+                for tag in todo.tags {
+                    tagCounts[tag, default: 0] += 1
+                }
+            }
+
+            // Sort tags by frequency (descending), then alphabetically
+            let sortedTags = tagCounts.keys.sorted { tag1, tag2 in
+                let count1 = tagCounts[tag1] ?? 0
+                let count2 = tagCounts[tag2] ?? 0
+                if count1 != count2 { return count1 > count2 }
+                return tag1.lowercased() < tag2.lowercased()
+            }
+
+            // Assign each todo to its highest-priority (most frequent) tag
+            var primaryTag: [UUID: String] = [:]
+            for todo in otherTodos {
+                for tag in sortedTags {
+                    if todo.tags.contains(tag) {
+                        primaryTag[todo.id] = tag
+                        break
+                    }
+                }
+            }
+
+            // Sort todos: group by primary tag (in frequency order), then by title within group
+            let sortedOther = otherTodos.sorted { todo1, todo2 in
+                let tag1 = primaryTag[todo1.id]
+                let tag2 = primaryTag[todo2.id]
+
+                // Both have tags - compare by tag priority
+                if let t1 = tag1, let t2 = tag2 {
+                    let idx1 = sortedTags.firstIndex(of: t1) ?? Int.max
+                    let idx2 = sortedTags.firstIndex(of: t2) ?? Int.max
+                    if idx1 != idx2 { return idx1 < idx2 }
+                }
+                // One has tag, one doesn't - tagged first
+                if tag1 != nil && tag2 == nil { return true }
+                if tag1 == nil && tag2 != nil { return false }
+
+                // Same tag or both untagged - sort by title
+                return todo1.title.lowercased() < todo2.title.lowercased()
+            }
+
+            result.append((.other, sortedOther))
+        }
+
+        return result
+    }
+
+    // Compute tag groups for tag mode - each todo assigned to exactly one group
+    // Excludes context tags (prep, reply, deep, waiting) - only shows actual tags
+    private func computeTagGroups() -> [(tag: String?, todos: [Todo])] {
+        let incompleteTodos = todoList.todos.filter { !$0.isCompleted }
+        let contextTags = ContextSection.contextTags
+
+        // Count todos per tag (for priority sorting), excluding context tags
+        var tagCounts: [String: Int] = [:]
+        for todo in incompleteTodos {
+            for tag in todo.tags {
+                // Skip context tags - they're not regular tags
+                if contextTags.contains(tag.lowercased()) {
+                    continue
+                }
+                tagCounts[tag, default: 0] += 1
+            }
+        }
+
+        // Sort tags by count (descending), then alphabetically
+        let sortedTags = tagCounts.keys.sorted { tag1, tag2 in
+            let count1 = tagCounts[tag1] ?? 0
+            let count2 = tagCounts[tag2] ?? 0
+            if count1 != count2 {
+                return count1 > count2
+            }
+            return tag1.lowercased() < tag2.lowercased()
+        }
+
+        // Assign each todo to its highest-priority tag (excluding context tags)
+        var todoAssignments: [UUID: String] = [:]
+        for todo in incompleteTodos {
+            let nonContextTags = todo.tags.filter { !contextTags.contains($0.lowercased()) }
+            if nonContextTags.isEmpty {
+                continue // Will go to untagged
+            }
+            // Find the highest priority tag this todo has
+            for tag in sortedTags {
+                if nonContextTags.contains(tag) {
+                    todoAssignments[todo.id] = tag
+                    break
+                }
+            }
+        }
+
+        // Build groups
+        var groups: [(tag: String?, todos: [Todo])] = []
+
+        for tag in sortedTags {
+            let tagTodos = incompleteTodos.filter { todoAssignments[$0.id] == tag }
+            if !tagTodos.isEmpty {
+                groups.append((tag: tag, todos: tagTodos))
+            }
+        }
+
+        // Untagged todos (todos with no tags OR only context tags)
+        let untaggedTodos = incompleteTodos.filter { todo in
+            let nonContextTags = todo.tags.filter { !contextTags.contains($0.lowercased()) }
+            return nonContextTags.isEmpty
+        }
+        if !untaggedTodos.isEmpty {
+            groups.append((tag: nil, todos: untaggedTodos))
+        }
+
+        return groups
+    }
+
+    // Tag mode view - group by any tag, sorted by frequency
+    @ViewBuilder
+    private var tagModeView: some View {
+        let tagGroups = computeTagGroups()
+
+        ForEach(Array(tagGroups.enumerated()), id: \.offset) { _, group in
+            TagGroupSection(
+                todoList: todoList,
+                tag: group.tag,
+                todos: group.todos,
+                count: group.todos.count
+            )
+        }
+
+        // Completed section
+        let completedTodos = todoList.todos.filter { $0.isCompleted }
+        if !completedTodos.isEmpty {
+            ContextTodoSection(
+                todoList: todoList,
+                section: .completed,
+                todos: completedTodos,
+                isTop5: false
+            )
+        }
+    }
 }
 
-struct TodoListSection: View {
-    let todoList: TodoList
-    let priority: Priority?
+// Urgency section (Today/Urgent) with context sub-groups inside
+struct UrgencySectionWithContextGroups: View {
+    @ObservedObject var todoList: TodoList
+    let urgencySection: ContextSection
+    let todosByContext: [(context: ContextSection, todos: [Todo])]
+
+    var totalCount: Int {
+        todosByContext.reduce(0) { $0 + $1.todos.count }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Main urgency header
+            HStack(spacing: 10) {
+                Image(systemName: urgencySection.icon)
+                    .font(.system(size: 14))
+                    .foregroundColor(urgencySection.color)
+
+                Text(urgencySection.title)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(urgencySection.color)
+
+                Text("\(totalCount)")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(urgencySection.color))
+
+                Spacer()
+
+                // Clear Today button (only for Today section)
+                if urgencySection.id == "today" {
+                    Button(action: { todoList.clearTodayTags() }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "xmark.circle")
+                                .font(.system(size: 11))
+                            Text("Clear")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .foregroundColor(urgencySection.color.opacity(0.8))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("Remove #today tag from all items")
+                }
+            }
+            .padding(.horizontal, Theme.contentPadding)
+            .padding(.vertical, 12)
+            .background(urgencySection.color.opacity(0.08))
+
+            Rectangle()
+                .fill(urgencySection.color.opacity(0.5))
+                .frame(height: 2)
+
+            // Context sub-groups
+            VStack(spacing: 0) {
+                ForEach(todosByContext, id: \.context.id) { item in
+                    ContextSubGroup(
+                        todoList: todoList,
+                        context: item.context,
+                        todos: item.todos,
+                        parentColor: urgencySection.color
+                    )
+                }
+            }
+        }
+        .background(Color(NSColor.textBackgroundColor))
+        .cornerRadius(Theme.cornerRadiusMd)
+        .overlay(
+            Rectangle()
+                .fill(urgencySection.color)
+                .frame(width: 3),
+            alignment: .leading
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusMd))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
+                .stroke(urgencySection.color.opacity(0.15), lineWidth: 1)
+        )
+        .padding(.vertical, 6)
+    }
+}
+
+// Context sub-group within an urgency section
+struct ContextSubGroup: View {
+    @ObservedObject var todoList: TodoList
+    let context: ContextSection
     let todos: [Todo]
-    let customTitle: String?
+    let parentColor: Color
 
-    private var sectionColor: Color {
-        if let priority = priority {
-            switch priority {
-            case .urgent: return .red
-            case .normal: return .blue
-            case .whenTime: return .gray
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Sub-group with left color bar for clear identification
+            HStack(spacing: 0) {
+                // Left color indicator bar
+                Rectangle()
+                    .fill(context.color)
+                    .frame(width: 3)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    // Sub-group header
+                    HStack(spacing: 6) {
+                        Image(systemName: context.icon)
+                            .font(.system(size: 11))
+                            .foregroundColor(context.color)
+
+                        Text(context.title)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(context.color)
+
+                        Text("\(todos.count)")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule()
+                                    .fill(context.color)
+                            )
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(context.color.opacity(0.08))
+
+                    // Todos in this context - with context background color
+                    ForEach(todos) { todo in
+                        TodoItemView(todoList: todoList, todo: todo, isTop5: false, groupColor: context.color)
+                    }
+                }
             }
+            .background(Color(NSColor.textBackgroundColor))
+            .cornerRadius(6)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
         }
-        return .green // Completed
+    }
+}
+
+// Tag-based section view for tag mode grouping
+struct TagGroupSection: View {
+    @ObservedObject var todoList: TodoList
+    let tag: String?  // nil for untagged
+    let todos: [Todo]
+    let count: Int
+
+    private var tagColor: Color {
+        if let tag = tag {
+            return Theme.colorForTag(tag)
+        }
+        return .gray
     }
 
-    var title: String {
-        if let customTitle = customTitle {
-            return customTitle
-        }
-        if let priority = priority {
-            switch priority {
-            case .urgent:
-                return "Urgent"
-            case .normal:
-                return "Normal"
-            case .whenTime:
-                return "When there's time"
-            }
-        } else {
-            return "Completed"
-        }
+    private var displayName: String {
+        tag ?? "Untagged"
     }
+
+    private var icon: String {
+        if let tag = tag {
+            return ContextConfigManager.shared.icon(for: tag)
+        }
+        return "tray"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 0) {
+                // Left color bar
+                Rectangle()
+                    .fill(tagColor)
+                    .frame(width: 4)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    // Header
+                    HStack(spacing: 10) {
+                        Image(systemName: icon)
+                            .font(.system(size: 14))
+                            .foregroundColor(tagColor)
+
+                        Text(displayName)
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(Theme.text)
+
+                        Text("\(todos.count)")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(
+                                Capsule()
+                                    .fill(tagColor)
+                            )
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, Theme.contentPadding)
+                    .padding(.vertical, 12)
+                    .background(tagColor.opacity(0.1))
+
+                    // Todo items with unified background color
+                    LazyVStack(spacing: 0) {
+                        ForEach(todos) { todo in
+                            TodoItemView(todoList: todoList, todo: todo, isTop5: false, groupColor: tagColor)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+            .background(Color(NSColor.textBackgroundColor))
+            .cornerRadius(Theme.cornerRadiusMd)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
+                    .stroke(tagColor.opacity(0.2), lineWidth: 1)
+            )
+        }
+        .padding(.vertical, 6)
+    }
+}
+
+// Context-based section view (replaces TodoListSection)
+struct ContextTodoSection: View {
+    @ObservedObject var todoList: TodoList
+    let section: ContextSection
+    let todos: [Todo]
+    var isTop5: Bool = false
 
     var body: some View {
         if !todos.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
                 // Section header with colored accent
                 HStack(spacing: 10) {
-                    // Icon for priority sections
-                    if let priority = priority {
-                        Image(systemName: priority == .urgent ? "exclamationmark.circle.fill" : (priority == .normal ? "circle.fill" : "clock"))
-                            .font(.system(size: 14))
-                            .foregroundColor(sectionColor)
-                    } else if customTitle == nil {
-                        // Completed section
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(sectionColor)
-                    } else {
-                        Circle()
-                            .fill(sectionColor)
-                            .frame(width: 10, height: 10)
-                    }
+                    Image(systemName: section.icon)
+                        .font(.system(size: 14))
+                        .foregroundColor(section.color)
 
-                    Text(title)
+                    Text(section.title)
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(priority == .urgent ? sectionColor : Theme.text)
+                        .foregroundColor(section.id == "today" || section.id == "urgent" ? section.color : Theme.text)
 
                     Text("\(todos.count)")
                         .font(.system(size: 11, weight: .semibold))
@@ -1299,12 +1931,12 @@ struct TodoListSection: View {
                         .padding(.vertical, 3)
                         .background(
                             Capsule()
-                                .fill(sectionColor)
+                                .fill(section.color)
                         )
 
                     Spacer()
 
-                    if priority == nil && customTitle == nil {
+                    if section.id == "completed" {
                         Button(action: { todoList.moveAllCompletedToDeleted() }) {
                             HStack(spacing: 4) {
                                 Image(systemName: "trash")
@@ -1316,35 +1948,32 @@ struct TodoListSection: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                     }
+
+                    // Clear Today button
+                    if section.id == "today" {
+                        Button(action: { todoList.clearTodayTags() }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark.circle")
+                                    .font(.system(size: 11))
+                                Text("Clear")
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            .foregroundColor(section.color.opacity(0.8))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .help("Remove #today tag from all items")
+                    }
                 }
                 .padding(.horizontal, Theme.contentPadding)
                 .padding(.vertical, 12)
                 .background(
-                    sectionColor.opacity(priority == .urgent ? 0.1 : 0.05)
+                    section.color.opacity(section.id == "today" || section.id == "urgent" ? 0.1 : 0.06)
                 )
 
-                // Colored line under header
-                Rectangle()
-                    .fill(sectionColor.opacity(0.5))
-                    .frame(height: 2)
-
-                // Todo items grouped by primary tag
+                // Todo items - with section background color
                 LazyVStack(spacing: 0) {
-                    ForEach(Array(todos.enumerated()), id: \.element.id) { index, todo in
-                        // Check if this is a new tag group
-                        let currentTag = todo.tags.first
-                        let previousTag = index > 0 ? todos[index - 1].tags.first : nil
-
-                        if index > 0 && currentTag != previousTag {
-                            // Divider between tag groups
-                            Rectangle()
-                                .fill(Theme.divider)
-                                .frame(height: 1)
-                                .padding(.horizontal, Theme.contentPadding)
-                                .padding(.vertical, 4)
-                        }
-
-                        TodoItemView(todoList: todoList, todo: todo, isTop5: customTitle == "🗓️ Top 5 of the week")
+                    ForEach(todos) { todo in
+                        TodoItemView(todoList: todoList, todo: todo, isTop5: isTop5, groupColor: section.color)
                     }
                 }
                 .padding(.vertical, 4)
@@ -1353,14 +1982,14 @@ struct TodoListSection: View {
             .cornerRadius(Theme.cornerRadiusMd)
             .overlay(
                 Rectangle()
-                    .fill(sectionColor)
+                    .fill(section.color)
                     .frame(width: 3),
                 alignment: .leading
             )
             .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusMd))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
-                    .stroke(sectionColor.opacity(0.15), lineWidth: 1)
+                    .stroke(section.color.opacity(0.15), lineWidth: 1)
             )
             .padding(.vertical, 6)
             .contentShape(Rectangle())

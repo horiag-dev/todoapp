@@ -4,21 +4,29 @@ import SwiftUI
 enum Priority: String, Codable, CaseIterable {
     case urgent = "Urgent"
     case normal = "Normal"
-    case whenTime = "When there's time"
-    
+
     var color: Color {
         switch self {
         case .urgent: return .red
         case .normal: return Theme.accent
-        case .whenTime: return Theme.secondaryText
         }
     }
-    
+
     var icon: String {
         switch self {
         case .urgent: return "flag.fill"
         case .normal: return "flag"
-        case .whenTime: return "clock.fill"
+        }
+    }
+
+    // Support decoding old "When there's time" values as normal
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+        if rawValue == "When there's time" {
+            self = .normal
+        } else {
+            self = Priority(rawValue: rawValue) ?? .normal
         }
     }
 }

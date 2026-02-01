@@ -91,19 +91,19 @@ struct MindMapView: View {
             .onAppear {
                 updateLayout(viewSize: geometry.size)
             }
-            .onChange(of: todoList.goals) { _ in
+            .onChange(of: todoList.goals) { _, _ in
                 updateLayout(viewSize: geometry.size)
             }
-            .onChange(of: todoList.todos) { _ in
+            .onChange(of: todoList.todos) { _, _ in
                 updateLayout(viewSize: geometry.size)
             }
-            .onChange(of: todoList.top5Todos) { _ in
+            .onChange(of: todoList.top5Todos) { _, _ in
                 updateLayout(viewSize: geometry.size)
             }
-            .onChange(of: expandedNodeIds) { _ in
+            .onChange(of: expandedNodeIds) { _, _ in
                 updateLayout(viewSize: geometry.size)
             }
-            .onChange(of: expandedGoalIds) { _ in
+            .onChange(of: expandedGoalIds) { _, _ in
                 updateLayout(viewSize: geometry.size)
             }
         }

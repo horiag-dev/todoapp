@@ -247,7 +247,28 @@ class TodoList: ObservableObject {
             saveTodos()
         }
     }
-    
+
+    /// Removes the #today tag from all todos that have it
+    func clearTodayTags() {
+        var changed = false
+        for i in 0..<todos.count {
+            if let tagIndex = todos[i].tags.firstIndex(where: { $0.lowercased() == "today" }) {
+                todos[i].tags.remove(at: tagIndex)
+                changed = true
+            }
+        }
+        // Also clear from top5Todos
+        for i in 0..<top5Todos.count {
+            if let tagIndex = top5Todos[i].tags.firstIndex(where: { $0.lowercased() == "today" }) {
+                top5Todos[i].tags.remove(at: tagIndex)
+                changed = true
+            }
+        }
+        if changed {
+            saveTodos()
+        }
+    }
+
     func addBigThing(_ thing: String) {
         if !thing.isEmpty {
             bigThings.append(thing)
@@ -347,10 +368,9 @@ class TodoList: ObservableObject {
             markdownContent += "\n"
         }
 
-        // Group todos by priority in a single pass
+        // Group todos by priority in a single pass (only urgent and normal now)
         var urgentTodos: [Todo] = []
         var normalTodos: [Todo] = []
-        var lowPriorityTodos: [Todo] = []
         var completedTodos: [Todo] = []
 
         for todo in todos {
@@ -362,8 +382,6 @@ class TodoList: ObservableObject {
                     urgentTodos.append(todo)
                 case .normal:
                     normalTodos.append(todo)
-                case .whenTime:
-                    lowPriorityTodos.append(todo)
                 }
             }
         }
@@ -381,15 +399,6 @@ class TodoList: ObservableObject {
         if !normalTodos.isEmpty {
             markdownContent += "### 🔵 Normal\n\n"
             for todo in normalTodos {
-                markdownContent += formatTodo(todo)
-            }
-            markdownContent += "\n"
-        }
-
-        // Add low priority todos
-        if !lowPriorityTodos.isEmpty {
-            markdownContent += "### ⚪ When there's time\n\n"
-            for todo in lowPriorityTodos {
                 markdownContent += formatTodo(todo)
             }
             markdownContent += "\n"
@@ -506,7 +515,8 @@ class TodoList: ObservableObject {
                         isInDeletedSection = false
                         isInBigThingsSection = false
                     } else if sectionName.contains("⚪") {
-                        currentPriority = .whenTime
+                        // Migration: treat "When there's time" as normal
+                        currentPriority = .normal
                         isInTop5Section = false
                         isInDeletedSection = false
                         isInBigThingsSection = false

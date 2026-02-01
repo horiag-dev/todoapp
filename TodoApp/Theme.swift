@@ -60,7 +60,7 @@ enum Theme {
         Color(NSColor(red: 0.45, green: 0.75, blue: 0.45, alpha: 1.0)),  // Green
         Color(NSColor(red: 0.75, green: 0.55, blue: 0.95, alpha: 1.0)),  // Purple
         Color(NSColor(red: 0.55, green: 0.75, blue: 0.85, alpha: 1.0)),  // Light Blue
-        
+
         Color(NSColor(red: 0.95, green: 0.78, blue: 0.45, alpha: 1.0)),  // Golden Yellow
         Color(NSColor(red: 0.65, green: 0.45, blue: 0.85, alpha: 1.0)),  // Violet
         Color(NSColor(red: 0.85, green: 0.85, blue: 0.35, alpha: 1.0)),  // Yellow
@@ -78,8 +78,18 @@ enum Theme {
         Color(NSColor(red: 0.75, green: 0.75, blue: 0.55, alpha: 1.0)),  // Khaki
         Color(NSColor(red: 0.55, green: 0.45, blue: 0.75, alpha: 1.0))   // Indigo
     ]
-    
-    static let urgentTagColor = Color(NSColor(red: 0.90, green: 0.25, blue: 0.20, alpha: 1.0))  // Bright red for urgent/today
+
+    // Urgency tag colors
+    static let todayTagColor = Color(red: 0.95, green: 0.2, blue: 0.2)      // Bright red for #today
+    static let urgentTagColor = Color(red: 1.0, green: 0.5, blue: 0.0)      // Orange for #urgent
+
+    // Context tag colors (pre-assigned for consistency)
+    static let contextTagColors: [String: Color] = [
+        "prep": Color(red: 0.4, green: 0.6, blue: 0.9),      // Blue - meeting prep
+        "reply": Color(red: 0.5, green: 0.8, blue: 0.5),     // Green
+        "deep": Color(red: 0.7, green: 0.5, blue: 0.9),      // Purple
+        "waiting": Color(red: 0.6, green: 0.6, blue: 0.6)    // Gray
+    ]
     
     // Track used colors and tag assignments
     private static var usedColors: Set<Int> = []
@@ -88,40 +98,48 @@ enum Theme {
     // Function to get consistent color for a tag
     static func colorForTag(_ tag: String) -> Color {
         let tagKey = tag.lowercased()
-        
-        // Special tags get red
-        if tagKey == "urgent" || tagKey == "today" {
+
+        // 1. Check urgency tags first (highest priority)
+        if tagKey == "today" {
+            return todayTagColor
+        }
+        if tagKey == "urgent" {
             return urgentTagColor
         }
-        
-        // Return cached color if already assigned
+
+        // 2. Check context tags (pre-assigned colors)
+        if let contextColor = contextTagColors[tagKey] {
+            return contextColor
+        }
+
+        // 3. Return cached color if already assigned
         if let existingColor = tagColorMap[tagKey] {
             return existingColor
         }
-        
+
         // If all colors are used, reset the pool
         if usedColors.count >= tagColors.count {
             usedColors.removeAll()
         }
-        
+
         // Generate hash for initial index
         var hash: UInt64 = 5381
         for char in tag.unicodeScalars {
             hash = ((hash << 5) &+ hash) &+ UInt64(char.value)
         }
         hash = (hash &* 31337) ^ (hash >> 16)
-        
+
         // Find first available color starting from the hashed index
         var index = Int(hash % UInt64(tagColors.count))
         while usedColors.contains(index) {
             index = (index + 1) % tagColors.count
         }
-        
+
         // Mark color as used and cache the assignment
         usedColors.insert(index)
         let color = tagColors[index]
         tagColorMap[tagKey] = color
-        
+
         return color
     }
     

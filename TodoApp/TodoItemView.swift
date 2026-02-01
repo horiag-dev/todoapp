@@ -88,6 +88,7 @@ struct TodoItemView: View {
     @ObservedObject var todoList: TodoList
     @State var todo: Todo
     var isTop5: Bool = false
+    var groupColor: Color? = nil  // Background color from parent group/context
     @State private var isHovered = false
     @State private var isSelected = false
     @State private var isEditing = false
@@ -96,18 +97,15 @@ struct TodoItemView: View {
     @State private var newTagText = ""
     @FocusState private var focusField: Bool
 
+    // AI Context Suggestion state
+    @State private var isLoadingAISuggestions = false
+    @State private var showingAISuggestionAlert = false
+    @State private var suggestedContextTag: String? = nil
+
     // Static cached NSDataDetector for link detection (expensive to create)
     private static let linkDetector: NSDataDetector? = {
         try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
     }()
-    
-    // Function to get the primary tag color for background
-    private var primaryTagColor: Color? {
-        guard todo.priority == .urgent, let firstTag = todo.tags.first else { return nil }
-        // Use the first tag as the primary tag for background color
-        return Theme.colorForTag(firstTag)
-    }
-    
     
     // Helper struct to represent text segments
     private struct TextSegment: Identifiable {
@@ -149,10 +147,11 @@ struct TodoItemView: View {
     }
     
     
-    init(todoList: TodoList, todo: Todo, isTop5: Bool = false) {
+    init(todoList: TodoList, todo: Todo, isTop5: Bool = false, groupColor: Color? = nil) {
         self.todoList = todoList
         self._todo = State(initialValue: todo)
         self.isTop5 = isTop5
+        self.groupColor = groupColor
         _editedTitle = State(initialValue: todo.title)
     }
 
@@ -245,8 +244,7 @@ struct TodoItemView: View {
         .background(
             isEditing ? Theme.accent.opacity(0.1) :
             (isSelected ? Theme.accent.opacity(0.08) :
-            (isHovered ? Theme.secondaryBackground :
-            (primaryTagColor?.opacity(0.12) ?? Color.clear)))
+            (isHovered ? Theme.secondaryBackground : (groupColor?.opacity(0.06) ?? Color.clear)))
         )
         .animation(Theme.Animation.microSpring, value: isHovered)
         .animation(Theme.Animation.microSpring, value: isSelected)
@@ -277,16 +275,6 @@ struct TodoItemView: View {
                         Label("Normal", systemImage: "flag")
                     }
                     .disabled(todo.priority == .normal)
-
-                    Button {
-                        var updatedTodo = todo
-                        updatedTodo.priority = .whenTime
-                        todoList.updateTodo(updatedTodo)
-                        todo = updatedTodo
-                    } label: {
-                        Label("When there's time", systemImage: "clock")
-                    }
-                    .disabled(todo.priority == .whenTime)
                 }
             }
 
@@ -353,6 +341,16 @@ struct TodoItemView: View {
                 }
             }
 
+            // AI Suggest Context - top level for easy access (only if API key exists)
+            if APIKeyManager.shared.hasAPIKey {
+                Button {
+                    fetchAISuggestions()
+                } label: {
+                    Label(isLoadingAISuggestions ? "Analyzing..." : "Auto-tag with AI", systemImage: "sparkles")
+                }
+                .disabled(isLoadingAISuggestions)
+            }
+
             Divider()
 
             // Edit
@@ -402,6 +400,22 @@ struct TodoItemView: View {
         } message: {
             Text("Enter a name for the new tag")
         }
+        .alert("AI Suggestion", isPresented: $showingAISuggestionAlert) {
+            if let context = suggestedContextTag {
+                Button("Add #\(context)") {
+                    applyAISuggestion(context)
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                suggestedContextTag = nil
+            }
+        } message: {
+            if let context = suggestedContextTag {
+                Text("Add context tag #\(context) to this todo?")
+            } else {
+                Text("No context suggestion available for this todo.")
+            }
+        }
         .gesture(
             TapGesture(count: 2).onEnded {
                 isEditing = true
@@ -449,6 +463,62 @@ struct TodoItemView: View {
         }
 
         newTagText = ""
+    }
+
+    private func fetchAISuggestions() {
+        guard !isLoadingAISuggestions else { return }
+        isLoadingAISuggestions = true
+
+        Task {
+            do {
+                let suggestion = try await ClaudeCategorizationService.shared.suggestTags(
+                    todoText: todo.title,
+                    existingTags: todoList.allTags,
+                    goalSections: []
+                )
+
+                await MainActor.run {
+                    isLoadingAISuggestions = false
+                    if let context = suggestion.context {
+                        // Check if todo already has this tag
+                        if !todo.tags.contains(where: { $0.lowercased() == context.lowercased() }) {
+                            // Show confirmation dialog
+                            suggestedContextTag = context
+                            showingAISuggestionAlert = true
+                        } else {
+                            // Already has this tag - show info
+                            suggestedContextTag = nil
+                            showingAISuggestionAlert = true
+                        }
+                    } else {
+                        // No suggestion - show info
+                        suggestedContextTag = nil
+                        showingAISuggestionAlert = true
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isLoadingAISuggestions = false
+                    suggestedContextTag = nil
+                    showingAISuggestionAlert = true
+                }
+            }
+        }
+    }
+
+    private func applyAISuggestion(_ context: String) {
+        if isTop5 {
+            todoList.addTagToTop5Todo(todo, tag: context)
+            if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
+                todo = updated
+            }
+        } else {
+            todoList.addTag(to: todo, tag: context)
+            if let updated = todoList.todos.first(where: { $0.id == todo.id }) {
+                todo = updated
+            }
+        }
+        suggestedContextTag = nil
     }
 }
 
