@@ -536,7 +536,7 @@ struct TodoListView: View {
                 } else {
                     // List View with Resizable Columns
                     HStack(spacing: 0) {
-                        // Left Column - Goals & Quotes
+                        // Left Column - Goals
                         VStack(spacing: 0) {
                             Text("Goals")
                                 .font(Theme.titleFont)
@@ -544,11 +544,6 @@ struct TodoListView: View {
                                 .padding(.horizontal, Theme.contentPadding)
                                 .padding(.top, Theme.contentPadding)
                                 .padding(.bottom, 8)
-
-                            // Quotes section (compact, at top)
-                            QuotesSection(todoList: todoList)
-                                .padding(.horizontal, Theme.contentPadding)
-                                .padding(.bottom, 12)
 
                             // Goals section (scrollable)
                             EditableGoalsView(todoList: todoList)
@@ -1070,142 +1065,6 @@ struct SuggestionChip: View {
     }
 }
 
-// Quotes section for motivational text
-struct QuotesSection: View {
-    @ObservedObject var todoList: TodoList
-    @State private var currentIndex: Int = 0
-    @State private var isEditing: Bool = false
-    @State private var isCollapsed: Bool = false
-    @State private var editText: String = ""
-    @FocusState private var isFocused: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: isCollapsed ? 0 : 8) {
-            // Header
-            HStack(spacing: 6) {
-                Button(action: {
-                    withAnimation(Theme.Animation.quickFade) {
-                        isCollapsed.toggle()
-                    }
-                }) {
-                    Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundColor(Theme.secondaryText)
-                        .frame(width: 12)
-                }
-                .buttonStyle(PlainButtonStyle())
-
-                Image(systemName: "quote.opening")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(.purple)
-
-                Text("Quotes")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(Theme.text)
-
-                if isCollapsed && !todoList.quotes.isEmpty {
-                    Text("(\(todoList.quotes.count))")
-                        .font(.system(size: 10))
-                        .foregroundColor(Theme.secondaryText)
-                }
-
-                Spacer()
-
-                if !isCollapsed {
-                    if todoList.quotes.count > 1 && !isEditing {
-                        // Cycle button (only show if more than one quote)
-                        Button(action: {
-                            withAnimation(Theme.Animation.quickFade) {
-                                currentIndex = (currentIndex + 1) % max(1, todoList.quotes.count)
-                            }
-                        }) {
-                            Image(systemName: "arrow.trianglehead.2.clockwise")
-                                .font(.system(size: 9))
-                                .foregroundColor(Theme.secondaryText)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-
-                    // Edit button
-                    Button(action: {
-                        if isEditing {
-                            // Save - use blank lines to separate quotes
-                            todoList.quotes = editText
-                                .components(separatedBy: "\n\n")
-                                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                                .filter { !$0.isEmpty }
-                            todoList.saveTodos()
-                            isEditing = false
-                        } else {
-                            // Join with blank lines for editing
-                            editText = todoList.quotes.joined(separator: "\n\n")
-                            isEditing = true
-                        }
-                    }) {
-                        Image(systemName: isEditing ? "checkmark" : "pencil")
-                            .font(.system(size: 9))
-                            .foregroundColor(isEditing ? .green : Theme.secondaryText)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-            }
-
-            if !isCollapsed {
-                if isEditing {
-                    // Edit mode - expands with content
-                    VStack(alignment: .leading, spacing: 4) {
-                        TextEditor(text: $editText)
-                            .font(.system(size: 11))
-                            .scrollContentBackground(.hidden)
-                            .background(Theme.cardBackground)
-                            .cornerRadius(4)
-                            .frame(minHeight: 60, maxHeight: 200)
-                            .focused($isFocused)
-                            .onAppear {
-                                DispatchQueue.main.async {
-                                    isFocused = true
-                                }
-                            }
-
-                        Text("One quote per line")
-                            .font(.system(size: 9))
-                            .foregroundColor(Theme.secondaryText.opacity(0.7))
-                    }
-                } else if todoList.quotes.isEmpty {
-                    Text("No quotes yet. Click edit to add some.")
-                        .font(.system(size: 11))
-                        .foregroundColor(Theme.secondaryText)
-                        .italic()
-                } else {
-                    // Display current quote - expands naturally
-                    // Safe access: clamp index and verify array is not empty
-                    let quotes = todoList.quotes
-                    if !quotes.isEmpty {
-                        let safeIndex = min(max(0, currentIndex), quotes.count - 1)
-                        Text(quotes[safeIndex])
-                            .font(.system(size: 12, weight: .medium, design: .serif))
-                            .italic()
-                            .foregroundColor(Theme.text.opacity(0.85))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .transition(.opacity)
-                    }
-                }
-            }
-        }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
-                .fill(Color.purple.opacity(0.06))
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
-                        .stroke(Color.purple.opacity(0.15), lineWidth: 1)
-                )
-        )
-        .animation(Theme.Animation.quickFade, value: isEditing)
-        .animation(Theme.Animation.quickFade, value: isCollapsed)
-    }
-}
 
 // Prominent sticky Top 5 section
 struct Top5WeekSection: View {

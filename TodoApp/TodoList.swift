@@ -7,7 +7,6 @@ class TodoList: ObservableObject {
     @Published var deletedTodos: [Todo] = []
     @Published var bigThings: [String] = []
     @Published var goals: String = ""
-    @Published var quotes: [String] = [] // Motivational quotes
     @Published var selectedFile: URL? {
         didSet {
             if let file = selectedFile {
@@ -334,7 +333,6 @@ class TodoList: ObservableObject {
         let currentDeletedTodos = deletedTodos
         let currentBigThings = bigThings
         let currentGoals = goals
-        let currentQuotes = quotes
         let fileURL = todosFileURL
 
         // Create a new debounced save operation
@@ -345,7 +343,6 @@ class TodoList: ObservableObject {
                 deletedTodos: currentDeletedTodos,
                 bigThings: currentBigThings,
                 goals: currentGoals,
-                quotes: currentQuotes,
                 fileURL: fileURL
             )
         }
@@ -363,7 +360,6 @@ class TodoList: ObservableObject {
         deletedTodos: [Todo],
         bigThings: [String],
         goals: String,
-        quotes: [String],
         fileURL: URL?
     ) {
         guard let fileURL = fileURL else {
@@ -377,19 +373,6 @@ class TodoList: ObservableObject {
             markdownContent += "## 🎯 Goals\n\n"
             markdownContent += goals
             markdownContent += "\n\n"
-        }
-
-        // Add quotes section
-        if !quotes.isEmpty {
-            markdownContent += "## 💭 Quotes\n\n"
-            for quote in quotes {
-                // Handle multi-line quotes - prefix each line with >
-                let lines = quote.components(separatedBy: "\n")
-                for line in lines {
-                    markdownContent += "> \(line)\n"
-                }
-                markdownContent += "\n"
-            }
         }
 
         // Add Top 5 of the week section
@@ -509,37 +492,26 @@ class TodoList: ObservableObject {
             var newDeletedTodos: [Todo] = []
             var newBigThings: [String] = []
             var newGoals: [String] = []
-            var newQuotes: [String] = []
             var isInGoalsSection = false
-            var isInQuotesSection = false
             var isInDeletedSection = false
             var isInBigThingsSection = false
             var isInTop5Section = false
-            
+
             for line in lines {
                 if line.hasPrefix("## ") {
                     let sectionName = line.replacingOccurrences(of: "## ", with: "").trimmingCharacters(in: .whitespaces)
                     if sectionName.contains("🎯") {
                         isInGoalsSection = true
-                        isInQuotesSection = false
-                        isInDeletedSection = false
-                        isInBigThingsSection = false
-                        isInTop5Section = false
-                    } else if sectionName.contains("💭") {
-                        isInGoalsSection = false
-                        isInQuotesSection = true
                         isInDeletedSection = false
                         isInBigThingsSection = false
                         isInTop5Section = false
                     } else if sectionName.contains("📋") {
                         isInGoalsSection = false
-                        isInQuotesSection = false
                         isInDeletedSection = false
                         isInBigThingsSection = true
                         isInTop5Section = false
                     } else {
                         isInGoalsSection = false
-                        isInQuotesSection = false
                         isInDeletedSection = false
                         isInBigThingsSection = false
                         isInTop5Section = false
@@ -547,7 +519,6 @@ class TodoList: ObservableObject {
                 } else if line.hasPrefix("### ") {
                     // Always reset all section flags on new ### section
                     isInGoalsSection = false
-                    isInQuotesSection = false
                     isInBigThingsSection = false
                     isInTop5Section = false
                     isInDeletedSection = false
@@ -596,22 +567,6 @@ class TodoList: ObservableObject {
                     }
                 } else if isInGoalsSection && !line.isEmpty && !line.hasPrefix("##") {
                     newGoals.append(line)
-                } else if isInQuotesSection && line.hasPrefix(">") {
-                    // Parse blockquote format: > quote text
-                    let quoteText = String(line.dropFirst()).trimmingCharacters(in: .whitespaces)
-                    // Append to last quote if exists, otherwise create new
-                    if let lastIndex = newQuotes.indices.last, !newQuotes[lastIndex].isEmpty {
-                        newQuotes[lastIndex] += "\n" + quoteText
-                    } else if newQuotes.isEmpty {
-                        newQuotes.append(quoteText)
-                    } else {
-                        newQuotes[newQuotes.count - 1] = quoteText
-                    }
-                } else if isInQuotesSection && line.trimmingCharacters(in: .whitespaces).isEmpty {
-                    // Blank line in quotes section = start new quote
-                    if let last = newQuotes.last, !last.isEmpty {
-                        newQuotes.append("")
-                    }
                 } else if isInTop5Section && line.hasPrefix("- [") {
                     let components = line.components(separatedBy: "] ")
                     guard components.count >= 2 else { continue }
@@ -657,9 +612,7 @@ class TodoList: ObservableObject {
             deletedTodos = newDeletedTodos
             bigThings = newBigThings
             goals = newGoals.joined(separator: "\n")
-            quotes = newQuotes.filter { !$0.isEmpty }
-            
-            
+
             // Create initial backup after loading
             DispatchQueue.main.async {
                 self.createBackup()
@@ -672,7 +625,6 @@ class TodoList: ObservableObject {
             deletedTodos = []
             bigThings = []
             goals = ""
-            quotes = []
         }
     }
     
