@@ -298,6 +298,47 @@ struct TodoItemView: View {
                 }
             }
 
+            // Context submenu - quick access to context tags
+            Menu("Context") {
+                let contextManager = ContextConfigManager.shared
+                ForEach(contextManager.contexts, id: \.id) { context in
+                    let hasContext = todo.tags.contains { $0.lowercased() == context.id.lowercased() }
+                    Button {
+                        if hasContext {
+                            // Remove context tag
+                            if isTop5 {
+                                todoList.removeTagFromTop5Todo(todo, tag: context.id)
+                            } else {
+                                todoList.removeTag(from: todo, tag: context.id)
+                            }
+                        } else {
+                            // Add context tag
+                            if isTop5 {
+                                todoList.addTagToTop5Todo(todo, tag: context.id)
+                            } else {
+                                todoList.addTag(to: todo, tag: context.id)
+                            }
+                        }
+                        // Refresh
+                        if isTop5 {
+                            if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
+                                self.todo = updated
+                            }
+                        } else {
+                            if let updated = todoList.todos.first(where: { $0.id == todo.id }) {
+                                self.todo = updated
+                            }
+                        }
+                    } label: {
+                        Label {
+                            Text(context.name)
+                        } icon: {
+                            Image(systemName: hasContext ? "checkmark.circle.fill" : context.icon)
+                        }
+                    }
+                }
+            }
+
             // Tags submenu
             Menu("Tags") {
                 // Current tags (to remove)
