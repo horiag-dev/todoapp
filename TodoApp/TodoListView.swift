@@ -394,6 +394,8 @@ struct TodoListView: View {
     @State private var isInMindMapMode: Bool = false  // Toggle between list and mind map views
     @State private var showingSettings: Bool = false  // Settings sheet
     @State private var groupingMode: GroupingMode = .contextMode  // Grouping mode toggle
+    @State private var searchText: String = ""  // Search filter
+    @State private var isSearching: Bool = false  // Show search bar
 
     var body: some View {
         ZStack {
@@ -465,6 +467,28 @@ struct TodoListView: View {
                         .help(groupingMode == .contextMode ? "Switch to Tag grouping" : "Switch to Context grouping")
                     }
 
+                    // Search button
+                    Button(action: {
+                        withAnimation(Theme.Animation.quickFade) {
+                            isSearching.toggle()
+                            if !isSearching {
+                                searchText = ""
+                            }
+                        }
+                    }) {
+                        Image(systemName: isSearching ? "xmark" : "magnifyingglass")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(isSearching ? Theme.accent : Theme.secondaryText)
+                            .frame(width: 28, height: 28)
+                            .background(
+                                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                                    .fill(isSearching ? Theme.accent.opacity(0.15) : Color.clear)
+                            )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help(isSearching ? "Close Search" : "Search Todos")
+                    .keyboardShortcut("f", modifiers: .command)
+
                     // Settings button
                     Button(action: { showingSettings = true }) {
                         Image(systemName: "gear")
@@ -477,7 +501,33 @@ struct TodoListView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                
+
+                // Search Bar (when active)
+                if isSearching {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 12))
+                            .foregroundColor(Theme.secondaryText)
+                        TextField("Search todos...", text: $searchText)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 13))
+                        if !searchText.isEmpty {
+                            Button(action: { searchText = "" }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(Theme.secondaryText)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Theme.secondaryBackground)
+                    .cornerRadius(8)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
+                }
+
                 // Main Content - Either Mind Map or List View
                 if isInMindMapMode {
                     // Mind Map View
@@ -532,7 +582,7 @@ struct TodoListView: View {
 
                             // Scrollable todo list (without Top 5)
                             ScrollView {
-                                TodoListSections(todoList: todoList, excludeTop5: true, groupingMode: $groupingMode)
+                                TodoListSections(todoList: todoList, excludeTop5: true, groupingMode: $groupingMode, searchText: searchText)
                             }
                             .scrollIndicators(.hidden)
                             .clipped()
@@ -1327,121 +1377,201 @@ struct TodoListSections: View {
     @ObservedObject var todoList: TodoList
     var excludeTop5: Bool = false
     @Binding var groupingMode: GroupingMode
+    var searchText: String = ""
 
-    // Get todos for a specific urgency level (Today, This Week, or Urgent)
-    private func todosForUrgency(_ urgencyType: String) -> [Todo] {
-        let incompleteTodos = todoList.todos.filter { !$0.isCompleted }
+    // MARK: - Performance Optimized Data Structures
 
-        switch urgencyType {
-        case "today":
-            return incompleteTodos.filter { todo in
-                todo.tags.contains { $0.lowercased() == "today" }
+    /// Pre-computed todo metadata for O(1) lookups during filtering
+    private struct TodoMeta {
+        let todo: Todo
+        let titleLower: String
+        let tagsLower: Set<String>
+        let hasToday: Bool
+        let hasThisWeek: Bool
+        let hasUrgent: Bool
+        let hasContextTag: Bool
+        let primaryContextTag: String?
+    }
+
+    /// Single-pass categorization result
+    private struct CategorizedTodos {
+        var today: [TodoMeta] = []
+        var thisWeek: [TodoMeta] = []
+        var urgent: [TodoMeta] = []
+        var normal: [TodoMeta] = []
+        var completed: [TodoMeta] = []
+    }
+
+    // Pre-compute search filter once
+    private var searchFilter: String {
+        searchText.lowercased().trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Pre-process all todos once with lowercase values and tag flags
+    private var processedTodos: [TodoMeta] {
+        let contextManager = ContextConfigManager.shared
+        let filter = searchFilter
+
+        return todoList.todos.compactMap { todo in
+            let titleLower = todo.title.lowercased()
+            let tagsLower = Set(todo.tags.map { $0.lowercased() })
+
+            // Search filter check (early exit)
+            if !filter.isEmpty {
+                let matchesTitle = titleLower.contains(filter)
+                let matchesTags = tagsLower.contains { $0.contains(filter) }
+                if !matchesTitle && !matchesTags { return nil }
             }
-        case "thisweek":
-            return incompleteTodos.filter { todo in
-                let hasToday = todo.tags.contains { $0.lowercased() == "today" }
-                let hasThisWeek = todo.tags.contains { $0.lowercased() == "thisweek" }
-                return !hasToday && (hasThisWeek || todo.priority == .thisWeek)
+
+            // Pre-compute tag flags (O(1) set lookups)
+            let hasToday = tagsLower.contains("today")
+            let hasThisWeek = tagsLower.contains("thisweek")
+            let hasUrgent = tagsLower.contains("urgent")
+
+            // Find primary context tag
+            var primaryContextTag: String? = nil
+            var hasContextTag = false
+            for tag in tagsLower {
+                if contextManager.isContextTag(tag) {
+                    hasContextTag = true
+                    if primaryContextTag == nil {
+                        primaryContextTag = tag
+                    }
+                }
             }
-        case "urgent":
-            return incompleteTodos.filter { todo in
-                let hasToday = todo.tags.contains { $0.lowercased() == "today" }
-                let hasThisWeek = todo.tags.contains { $0.lowercased() == "thisweek" }
-                let isThisWeekPriority = todo.priority == .thisWeek
-                let hasUrgent = todo.tags.contains { $0.lowercased() == "urgent" }
-                return !hasToday && !hasThisWeek && !isThisWeekPriority && (hasUrgent || todo.priority == .urgent)
-            }
-        default:
-            return []
+
+            return TodoMeta(
+                todo: todo,
+                titleLower: titleLower,
+                tagsLower: tagsLower,
+                hasToday: hasToday,
+                hasThisWeek: hasThisWeek,
+                hasUrgent: hasUrgent,
+                hasContextTag: hasContextTag,
+                primaryContextTag: primaryContextTag
+            )
         }
     }
 
-    // Get todos grouped by context within an urgency level
-    private func todosByContext(from todos: [Todo], groupOtherByTags: Bool = false) -> [(context: ContextSection, todos: [Todo])] {
-        var result: [(context: ContextSection, todos: [Todo])] = []
+    /// Single-pass categorization of all todos
+    private var categorizedTodos: CategorizedTodos {
+        var result = CategorizedTodos()
 
-        let contextManager = ContextConfigManager.shared
-        for contextSection in ContextSection.contextSections {
-            let contextTodos: [Todo]
-            if contextSection.id == "other" {
-                // "Other" = todos without any context tag (O(1) lookup per tag)
-                contextTodos = todos.filter { todo in
-                    !todo.tags.contains { contextManager.isContextTag($0) }
-                }
-            } else if let contextTag = contextSection.contextTag {
-                let lowercasedContextTag = contextTag.lowercased()
-                contextTodos = todos.filter { todo in
-                    todo.tags.contains { $0.lowercased() == lowercasedContextTag }
-                }
-            } else {
-                contextTodos = []
+        for meta in processedTodos {
+            if meta.todo.isCompleted {
+                result.completed.append(meta)
+                continue
             }
 
-            if !contextTodos.isEmpty {
-                result.append((contextSection, contextTodos.sorted { $0.title.lowercased() < $1.title.lowercased() }))
+            // Priority order: today > thisWeek > urgent > normal
+            if meta.hasToday {
+                result.today.append(meta)
+            } else if meta.hasThisWeek || meta.todo.priority == .thisWeek {
+                result.thisWeek.append(meta)
+            } else if meta.hasUrgent || meta.todo.priority == .urgent {
+                result.urgent.append(meta)
+            } else {
+                result.normal.append(meta)
             }
         }
 
         return result
     }
 
-    // Get todos for flat context sections (context-first mode)
+    /// Sort todos by pre-computed lowercase title
+    private func sortByTitle(_ metas: [TodoMeta]) -> [Todo] {
+        metas.sorted { $0.titleLower < $1.titleLower }.map { $0.todo }
+    }
+
+    // MARK: - Optimized Accessors
+
+    private func todosForUrgency(_ urgencyType: String) -> [Todo] {
+        let cats = categorizedTodos
+        switch urgencyType {
+        case "today": return sortByTitle(cats.today)
+        case "thisweek": return sortByTitle(cats.thisWeek)
+        case "urgent": return sortByTitle(cats.urgent)
+        default: return []
+        }
+    }
+
+    private func todosByContext(from todos: [Todo], groupOtherByTags: Bool = false) -> [(context: ContextSection, todos: [Todo])] {
+        // Build a map of todo IDs to their metadata for O(1) lookup
+        let metaMap = Dictionary(uniqueKeysWithValues: processedTodos.map { ($0.todo.id, $0) })
+        var result: [(context: ContextSection, todos: [Todo])] = []
+
+        for contextSection in ContextSection.contextSections {
+            let contextTodos: [Todo]
+            if contextSection.id == "other" {
+                contextTodos = todos.filter { todo in
+                    guard let meta = metaMap[todo.id] else { return false }
+                    return !meta.hasContextTag
+                }
+            } else if let contextTag = contextSection.contextTag {
+                let ctLower = contextTag.lowercased()
+                contextTodos = todos.filter { todo in
+                    guard let meta = metaMap[todo.id] else { return false }
+                    return meta.tagsLower.contains(ctLower)
+                }
+            } else {
+                contextTodos = []
+            }
+
+            if !contextTodos.isEmpty {
+                // Use pre-computed lowercase for sorting
+                let sorted = contextTodos.sorted { t1, t2 in
+                    let m1 = metaMap[t1.id]?.titleLower ?? ""
+                    let m2 = metaMap[t2.id]?.titleLower ?? ""
+                    return m1 < m2
+                }
+                result.append((contextSection, sorted))
+            }
+        }
+
+        return result
+    }
+
     private func todosForSection(_ section: ContextSection) -> [Todo] {
-        let incompleteTodos = todoList.todos.filter { !$0.isCompleted }
+        let cats = categorizedTodos
+
+        func sortMetas(_ metas: [TodoMeta]) -> [Todo] {
+            metas.sorted { $0.titleLower < $1.titleLower }.map { $0.todo }
+        }
 
         switch section.id {
         case "today":
-            return incompleteTodos.filter { todo in
-                todo.tags.contains { $0.lowercased() == "today" }
-            }.sorted { $0.title.lowercased() < $1.title.lowercased() }
+            return sortMetas(cats.today)
 
         case "thisweek":
-            return incompleteTodos.filter { todo in
-                let hasToday = todo.tags.contains { $0.lowercased() == "today" }
-                let hasThisWeek = todo.tags.contains { $0.lowercased() == "thisweek" }
-                return !hasToday && (hasThisWeek || todo.priority == .thisWeek)
-            }.sorted { $0.title.lowercased() < $1.title.lowercased() }
+            return sortMetas(cats.thisWeek)
 
         case "urgent":
-            return incompleteTodos.filter { todo in
-                let hasToday = todo.tags.contains { $0.lowercased() == "today" }
-                let hasThisWeek = todo.tags.contains { $0.lowercased() == "thisweek" }
-                let isThisWeekPriority = todo.priority == .thisWeek
-                let hasUrgent = todo.tags.contains { $0.lowercased() == "urgent" }
-                return !hasToday && !hasThisWeek && !isThisWeekPriority && (hasUrgent || todo.priority == .urgent)
-            }.sorted { $0.title.lowercased() < $1.title.lowercased() }
+            return sortMetas(cats.urgent)
 
         case "prep", "reply", "deep", "waiting":
             guard let contextTag = section.contextTag else { return [] }
-            return incompleteTodos.filter { todo in
-                let hasToday = todo.tags.contains { $0.lowercased() == "today" }
-                let hasThisWeek = todo.tags.contains { $0.lowercased() == "thisweek" }
-                let isThisWeekPriority = todo.priority == .thisWeek
-                let hasUrgent = todo.tags.contains { $0.lowercased() == "urgent" }
-                let isUrgentPriority = todo.priority == .urgent
-                let hasContextTag = todo.tags.contains { $0.lowercased() == contextTag }
-                return hasContextTag && !hasToday && !hasThisWeek && !isThisWeekPriority && !hasUrgent && !isUrgentPriority
-            }.sorted { $0.title.lowercased() < $1.title.lowercased() }
+            let ctLower = contextTag.lowercased()
+            let filtered = cats.normal.filter { $0.tagsLower.contains(ctLower) }
+            return sortMetas(filtered)
 
         case "other":
-            let contextManager = ContextConfigManager.shared
-            return incompleteTodos.filter { todo in
-                let hasToday = todo.tags.contains { $0.lowercased() == "today" }
-                let hasThisWeek = todo.tags.contains { $0.lowercased() == "thisweek" }
-                let isThisWeekPriority = todo.priority == .thisWeek
-                let hasUrgent = todo.tags.contains { $0.lowercased() == "urgent" }
-                let isUrgentPriority = todo.priority == .urgent
-                let hasContextTag = todo.tags.contains { contextManager.isContextTag($0) }
-                return !hasToday && !hasThisWeek && !isThisWeekPriority && !hasUrgent && !isUrgentPriority && !hasContextTag
-            }.sorted { $0.title.lowercased() < $1.title.lowercased() }
+            let filtered = cats.normal.filter { !$0.hasContextTag }
+            return sortMetas(filtered)
 
         case "completed":
-            return todoList.todos.filter { $0.isCompleted }
-                .sorted { $0.title.lowercased() < $1.title.lowercased() }
+            return sortMetas(cats.completed)
 
         default:
             return []
         }
+    }
+
+    // Legacy search function (kept for compatibility)
+    private func matchesSearch(_ todo: Todo) -> Bool {
+        guard !searchFilter.isEmpty else { return true }
+        if todo.title.lowercased().contains(searchFilter) { return true }
+        if todo.tags.contains(where: { $0.lowercased().contains(searchFilter) }) { return true }
+        return false
     }
 
     var body: some View {
@@ -1499,8 +1629,11 @@ struct TodoListSections: View {
     // Context mode view - Today (flat), This Week, Urgent/Normal with context sub-groups
     @ViewBuilder
     private var contextModeView: some View {
+        // Use pre-categorized todos (single-pass optimization)
+        let cats = categorizedTodos
+
         // Today section - simple flat list, no context grouping
-        let todayTodos = todosForUrgency("today")
+        let todayTodos = sortByTitle(cats.today)
         if !todayTodos.isEmpty {
             ContextTodoSection(
                 todoList: todoList,
@@ -1511,7 +1644,7 @@ struct TodoListSections: View {
         }
 
         // This Week section with context sub-groups
-        let thisWeekTodos = todosForUrgency("thisweek")
+        let thisWeekTodos = sortByTitle(cats.thisWeek)
         if !thisWeekTodos.isEmpty {
             UrgencySectionWithContextGroups(
                 todoList: todoList,
@@ -1521,7 +1654,7 @@ struct TodoListSections: View {
         }
 
         // Urgent section with context sub-groups
-        let urgentTodos = todosForUrgency("urgent")
+        let urgentTodos = sortByTitle(cats.urgent)
         if !urgentTodos.isEmpty {
             UrgencySectionWithContextGroups(
                 todoList: todoList,
@@ -1530,15 +1663,8 @@ struct TodoListSections: View {
             )
         }
 
-        // Normal priority todos (not today, not thisweek, not urgent) - with context sub-groups
-        let normalTodos = todoList.todos.filter { todo in
-            !todo.isCompleted &&
-            !todo.tags.contains { $0.lowercased() == "today" } &&
-            !todo.tags.contains { $0.lowercased() == "thisweek" } &&
-            todo.priority != .thisWeek &&
-            !todo.tags.contains { $0.lowercased() == "urgent" } &&
-            todo.priority != .urgent
-        }
+        // Normal priority todos - with context sub-groups
+        let normalTodos = sortByTitle(cats.normal)
         if !normalTodos.isEmpty {
             UrgencySectionWithContextGroups(
                 todoList: todoList,
@@ -1548,7 +1674,7 @@ struct TodoListSections: View {
         }
 
         // Completed section
-        let completedTodos = todoList.todos.filter { $0.isCompleted }
+        let completedTodos = sortByTitle(cats.completed)
         if !completedTodos.isEmpty {
             ContextTodoSection(
                 todoList: todoList,
@@ -1562,31 +1688,33 @@ struct TodoListSections: View {
     // Get todos grouped by context only - "Other" is a flat list (no tag headers)
     private func todosByContextOnly(from todos: [Todo]) -> [(context: ContextSection, todos: [Todo])] {
         var result: [(context: ContextSection, todos: [Todo])] = []
-        let contextManager = ContextConfigManager.shared
 
-        // Pre-compute lowercase titles for sorting (avoid repeated lowercased() calls)
-        let todoTitlesLower = Dictionary(uniqueKeysWithValues: todos.map { ($0.id, $0.title.lowercased()) })
+        // Build metadata map from pre-computed data for O(1) lookups
+        let metaMap = Dictionary(uniqueKeysWithValues: processedTodos.map { ($0.todo.id, $0) })
 
-        // Group by context tags
+        // Group by context tags using pre-computed lowercase tags
         for contextSection in ContextSection.contextSections {
             if contextSection.id == "other" {
                 continue // Handle "Other" separately
             }
             if let contextTag = contextSection.contextTag {
-                let lowercasedContextTag = contextTag.lowercased()
+                let ctLower = contextTag.lowercased()
                 let contextTodos = todos.filter { todo in
-                    todo.tags.contains { $0.lowercased() == lowercasedContextTag }
+                    metaMap[todo.id]?.tagsLower.contains(ctLower) ?? false
                 }
                 if !contextTodos.isEmpty {
-                    let sorted = contextTodos.sorted { todoTitlesLower[$0.id, default: ""] < todoTitlesLower[$1.id, default: ""] }
+                    // Sort using pre-computed lowercase titles
+                    let sorted = contextTodos.sorted {
+                        (metaMap[$0.id]?.titleLower ?? "") < (metaMap[$1.id]?.titleLower ?? "")
+                    }
                     result.append((contextSection, sorted))
                 }
             }
         }
 
-        // "Other" - todos without context tags (O(1) lookup per tag)
+        // "Other" - todos without context tags (using pre-computed flag)
         let otherTodos = todos.filter { todo in
-            !todo.tags.contains { contextManager.isContextTag($0) }
+            !(metaMap[todo.id]?.hasContextTag ?? true)
         }
 
         if !otherTodos.isEmpty {
@@ -1634,8 +1762,10 @@ struct TodoListSections: View {
                 // Compare by tag priority
                 if idx1 != idx2 { return idx1 < idx2 }
 
-                // Same tag or both untagged - sort by title (using cached lowercase)
-                return todoTitlesLower[todo1.id, default: ""] < todoTitlesLower[todo2.id, default: ""]
+                // Same tag or both untagged - sort by title (using pre-computed lowercase)
+                let title1 = metaMap[todo1.id]?.titleLower ?? ""
+                let title2 = metaMap[todo2.id]?.titleLower ?? ""
+                return title1 < title2
             }
 
             result.append((.other, sortedOther))
@@ -1647,7 +1777,7 @@ struct TodoListSections: View {
     // Compute tag groups for tag mode - each todo assigned to exactly one group
     // Excludes context tags (prep, reply, deep, waiting) - only shows actual tags
     private func computeTagGroups() -> [(tag: String?, todos: [Todo])] {
-        let incompleteTodos = todoList.todos.filter { !$0.isCompleted }
+        let incompleteTodos = todoList.todos.filter { !$0.isCompleted && matchesSearch($0) }
         let contextManager = ContextConfigManager.shared
 
         // Single pass: count tags and cache non-context tags per todo
@@ -1738,7 +1868,7 @@ struct TodoListSections: View {
         }
 
         // Completed section
-        let completedTodos = todoList.todos.filter { $0.isCompleted }
+        let completedTodos = todoList.todos.filter { $0.isCompleted && matchesSearch($0) }
         if !completedTodos.isEmpty {
             ContextTodoSection(
                 todoList: todoList,
@@ -1876,9 +2006,11 @@ struct ContextSubGroup: View {
                     .padding(.vertical, 6)
                     .background(context.color.opacity(0.08))
 
-                    // Todos in this context - with context background color
-                    ForEach(todos) { todo in
-                        TodoItemView(todoList: todoList, todo: todo, isTop5: false, groupColor: context.color)
+                    // Todos in this context - with context background color (lazy for performance)
+                    LazyVStack(spacing: 0) {
+                        ForEach(todos) { todo in
+                            TodoItemView(todoList: todoList, todo: todo, isTop5: false, groupColor: context.color)
+                        }
                     }
                 }
             }

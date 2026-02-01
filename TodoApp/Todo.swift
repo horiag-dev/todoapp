@@ -8,8 +8,8 @@ enum Priority: String, Codable, CaseIterable {
 
     var color: Color {
         switch self {
-        case .thisWeek: return Color(red: 0.9, green: 0.4, blue: 0.1)  // Orange-red
-        case .urgent: return .red
+        case .thisWeek: return Color(red: 0.95, green: 0.5, blue: 0.0)  // Orange
+        case .urgent: return Color(red: 0.9, green: 0.75, blue: 0.0)   // Yellow
         case .normal: return Theme.accent
         }
     }

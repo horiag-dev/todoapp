@@ -73,8 +73,8 @@ enum Theme {
 
     // Urgency tag colors (priority order: today > thisweek > urgent)
     static let todayTagColor = Color(red: 0.95, green: 0.2, blue: 0.2)      // Bright red for #today
-    static let thisWeekTagColor = Color(red: 0.9, green: 0.4, blue: 0.1)    // Orange-red for #thisweek
-    static let urgentTagColor = Color(red: 1.0, green: 0.5, blue: 0.0)      // Orange for #urgent
+    static let thisWeekTagColor = Color(red: 0.95, green: 0.5, blue: 0.0)   // Orange for #thisweek
+    static let urgentTagColor = Color(red: 0.9, green: 0.75, blue: 0.0)     // Yellow for #urgent
 
     // Context tag colors
     static let contextTagColors: [String: Color] = [
