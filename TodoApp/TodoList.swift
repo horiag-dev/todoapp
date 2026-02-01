@@ -73,19 +73,19 @@ class TodoList: ObservableObject {
     
     func showInitialFilePicker() {
         let alert = NSAlert()
-        alert.messageText = "Welcome to Todo App"
-        alert.informativeText = "Would you like to open an existing todo file or create a new one?"
-        alert.addButton(withTitle: "Open Existing File")
+        alert.messageText = "Welcome to Todo App!"
+        alert.informativeText = "Your todos are stored in a simple markdown file that you control.\n\nCreate a new file to get started with sample tasks, or open an existing .md file."
         alert.addButton(withTitle: "Create New File")
+        alert.addButton(withTitle: "Open Existing File")
         alert.addButton(withTitle: "Cancel")
         
         let response = alert.runModal()
-        
+
         switch response {
         case .alertFirstButtonReturn:
-            showOpenPanel()
+            showSavePanel()  // Create New File
         case .alertSecondButtonReturn:
-            showSavePanel()
+            showOpenPanel()  // Open Existing File
         default:
             break
         }
@@ -114,14 +114,58 @@ class TodoList: ObservableObject {
         savePanel.allowedContentTypes = [UTType(filenameExtension: "md") ?? .plainText]
         savePanel.nameFieldStringValue = "todos.md"
         savePanel.canCreateDirectories = true
-        
+
         savePanel.begin { response in
             if response == .OK, let url = savePanel.url {
-                // Create an empty markdown file
-                try? "# Todo List\n\n".write(to: url, atomically: true, encoding: .utf8)
+                // Create file with sample content to help new users
+                let sampleContent = Self.sampleFileContent()
+                try? sampleContent.write(to: url, atomically: true, encoding: .utf8)
                 self.selectFile(url)
             }
         }
+    }
+
+    /// Sample content for new users demonstrating app features
+    static func sampleFileContent() -> String {
+        return """
+        # Goals
+
+        **Getting Started** #welcome
+        - Learn how the app organizes your tasks
+        - Use #tags to categorize items
+        - Try different priority levels
+
+        **Work** #work
+        - Focus on high-impact tasks first
+        - Use #prep for meeting preparation
+        - Use #reply for emails to answer
+        - Use #deep for focused work sessions
+
+        **Personal** #personal
+        - Balance work and life
+        - Track habits and routines
+
+        ---
+
+        ### 🟠 This Week
+        - [ ] Review this sample file and customize it #welcome
+        - [ ] Add your first real todo (delete these samples) #welcome
+        - [ ] Explore the mind map view (toggle at top) #welcome
+
+        ### 🟡 Urgent
+        - [ ] Try clicking a todo to see options #welcome
+        - [ ] Use Cmd+Shift+T for Quick Add from clipboard #welcome
+
+        ### ⚪ Normal
+        - [ ] Learn about context tags: #prep #reply #deep
+        - [ ] Check the menu bar icon for quick access #welcome
+        - [ ] Edit your Goals section on the left #welcome
+
+        ### ✅ Completed
+
+        ### 🗑️ Deleted
+
+        """
     }
     
     func selectFile(_ url: URL) {
@@ -461,7 +505,7 @@ class TodoList: ObservableObject {
         do {
             try markdownContent.write(to: fileURL, atomically: true, encoding: .utf8)
         } catch {
-            print("Error saving todos: \(error)")
+            // Silently fail - file write errors are rare and user can retry
         }
     }
     
@@ -477,7 +521,6 @@ class TodoList: ObservableObject {
     
     private func loadTodos() {
         guard let fileURL = todosFileURL else {
-            print("❌ No file selected for loading todos")
             return
         }
         
@@ -619,7 +662,6 @@ class TodoList: ObservableObject {
                 self.setupBackupTimer()
             }
         } catch {
-            print("❌ Error loading todos: \(error)")
             todos = []
             top5Todos = []
             deletedTodos = []
@@ -636,7 +678,6 @@ class TodoList: ObservableObject {
     
     private func createBackup() {
         guard let fileURL = todosFileURL else {
-            print("❌ No file selected for backup")
             return
         }
         
@@ -652,7 +693,7 @@ class TodoList: ObservableObject {
             // Create and save the backup
             try createBackupFile(at: backupsFolderPath, originalFile: fileURL)
         } catch {
-            print("❌ Error creating backup: \(error)")
+            // Backup failed silently - not critical
         }
     }
     
