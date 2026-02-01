@@ -8,6 +8,27 @@ enum Theme {
     static let text = Color.primary
     static let secondaryText = Color(NSColor.secondaryLabelColor)
     static let divider = Color(NSColor.separatorColor)
+
+    // Theme-aware card background (semi-transparent for gradient themes)
+    static var cardBackground: Color {
+        if ThemeManager.shared.selectedTheme == .classic {
+            return Color(NSColor.textBackgroundColor)
+        } else {
+            return Color(NSColor.textBackgroundColor).opacity(0.85)
+        }
+    }
+
+    // Frosted glass effect background for cards
+    static var glassBackground: some View {
+        Group {
+            if ThemeManager.shared.selectedTheme == .classic {
+                Color(NSColor.textBackgroundColor)
+            } else {
+                Color.white.opacity(0.15)
+                    .background(.ultraThinMaterial)
+            }
+        }
+    }
     
     // Selection colors
     static let selectionBackground = Color(NSColor.selectedContentBackgroundColor)

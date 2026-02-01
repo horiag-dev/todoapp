@@ -124,7 +124,7 @@ struct EditableGoalsView: View {
                     TextEditor(text: $editText)
                         .font(.system(size: 13, design: .monospaced))
                         .scrollContentBackground(.hidden)
-                        .background(Color(NSColor.textBackgroundColor))
+                        .background(Theme.cardBackground)
                         .cornerRadius(Theme.cornerRadius)
                         .focused($isFocused)
                         .onAppear {
@@ -248,7 +248,7 @@ struct GoalSectionCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
-                .fill(Color(NSColor.textBackgroundColor))
+                .fill(Theme.cardBackground)
                 .shadow(
                     color: isHovered ? Theme.Shadow.hoverColor : Theme.Shadow.cardColor,
                     radius: isHovered ? Theme.Shadow.hoverRadius : Theme.Shadow.cardRadius,
@@ -381,7 +381,7 @@ struct MarkdownRenderer: View {
         ScrollView {
             renderContent()
         }
-        .background(Color(NSColor.textBackgroundColor)) // Adapts to light/dark mode
+        .background(Theme.cardBackground) // Adapts to light/dark mode
         .cornerRadius(8)
     }
 }
@@ -536,8 +536,6 @@ struct TodoListView: View {
                             }
                             .scrollIndicators(.hidden)
                             .clipped()
-                            .background(Color(NSColor.textBackgroundColor))
-                            .cornerRadius(Theme.cornerRadius)
                             .padding(.horizontal, Theme.contentPadding)
                         }
                     }
@@ -790,7 +788,7 @@ struct NewTodoInput: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
-            .background(Color(NSColor.textBackgroundColor))
+            .background(Theme.cardBackground)
             .cornerRadius(Theme.cornerRadiusMd)
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
@@ -1102,7 +1100,7 @@ struct QuotesSection: View {
                         TextEditor(text: $editText)
                             .font(.system(size: 11))
                             .scrollContentBackground(.hidden)
-                            .background(Color(NSColor.textBackgroundColor))
+                            .background(Theme.cardBackground)
                             .cornerRadius(4)
                             .frame(minHeight: 60, maxHeight: 200)
                             .focused($isFocused)
@@ -1196,7 +1194,7 @@ struct Top5WeekSection: View {
             }
             .padding(.vertical, 2)
         }
-        .background(Color(NSColor.textBackgroundColor))
+        .background(Theme.cardBackground)
         .cornerRadius(Theme.cornerRadiusMd)
         .overlay(
             Rectangle()
@@ -1463,7 +1461,7 @@ struct TodoListSections: View {
                     }
                 )
                 .padding(.vertical, Theme.itemSpacing)
-                .background(Color(NSColor.textBackgroundColor))
+                .background(Theme.cardBackground)
             }
         }
         .padding(.bottom)
@@ -1777,7 +1775,7 @@ struct UrgencySectionWithContextGroups: View {
                 }
             }
         }
-        .background(Color(NSColor.textBackgroundColor))
+        .background(Theme.cardBackground)
         .cornerRadius(Theme.cornerRadiusMd)
         .overlay(
             Rectangle()
@@ -1843,7 +1841,7 @@ struct ContextSubGroup: View {
                     }
                 }
             }
-            .background(Color(NSColor.textBackgroundColor))
+            .background(Theme.cardBackground)
             .cornerRadius(6)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -1920,7 +1918,7 @@ struct TagGroupSection: View {
                     .padding(.vertical, 4)
                 }
             }
-            .background(Color(NSColor.textBackgroundColor))
+            .background(Theme.cardBackground)
             .cornerRadius(Theme.cornerRadiusMd)
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
@@ -2005,7 +2003,7 @@ struct ContextTodoSection: View {
                 }
                 .padding(.vertical, 4)
             }
-            .background(Color(NSColor.textBackgroundColor))
+            .background(Theme.cardBackground)
             .cornerRadius(Theme.cornerRadiusMd)
             .overlay(
                 Rectangle()
@@ -2084,7 +2082,7 @@ struct TagListView: View {
             }
         }
         .listStyle(.inset)
-        .background(Color(NSColor.textBackgroundColor))
+        .background(Theme.cardBackground)
         .cornerRadius(Theme.cornerRadius)
         .padding(.horizontal, Theme.contentPadding)
         .alert("Export to Notes", isPresented: $showingExportAlert) {
