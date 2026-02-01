@@ -667,11 +667,6 @@ struct TodoListView: View {
 
                         // Right Column - Todos
                         VStack(spacing: 0) {
-                            Text("Todos")
-                                .font(Theme.titleFont)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, Theme.contentPadding)
-                                .padding(.vertical, Theme.contentPadding)
 
                             // New Todo Input
                             NewTodoInput(
