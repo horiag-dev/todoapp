@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TodoApp - Simple Markdown-Based Todos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+        .hero {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        .hero p {
+            font-size: 1.3rem;
+            opacity: 0.9;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .features {
+            display: grid;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        .feature-icon {
+            font-size: 1.5rem;
+            width: 40px;
+            text-align: center;
+        }
+        .feature h3 {
+            margin-bottom: 5px;
+            color: #333;
+        }
+        .feature p {
+            color: #666;
+            font-size: 0.95rem;
+        }
+        .links {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid #eee;
+            text-align: center;
+        }
+        .links a {
+            color: #667eea;
+            text-decoration: none;
+            margin: 0 15px;
+        }
+        .links a:hover {
+            text-decoration: underline;
+        }
+        .badge {
+            display: inline-block;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hero">
+            <h1>TodoApp</h1>
+            <p>Simple markdown-based todos for Mac</p>
+        </div>
+
+        <div class="card">
+            <h2>Your Data, Your Way</h2>
+            <p>TodoApp stores your todos in a plain markdown file you control. No cloud, no accounts, no lock-in.</p>
+
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-icon">📝</div>
+                    <div>
+                        <h3>Markdown Storage</h3>
+                        <p>Your todos live in a .md file you can open anywhere</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🎯</div>
+                    <div>
+                        <h3>Goals & Todos</h3>
+                        <p>Keep big-picture goals visible while managing daily tasks</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🗺️</div>
+                    <div>
+                        <h3>Mind Map View</h3>
+                        <p>Visualize your tasks in an interactive mind map</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">⚡</div>
+                    <div>
+                        <h3>Quick Add</h3>
+                        <p>Press Cmd+Shift+T to instantly capture tasks</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🏷️</div>
+                    <div>
+                        <h3>Smart Tags</h3>
+                        <p>Organize with context tags and optional AI suggestions</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="links">
+                <a href="privacy.html">Privacy Policy</a>
+                <a href="https://github.com/horiag-dev/todoapp">GitHub</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

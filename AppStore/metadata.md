@@ -54,13 +54,13 @@ Initial release featuring:
 ---
 
 ## Privacy Policy URL
-https://[YOUR-WEBSITE]/privacy
+https://horiag-dev.github.io/todoapp/privacy.html
 
 ## Support URL
-https://[YOUR-WEBSITE]/support
+https://github.com/horiag-dev/todoapp/issues
 
 ## Marketing URL (optional)
-https://[YOUR-WEBSITE]
+https://horiag-dev.github.io/todoapp/
 
 ---
 

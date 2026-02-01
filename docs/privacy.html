@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - TodoApp</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.7;
+            color: #333;
+            background: #f5f5f7;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+        .header p {
+            opacity: 0.9;
+        }
+        .header a {
+            color: white;
+            text-decoration: none;
+            opacity: 0.8;
+        }
+        .header a:hover {
+            opacity: 1;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+        }
+        h2 {
+            color: #333;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        h2:first-child {
+            margin-top: 0;
+        }
+        h3 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        p {
+            margin-bottom: 15px;
+            color: #444;
+        }
+        ul {
+            margin-bottom: 15px;
+            padding-left: 25px;
+        }
+        li {
+            margin-bottom: 8px;
+            color: #444;
+        }
+        strong {
+            color: #333;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #eee;
+            margin: 30px 0;
+        }
+        .summary {
+            background: #f0f4ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .summary p {
+            margin-bottom: 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="index.html" class="back-link">&larr; Back to TodoApp</a>
+        <h1>Privacy Policy</h1>
+        <p>Last Updated: February 2026</p>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h2>Overview</h2>
+            <p>TodoApp is designed with privacy as a core principle. Your todo data stays on your device in a markdown file you control.</p>
+
+            <h2>Data Collection</h2>
+
+            <h3>What We Don't Collect</h3>
+            <ul>
+                <li>We do not collect any personal information</li>
+                <li>We do not track your usage</li>
+                <li>We do not have analytics</li>
+                <li>We do not have user accounts</li>
+                <li>We do not store your todos on any server</li>
+            </ul>
+
+            <h3>Local Data Storage</h3>
+            <p>All your todos, goals, and settings are stored locally on your Mac:</p>
+            <ul>
+                <li><strong>Todo File:</strong> Stored in a location you choose (typically your Documents folder)</li>
+                <li><strong>Preferences:</strong> Stored in standard macOS user defaults</li>
+                <li><strong>API Key</strong> (if used): Stored securely in macOS Keychain</li>
+            </ul>
+
+            <h2>Optional AI Feature</h2>
+            <p>TodoApp includes an optional AI-powered tag suggestion feature that uses Anthropic's Claude API.</p>
+
+            <h3>How It Works</h3>
+            <ul>
+                <li>This feature is <strong>disabled by default</strong></li>
+                <li>You must provide your own Anthropic API key to enable it</li>
+                <li>When you click the suggestion button, the text of your current todo is sent to Anthropic's API</li>
+                <li>The API returns suggested tags, which are displayed in the app</li>
+            </ul>
+
+            <h3>What Is Sent</h3>
+            <p>When you use the AI suggestion feature, only the following is transmitted:</p>
+            <ul>
+                <li>The text of the single todo item you're requesting suggestions for</li>
+                <li>Your API key (for authentication)</li>
+            </ul>
+
+            <h3>What Is NOT Sent</h3>
+            <ul>
+                <li>Your complete todo list</li>
+                <li>Your goals</li>
+                <li>Any other personal information</li>
+                <li>Usage analytics</li>
+            </ul>
+
+            <h3>Anthropic's Privacy</h3>
+            <p>When using the AI feature, your data is subject to Anthropic's privacy policy and terms of service. We recommend reviewing their policies at <a href="https://www.anthropic.com/privacy">anthropic.com/privacy</a></p>
+
+            <h2>Third-Party Services</h2>
+            <p>The only third-party service TodoApp connects to is:</p>
+            <ul>
+                <li><strong>Anthropic API</strong> (api.anthropic.com) - Only when you explicitly use the AI tag suggestion feature</li>
+            </ul>
+
+            <h2>Data Security</h2>
+            <ul>
+                <li>Your API key is stored in macOS Keychain, Apple's secure credential storage</li>
+                <li>All network requests to Anthropic use HTTPS encryption</li>
+                <li>Your todo file is a plain text file with standard macOS file permissions</li>
+            </ul>
+
+            <h2>Children's Privacy</h2>
+            <p>TodoApp does not knowingly collect any information from children under 13.</p>
+
+            <h2>Changes to This Policy</h2>
+            <p>We may update this privacy policy from time to time. Any changes will be reflected in the "Last Updated" date.</p>
+
+            <h2>Contact</h2>
+            <p>If you have questions about this privacy policy, please visit our <a href="https://github.com/horiag-dev/todoapp">GitHub repository</a>.</p>
+
+            <hr>
+
+            <div class="summary">
+                <strong>Summary</strong>
+                <p>TodoApp stores everything locally on your Mac. The only time any data leaves your device is if you choose to use the optional AI tag suggestions, which sends only the current todo text to Anthropic's API.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

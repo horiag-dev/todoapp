@@ -66,8 +66,8 @@ We may update this privacy policy from time to time. Any changes will be reflect
 
 ## Contact
 
-If you have questions about this privacy policy, please contact:
-[YOUR EMAIL ADDRESS]
+If you have questions about this privacy policy, please visit our GitHub repository:
+https://github.com/horiag-dev/todoapp
 
 ---
 
