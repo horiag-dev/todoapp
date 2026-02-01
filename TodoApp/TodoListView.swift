@@ -190,7 +190,8 @@ struct EditableGoalsView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .help(isEditing ? "Save" : "Edit goals")
-            .padding(8),
+            .padding(.top, 4)
+            .padding(.trailing, 8),
             alignment: .topTrailing
         )
         .animation(Theme.Animation.quickFade, value: isEditing)
@@ -1079,6 +1080,7 @@ struct Top5WeekSection: View {
                 Image(systemName: "star.fill")
                     .font(.system(size: 14))
                     .foregroundColor(sectionColor)
+                    .frame(width: 16, height: 16)
 
                 Text("Top 5 of the Week")
                     .font(.system(size: 14, weight: .bold))
@@ -1108,7 +1110,8 @@ struct Top5WeekSection: View {
                     Top5ItemRow(todoList: todoList, todo: todo, rank: index + 1)
                 }
             }
-            .padding(.vertical, 2)
+            .padding(.top, 4)
+            .padding(.bottom, 12)
         }
         .background(Theme.cardBackground)
         .cornerRadius(Theme.cornerRadiusMd)
@@ -1830,53 +1833,64 @@ struct ContextSubGroup: View {
     let parentColor: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Sub-group with left color bar for clear identification
-            HStack(spacing: 0) {
-                // Left color indicator bar
-                Rectangle()
-                    .fill(context.color)
-                    .frame(width: 3)
+        // For "other" context, just list todos without a header
+        if context.id == "other" {
+            LazyVStack(spacing: 0) {
+                ForEach(todos) { todo in
+                    TodoItemView(todoList: todoList, todo: todo, isTop5: false, groupColor: parentColor)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                // Sub-group with left color bar for clear identification
+                HStack(spacing: 0) {
+                    // Left color indicator bar
+                    Rectangle()
+                        .fill(context.color)
+                        .frame(width: 3)
 
-                VStack(alignment: .leading, spacing: 0) {
-                    // Sub-group header
-                    HStack(spacing: 6) {
-                        Image(systemName: context.icon)
-                            .font(.system(size: 11))
-                            .foregroundColor(context.color)
+                    VStack(alignment: .leading, spacing: 0) {
+                        // Sub-group header
+                        HStack(spacing: 6) {
+                            Image(systemName: context.icon)
+                                .font(.system(size: 11))
+                                .foregroundColor(context.color)
 
-                        Text(context.title)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(context.color)
+                            Text(context.title)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(context.color)
 
-                        Text("\(todos.count)")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(
-                                Capsule()
-                                    .fill(context.color)
-                            )
+                            Text("\(todos.count)")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule()
+                                        .fill(context.color)
+                                )
 
-                        Spacer()
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(context.color.opacity(0.08))
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(context.color.opacity(0.08))
 
-                    // Todos in this context - with context background color (lazy for performance)
-                    LazyVStack(spacing: 0) {
-                        ForEach(todos) { todo in
-                            TodoItemView(todoList: todoList, todo: todo, isTop5: false, groupColor: context.color)
+                        // Todos in this context - with context background color (lazy for performance)
+                        LazyVStack(spacing: 0) {
+                            ForEach(todos) { todo in
+                                TodoItemView(todoList: todoList, todo: todo, isTop5: false, groupColor: context.color)
+                            }
                         }
                     }
                 }
+                .background(Theme.cardBackground)
+                .cornerRadius(6)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
             }
-            .background(Theme.cardBackground)
-            .cornerRadius(6)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
         }
     }
 }
@@ -1976,6 +1990,7 @@ struct ContextTodoSection: View {
                     Image(systemName: section.icon)
                         .font(.system(size: 14))
                         .foregroundColor(section.color)
+                        .frame(width: 16, height: 16)
 
                     Text(section.title)
                         .font(.system(size: 14, weight: .bold))
@@ -2026,6 +2041,11 @@ struct ContextTodoSection: View {
                 .background(
                     section.color.opacity(section.id == "today" || section.id == "urgent" ? 0.1 : 0.06)
                 )
+
+                // Colored line under header
+                Rectangle()
+                    .fill(section.color.opacity(0.5))
+                    .frame(height: 2)
 
                 // Todo items - with section background color
                 LazyVStack(spacing: 0) {
