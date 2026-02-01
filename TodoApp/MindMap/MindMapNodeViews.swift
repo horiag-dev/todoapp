@@ -258,7 +258,11 @@ struct LeafNodeView: View {
 
     @ViewBuilder
     private var priorityFlag: some View {
-        if child.priority == .urgent {
+        if child.priority == .thisWeek {
+            Image(systemName: "calendar.badge.exclamationmark")
+                .font(.system(size: 9))
+                .foregroundColor(Color(red: 0.9, green: 0.4, blue: 0.1))
+        } else if child.priority == .urgent {
             Image(systemName: "flag.fill")
                 .font(.system(size: 9))
                 .foregroundColor(.red)

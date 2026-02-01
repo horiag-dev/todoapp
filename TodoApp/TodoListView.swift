@@ -388,9 +388,8 @@ struct MarkdownRenderer: View {
 
 struct TodoListView: View {
     @ObservedObject var todoList: TodoList
-    @ObservedObject private var themeManager = ThemeManager.shared
     @State private var newTodoTitle = ""
-    @State private var newTodoPriority: Priority = .urgent
+    @State private var newTodoPriority: Priority = .thisWeek
     @State private var leftColumnWidth: CGFloat = 380
     @State private var isInMindMapMode: Bool = false  // Toggle between list and mind map views
     @State private var showingSettings: Bool = false  // Settings sheet
@@ -398,7 +397,7 @@ struct TodoListView: View {
 
     var body: some View {
         ZStack {
-            themeManager.currentGradient
+            Theme.background
                 .ignoresSafeArea()
             VStack(spacing: 0) {
                 // Top Bar
@@ -563,7 +562,7 @@ struct TodoListView: View {
             )
             todoList.addTodo(todo)
             newTodoTitle = ""
-            newTodoPriority = .urgent
+            newTodoPriority = .thisWeek
         }
     }
 
@@ -745,14 +744,21 @@ struct NewTodoInput: View {
         VStack(spacing: 6) {
             // Main input row
             HStack(spacing: 10) {
-                // Priority indicator
-                Image(systemName: newTodoPriority == .urgent ? "flag.fill" : "flag")
+                // Priority indicator - cycles through thisWeek -> urgent -> normal
+                Image(systemName: newTodoPriority.icon)
                     .font(.system(size: 14))
-                    .foregroundColor(newTodoPriority == .urgent ? .red : Theme.accent)
+                    .foregroundColor(newTodoPriority.color)
                     .onTapGesture {
                         withAnimation(Theme.Animation.microSpring) {
-                            // Toggle between urgent and normal
-                            newTodoPriority = (newTodoPriority == .urgent) ? .normal : .urgent
+                            // Cycle through priorities: thisWeek -> urgent -> normal -> thisWeek
+                            switch newTodoPriority {
+                            case .thisWeek:
+                                newTodoPriority = .urgent
+                            case .urgent:
+                                newTodoPriority = .normal
+                            case .normal:
+                                newTodoPriority = .thisWeek
+                            }
                         }
                     }
 
@@ -949,7 +955,7 @@ struct NewTodoInput: View {
             selectedTags.removeAll()
             suggestedContext = nil
             showSuggestions = false
-            newTodoPriority = .urgent
+            newTodoPriority = .thisWeek
         }
     }
 
@@ -1277,6 +1283,7 @@ struct ContextSection: Identifiable {
     let contextTag: String? // nil for special sections like Today, Urgent, Other
 
     static let today = ContextSection(id: "today", title: "Today", icon: "pin.fill", color: Theme.todayTagColor, contextTag: nil)
+    static let thisWeek = ContextSection(id: "thisweek", title: "This Week", icon: "calendar.badge.exclamationmark", color: Theme.thisWeekTagColor, contextTag: nil)
     static let urgent = ContextSection(id: "urgent", title: "Urgent", icon: "flame.fill", color: Theme.urgentTagColor, contextTag: nil)
     static let other = ContextSection(id: "other", title: "Other", icon: "tray", color: .gray, contextTag: nil)
     static let completed = ContextSection(id: "completed", title: "Completed", icon: "checkmark.circle.fill", color: .green, contextTag: nil)
@@ -1321,7 +1328,7 @@ struct TodoListSections: View {
     var excludeTop5: Bool = false
     @Binding var groupingMode: GroupingMode
 
-    // Get todos for a specific urgency level (Today or Urgent)
+    // Get todos for a specific urgency level (Today, This Week, or Urgent)
     private func todosForUrgency(_ urgencyType: String) -> [Todo] {
         let incompleteTodos = todoList.todos.filter { !$0.isCompleted }
 
@@ -1330,11 +1337,19 @@ struct TodoListSections: View {
             return incompleteTodos.filter { todo in
                 todo.tags.contains { $0.lowercased() == "today" }
             }
+        case "thisweek":
+            return incompleteTodos.filter { todo in
+                let hasToday = todo.tags.contains { $0.lowercased() == "today" }
+                let hasThisWeek = todo.tags.contains { $0.lowercased() == "thisweek" }
+                return !hasToday && (hasThisWeek || todo.priority == .thisWeek)
+            }
         case "urgent":
             return incompleteTodos.filter { todo in
                 let hasToday = todo.tags.contains { $0.lowercased() == "today" }
+                let hasThisWeek = todo.tags.contains { $0.lowercased() == "thisweek" }
+                let isThisWeekPriority = todo.priority == .thisWeek
                 let hasUrgent = todo.tags.contains { $0.lowercased() == "urgent" }
-                return !hasToday && (hasUrgent || todo.priority == .urgent)
+                return !hasToday && !hasThisWeek && !isThisWeekPriority && (hasUrgent || todo.priority == .urgent)
             }
         default:
             return []
@@ -1380,31 +1395,44 @@ struct TodoListSections: View {
                 todo.tags.contains { $0.lowercased() == "today" }
             }.sorted { $0.title.lowercased() < $1.title.lowercased() }
 
+        case "thisweek":
+            return incompleteTodos.filter { todo in
+                let hasToday = todo.tags.contains { $0.lowercased() == "today" }
+                let hasThisWeek = todo.tags.contains { $0.lowercased() == "thisweek" }
+                return !hasToday && (hasThisWeek || todo.priority == .thisWeek)
+            }.sorted { $0.title.lowercased() < $1.title.lowercased() }
+
         case "urgent":
             return incompleteTodos.filter { todo in
                 let hasToday = todo.tags.contains { $0.lowercased() == "today" }
+                let hasThisWeek = todo.tags.contains { $0.lowercased() == "thisweek" }
+                let isThisWeekPriority = todo.priority == .thisWeek
                 let hasUrgent = todo.tags.contains { $0.lowercased() == "urgent" }
-                return !hasToday && (hasUrgent || todo.priority == .urgent)
+                return !hasToday && !hasThisWeek && !isThisWeekPriority && (hasUrgent || todo.priority == .urgent)
             }.sorted { $0.title.lowercased() < $1.title.lowercased() }
 
         case "prep", "reply", "deep", "waiting":
             guard let contextTag = section.contextTag else { return [] }
             return incompleteTodos.filter { todo in
                 let hasToday = todo.tags.contains { $0.lowercased() == "today" }
+                let hasThisWeek = todo.tags.contains { $0.lowercased() == "thisweek" }
+                let isThisWeekPriority = todo.priority == .thisWeek
                 let hasUrgent = todo.tags.contains { $0.lowercased() == "urgent" }
                 let isUrgentPriority = todo.priority == .urgent
                 let hasContextTag = todo.tags.contains { $0.lowercased() == contextTag }
-                return hasContextTag && !hasToday && !hasUrgent && !isUrgentPriority
+                return hasContextTag && !hasToday && !hasThisWeek && !isThisWeekPriority && !hasUrgent && !isUrgentPriority
             }.sorted { $0.title.lowercased() < $1.title.lowercased() }
 
         case "other":
             let contextManager = ContextConfigManager.shared
             return incompleteTodos.filter { todo in
                 let hasToday = todo.tags.contains { $0.lowercased() == "today" }
+                let hasThisWeek = todo.tags.contains { $0.lowercased() == "thisweek" }
+                let isThisWeekPriority = todo.priority == .thisWeek
                 let hasUrgent = todo.tags.contains { $0.lowercased() == "urgent" }
                 let isUrgentPriority = todo.priority == .urgent
                 let hasContextTag = todo.tags.contains { contextManager.isContextTag($0) }
-                return !hasToday && !hasUrgent && !isUrgentPriority && !hasContextTag
+                return !hasToday && !hasThisWeek && !isThisWeekPriority && !hasUrgent && !isUrgentPriority && !hasContextTag
             }.sorted { $0.title.lowercased() < $1.title.lowercased() }
 
         case "completed":
@@ -1468,7 +1496,7 @@ struct TodoListSections: View {
         .padding(.bottom)
     }
 
-    // Context mode view - Today (flat), Urgent/Normal with context sub-groups
+    // Context mode view - Today (flat), This Week, Urgent/Normal with context sub-groups
     @ViewBuilder
     private var contextModeView: some View {
         // Today section - simple flat list, no context grouping
@@ -1482,6 +1510,16 @@ struct TodoListSections: View {
             )
         }
 
+        // This Week section with context sub-groups
+        let thisWeekTodos = todosForUrgency("thisweek")
+        if !thisWeekTodos.isEmpty {
+            UrgencySectionWithContextGroups(
+                todoList: todoList,
+                urgencySection: .thisWeek,
+                todosByContext: todosByContextOnly(from: thisWeekTodos)
+            )
+        }
+
         // Urgent section with context sub-groups
         let urgentTodos = todosForUrgency("urgent")
         if !urgentTodos.isEmpty {
@@ -1492,10 +1530,12 @@ struct TodoListSections: View {
             )
         }
 
-        // Normal priority todos (not today, not urgent) - with context sub-groups
+        // Normal priority todos (not today, not thisweek, not urgent) - with context sub-groups
         let normalTodos = todoList.todos.filter { todo in
             !todo.isCompleted &&
             !todo.tags.contains { $0.lowercased() == "today" } &&
+            !todo.tags.contains { $0.lowercased() == "thisweek" } &&
+            todo.priority != .thisWeek &&
             !todo.tags.contains { $0.lowercased() == "urgent" } &&
             todo.priority != .urgent
         }

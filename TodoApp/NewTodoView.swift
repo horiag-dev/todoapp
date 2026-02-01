@@ -4,7 +4,7 @@ struct NewTodoView: View {
     @ObservedObject var todoList: TodoList
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
-    @State private var priority: Priority = .normal
+    @State private var priority: Priority = .thisWeek
     @State private var showingTagManagement = false
     @State private var selectedTags: Set<String> = []
     
@@ -37,21 +37,24 @@ struct NewTodoView: View {
                     Text("Priority")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                    HStack(spacing: 20) {
+                    HStack(spacing: 12) {
                         ForEach(Priority.allCases, id: \.self) { p in
                             Button(action: { priority = p }) {
-                                HStack {
+                                HStack(spacing: 6) {
                                     Image(systemName: p.icon)
                                         .foregroundColor(p.color)
                                     Text(p.rawValue)
+                                        .font(.system(size: 13, weight: priority == p ? .semibold : .regular))
                                 }
                                 .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
+                                .padding(.vertical, 8)
                                 .background(
-                                    priority == p ?
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .fill(p.color.opacity(0.1)) :
-                                    nil
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(priority == p ? p.color.opacity(0.15) : Color.clear)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(priority == p ? p.color : Color.gray.opacity(0.3), lineWidth: priority == p ? 2 : 1)
                                 )
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -67,18 +70,26 @@ struct NewTodoView: View {
                     
                     HStack {
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 4) {
+                            HStack(spacing: 6) {
                                 ForEach(Array(selectedTags), id: \.self) { tag in
-                                    Text("#\(tag)")
-                                        .font(.caption)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(Color.blue.opacity(0.1))
-                                        .cornerRadius(4)
+                                    let tagColor = Theme.colorForTag(tag)
+                                    HStack(spacing: 4) {
+                                        Text("#\(tag)")
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundColor(tagColor)
+                                    }
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(tagColor.opacity(0.15))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(tagColor, lineWidth: 1.5)
+                                    )
+                                    .cornerRadius(6)
                                 }
                             }
                         }
-                        
+
                         Button(action: { showingTagManagement = true }) {
                             Image(systemName: "tag")
                                 .foregroundColor(.blue)

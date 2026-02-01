@@ -2,11 +2,13 @@ import Foundation
 import SwiftUI
 
 enum Priority: String, Codable, CaseIterable {
+    case thisWeek = "This Week"
     case urgent = "Urgent"
     case normal = "Normal"
 
     var color: Color {
         switch self {
+        case .thisWeek: return Color(red: 0.9, green: 0.4, blue: 0.1)  // Orange-red
         case .urgent: return .red
         case .normal: return Theme.accent
         }
@@ -14,8 +16,17 @@ enum Priority: String, Codable, CaseIterable {
 
     var icon: String {
         switch self {
+        case .thisWeek: return "calendar.badge.exclamationmark"
         case .urgent: return "flag.fill"
         case .normal: return "flag"
+        }
+    }
+
+    var emoji: String {
+        switch self {
+        case .thisWeek: return "🟠"
+        case .urgent: return "🔴"
+        case .normal: return "🔵"
         }
     }
 
@@ -50,7 +61,7 @@ struct Todo: Identifiable, Codable, Equatable {
         return (matches?.count ?? 0) > 0
     }
     
-    init(title: String, isCompleted: Bool = false, tags: [String] = [], priority: Priority = .normal) {
+    init(title: String, isCompleted: Bool = false, tags: [String] = [], priority: Priority = .thisWeek) {
         self.title = title
         self.isCompleted = isCompleted
         self.createdAt = Date()

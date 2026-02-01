@@ -74,8 +74,8 @@ final class TodoListTests: XCTestCase {
         todo.isCompleted = true
         XCTAssertTrue(todo.isCompleted, "Todo should be completed")
         
-        // Test priority
-        XCTAssertEqual(todo.priority, .normal, "Todo should have normal priority")
+        // Test priority (default is now thisWeek)
+        XCTAssertEqual(todo.priority, .thisWeek, "Todo should have thisWeek priority by default")
         todo.priority = .urgent
         XCTAssertEqual(todo.priority, .urgent, "Todo should have urgent priority")
         

@@ -278,6 +278,16 @@ struct TodoItemView: View {
                 Menu("Priority") {
                     Button {
                         var updatedTodo = todo
+                        updatedTodo.priority = .thisWeek
+                        todoList.updateTodo(updatedTodo)
+                        todo = updatedTodo
+                    } label: {
+                        Label("This Week", systemImage: "calendar.badge.exclamationmark")
+                    }
+                    .disabled(todo.priority == .thisWeek)
+
+                    Button {
+                        var updatedTodo = todo
                         updatedTodo.priority = .urgent
                         todoList.updateTodo(updatedTodo)
                         todo = updatedTodo

@@ -22,7 +22,7 @@ struct MindMapView: View {
         GeometryReader { geometry in
             ZStack {
                 // Background
-                Theme.mainBackgroundGradient
+                Theme.background
                     .ignoresSafeArea()
 
                 if positionedNodes.isEmpty {

@@ -7,7 +7,6 @@ struct SettingsView: View {
     @State private var saveMessage: String = ""
     @State private var showSaveMessage: Bool = false
     @StateObject private var contextConfig = ContextConfigManager.shared
-    @StateObject private var themeManager = ThemeManager.shared
     @State private var editingContext: ContextConfig? = nil
     @State private var showingAddContext: Bool = false
     @Environment(\.dismiss) private var dismiss
@@ -25,37 +24,6 @@ struct SettingsView: View {
                     }
                 }
                 .padding(.bottom, 8)
-
-                // Theme Section
-                GroupBox {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Image(systemName: "paintbrush.fill")
-                                .foregroundColor(.orange)
-                            Text("Theme")
-                                .font(.headline)
-                        }
-
-                        Text("Choose a background gradient for the app.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                        // Theme grid
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
-                            ForEach(GradientTheme.allCases) { theme in
-                                ThemePreviewCard(
-                                    theme: theme,
-                                    isSelected: themeManager.selectedTheme == theme
-                                ) {
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        themeManager.selectedTheme = theme
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .padding(8)
-                }
 
                 // Context Categories Section
                 GroupBox {
@@ -450,35 +418,6 @@ struct ContextEditSheet: View {
         }
         .padding(20)
         .frame(width: 400, height: 450)
-    }
-}
-
-// Theme preview card for selection
-struct ThemePreviewCard: View {
-    let theme: GradientTheme
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 6) {
-                // Gradient preview
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(theme.previewGradient)
-                    .frame(height: 50)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 3)
-                    )
-                    .shadow(color: isSelected ? Color.blue.opacity(0.3) : Color.clear, radius: 4)
-
-                // Theme name
-                Text(theme.rawValue)
-                    .font(.system(size: 10, weight: isSelected ? .semibold : .regular))
-                    .foregroundColor(isSelected ? .blue : .secondary)
-            }
-        }
-        .buttonStyle(PlainButtonStyle())
     }
 }
 

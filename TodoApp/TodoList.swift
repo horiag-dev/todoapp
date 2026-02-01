@@ -147,7 +147,7 @@ class TodoList: ObservableObject {
         saveTodos()
     }
     
-    func addTodo(title: String, tags: [String] = [], priority: Priority = .normal) {
+    func addTodo(title: String, tags: [String] = [], priority: Priority = .thisWeek) {
         let todo = Todo(title: title, tags: tags, priority: priority)
         todos.append(todo)
         saveTodos()
@@ -410,7 +410,8 @@ class TodoList: ObservableObject {
             markdownContent += "\n"
         }
 
-        // Group todos by priority in a single pass (only urgent and normal now)
+        // Group todos by priority in a single pass
+        var thisWeekTodos: [Todo] = []
         var urgentTodos: [Todo] = []
         var normalTodos: [Todo] = []
         var completedTodos: [Todo] = []
@@ -420,12 +421,23 @@ class TodoList: ObservableObject {
                 completedTodos.append(todo)
             } else {
                 switch todo.priority {
+                case .thisWeek:
+                    thisWeekTodos.append(todo)
                 case .urgent:
                     urgentTodos.append(todo)
                 case .normal:
                     normalTodos.append(todo)
                 }
             }
+        }
+
+        // Add this week todos (highest priority after Top 5)
+        if !thisWeekTodos.isEmpty {
+            markdownContent += "### 🟠 This Week\n\n"
+            for todo in thisWeekTodos {
+                markdownContent += formatTodo(todo)
+            }
+            markdownContent += "\n"
         }
 
         // Add urgent todos
@@ -546,6 +558,12 @@ class TodoList: ObservableObject {
                         isInTop5Section = true
                         isInDeletedSection = false
                         currentPriority = .normal // Not used for top5
+                    } else if sectionName.contains("🟠") || sectionName.localizedCaseInsensitiveContains("This Week") {
+                        // This Week section (new priority level)
+                        currentPriority = .thisWeek
+                        isInTop5Section = false
+                        isInDeletedSection = false
+                        isInBigThingsSection = false
                     } else if sectionName.contains("🔴") {
                         currentPriority = .urgent
                         isInTop5Section = false
