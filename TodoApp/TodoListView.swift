@@ -400,17 +400,25 @@ struct TodoListView: View {
             Theme.mainBackgroundGradient
                 .ignoresSafeArea()
             VStack(spacing: 0) {
-                // Top Bar - File Management
+                // Top Bar
                 HStack(spacing: 12) {
-                    Button(action: { todoList.openFile() }) {
-                        Image(systemName: "folder.badge.plus")
+                    // File menu
+                    Menu {
+                        Button(action: { todoList.openFile() }) {
+                            Label("Open File...", systemImage: "folder.badge.plus")
+                        }
+                        Button(action: { todoList.createNewFile() }) {
+                            Label("New File...", systemImage: "doc.badge.plus")
+                        }
+                    } label: {
+                        Image(systemName: "doc.text")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(Theme.secondaryText)
+                            .frame(width: 28, height: 28)
                     }
-                    .help("Open existing todo file")
-
-                    Button(action: { todoList.createNewFile() }) {
-                        Image(systemName: "doc.badge.plus")
-                    }
-                    .help("Create new todo file")
+                    .menuStyle(.borderlessButton)
+                    .frame(width: 28)
+                    .help("File options")
 
                     Spacer()
 
