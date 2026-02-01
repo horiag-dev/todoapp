@@ -149,41 +149,196 @@ enum Theme {
         tagColorMap.removeAll()
     }
     
-    // Gradient backgrounds - using system colors for dark mode support
-    static let leftColumnGradient = LinearGradient(
-        gradient: Gradient(colors: [
-            Color(NSColor.controlAccentColor).opacity(0.05),
-            Color(NSColor.windowBackgroundColor)
-        ]),
-        startPoint: .top,
-        endPoint: .bottom
-    )
+    // Dynamic background gradient based on selected theme
+    static var mainBackgroundGradient: some View {
+        ThemeManager.shared.currentGradient
+    }
+}
 
-    static let middleColumnGradient = LinearGradient(
-        gradient: Gradient(colors: [
-            Color(NSColor.controlAccentColor).opacity(0.05),
-            Color(NSColor.windowBackgroundColor)
-        ]),
-        startPoint: .top,
-        endPoint: .bottom
-    )
+// MARK: - Theme Presets
+enum GradientTheme: String, CaseIterable, Identifiable {
+    case classic = "Classic"
+    case aurora = "Aurora"
+    case sunset = "Sunset"
+    case ocean = "Ocean"
+    case forest = "Forest"
+    case lavender = "Lavender"
+    case midnight = "Midnight"
+    case coral = "Coral"
+    case mint = "Mint"
 
-    static let rightColumnGradient = LinearGradient(
-        gradient: Gradient(colors: [
-            Color(NSColor.controlAccentColor).opacity(0.05),
-            Color(NSColor.windowBackgroundColor)
-        ]),
-        startPoint: .top,
-        endPoint: .bottom
-    )
+    var id: String { rawValue }
 
-    // Main continuous background gradient - adapts to dark mode
-    static let mainBackgroundGradient = LinearGradient(
-        gradient: Gradient(colors: [
-            Color(NSColor.windowBackgroundColor),
-            Color(NSColor.windowBackgroundColor)
-        ]),
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    var colors: [Color] {
+        switch self {
+        case .classic:
+            return [
+                Color(NSColor.windowBackgroundColor),
+                Color(NSColor.windowBackgroundColor)
+            ]
+        case .aurora:
+            return [
+                Color(red: 0.1, green: 0.2, blue: 0.4),
+                Color(red: 0.2, green: 0.3, blue: 0.5),
+                Color(red: 0.3, green: 0.2, blue: 0.5),
+                Color(red: 0.2, green: 0.4, blue: 0.4)
+            ]
+        case .sunset:
+            return [
+                Color(red: 0.95, green: 0.4, blue: 0.3),
+                Color(red: 0.9, green: 0.5, blue: 0.4),
+                Color(red: 0.85, green: 0.45, blue: 0.5),
+                Color(red: 0.4, green: 0.3, blue: 0.5)
+            ]
+        case .ocean:
+            return [
+                Color(red: 0.1, green: 0.3, blue: 0.5),
+                Color(red: 0.15, green: 0.4, blue: 0.55),
+                Color(red: 0.2, green: 0.5, blue: 0.6),
+                Color(red: 0.1, green: 0.35, blue: 0.45)
+            ]
+        case .forest:
+            return [
+                Color(red: 0.15, green: 0.3, blue: 0.2),
+                Color(red: 0.2, green: 0.35, blue: 0.25),
+                Color(red: 0.25, green: 0.4, blue: 0.3),
+                Color(red: 0.15, green: 0.25, blue: 0.2)
+            ]
+        case .lavender:
+            return [
+                Color(red: 0.4, green: 0.35, blue: 0.55),
+                Color(red: 0.5, green: 0.4, blue: 0.6),
+                Color(red: 0.45, green: 0.35, blue: 0.5),
+                Color(red: 0.35, green: 0.3, blue: 0.45)
+            ]
+        case .midnight:
+            return [
+                Color(red: 0.08, green: 0.1, blue: 0.2),
+                Color(red: 0.12, green: 0.15, blue: 0.28),
+                Color(red: 0.1, green: 0.12, blue: 0.22),
+                Color(red: 0.06, green: 0.08, blue: 0.16)
+            ]
+        case .coral:
+            return [
+                Color(red: 0.9, green: 0.5, blue: 0.45),
+                Color(red: 0.85, green: 0.55, blue: 0.5),
+                Color(red: 0.8, green: 0.45, blue: 0.45),
+                Color(red: 0.6, green: 0.35, blue: 0.4)
+            ]
+        case .mint:
+            return [
+                Color(red: 0.3, green: 0.55, blue: 0.5),
+                Color(red: 0.35, green: 0.6, blue: 0.55),
+                Color(red: 0.4, green: 0.65, blue: 0.6),
+                Color(red: 0.25, green: 0.5, blue: 0.45)
+            ]
+        }
+    }
+
+    var previewGradient: LinearGradient {
+        LinearGradient(
+            colors: colors,
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    var isLight: Bool {
+        switch self {
+        case .classic: return true
+        case .aurora, .sunset, .ocean, .forest, .lavender, .midnight, .coral, .mint: return false
+        }
+    }
+}
+
+// MARK: - Theme Manager
+class ThemeManager: ObservableObject {
+    static let shared = ThemeManager()
+
+    @Published var selectedTheme: GradientTheme {
+        didSet {
+            UserDefaults.standard.set(selectedTheme.rawValue, forKey: "selectedTheme")
+        }
+    }
+
+    private init() {
+        if let saved = UserDefaults.standard.string(forKey: "selectedTheme"),
+           let theme = GradientTheme(rawValue: saved) {
+            self.selectedTheme = theme
+        } else {
+            self.selectedTheme = .classic
+        }
+    }
+
+    var currentGradient: some View {
+        ZStack {
+            if selectedTheme == .classic {
+                Color(NSColor.windowBackgroundColor)
+            } else {
+                MeshGradientView(colors: selectedTheme.colors)
+            }
+        }
+    }
+
+    var textColor: Color {
+        selectedTheme.isLight ? Color.primary : Color.white
+    }
+
+    var secondaryTextColor: Color {
+        selectedTheme.isLight ? Color(NSColor.secondaryLabelColor) : Color.white.opacity(0.7)
+    }
+}
+
+// MARK: - Mesh Gradient View (Modern multi-color gradient)
+struct MeshGradientView: View {
+    let colors: [Color]
+    @State private var animate = false
+
+    var body: some View {
+        ZStack {
+            // Base layer
+            LinearGradient(
+                colors: colors,
+                startPoint: animate ? .topLeading : .topTrailing,
+                endPoint: animate ? .bottomTrailing : .bottomLeading
+            )
+
+            // Overlay blobs for depth
+            GeometryReader { geo in
+                Circle()
+                    .fill(colors.first?.opacity(0.4) ?? Color.clear)
+                    .blur(radius: 80)
+                    .frame(width: geo.size.width * 0.8, height: geo.size.width * 0.8)
+                    .offset(
+                        x: animate ? geo.size.width * 0.1 : geo.size.width * -0.2,
+                        y: animate ? geo.size.height * -0.1 : geo.size.height * 0.1
+                    )
+
+                Circle()
+                    .fill(colors.last?.opacity(0.3) ?? Color.clear)
+                    .blur(radius: 100)
+                    .frame(width: geo.size.width * 0.7, height: geo.size.width * 0.7)
+                    .offset(
+                        x: animate ? geo.size.width * 0.3 : geo.size.width * 0.5,
+                        y: animate ? geo.size.height * 0.5 : geo.size.height * 0.3
+                    )
+
+                if colors.count > 2 {
+                    Circle()
+                        .fill(colors[1].opacity(0.25))
+                        .blur(radius: 60)
+                        .frame(width: geo.size.width * 0.5, height: geo.size.width * 0.5)
+                        .offset(
+                            x: animate ? geo.size.width * 0.6 : geo.size.width * 0.4,
+                            y: animate ? geo.size.height * 0.2 : geo.size.height * 0.4
+                        )
+                }
+            }
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) {
+                animate = true
+            }
+        }
+    }
 } 
