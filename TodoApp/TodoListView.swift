@@ -112,33 +112,65 @@ struct EditableGoalsView: View {
     }
 
     var body: some View {
-        ZStack {
-            if isEditing {
-                // Edit mode - TextEditor for markdown
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Edit Goals")
-                        .font(Theme.smallFont)
-                        .foregroundColor(Theme.secondaryText)
-                        .padding(.horizontal, 4)
+        VStack(spacing: 0) {
+            // Header with title and edit button
+            HStack(spacing: 8) {
+                Image(systemName: "target")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Theme.accent)
+                Text("Goals")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Theme.text)
 
-                    TextEditor(text: $editText)
-                        .font(.system(size: 13, design: .monospaced))
-                        .scrollContentBackground(.hidden)
-                        .background(Theme.cardBackground)
-                        .cornerRadius(Theme.cornerRadius)
-                        .focused($isFocused)
-                        .onAppear {
-                            DispatchQueue.main.async {
-                                editText = todoList.goals
-                                isFocused = true
-                            }
+                Spacer()
+
+                Button(action: {
+                    if isEditing {
+                        saveAndExitEdit()
+                    } else {
+                        editText = todoList.goals
+                        withAnimation(Theme.Animation.quickFade) {
+                            isEditing = true
                         }
-
-                    Text("Use # for headers, - for bullets")
-                        .font(.system(size: 10))
-                        .foregroundColor(Theme.secondaryText.opacity(0.7))
-                        .padding(.horizontal, 4)
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: isEditing ? "checkmark" : "pencil")
+                            .font(.system(size: 10, weight: .medium))
+                        Text(isEditing ? "Done" : "Edit")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundColor(isEditing ? .white : Theme.secondaryText)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(isEditing ? Color.green : Theme.secondaryBackground)
+                    )
                 }
+                .buttonStyle(PlainButtonStyle())
+                .help(isEditing ? "Save changes" : "Edit goals")
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(Theme.cardBackground)
+
+            Divider()
+
+            if isEditing {
+                // Edit mode - Clean text editor
+                TextEditor(text: $editText)
+                    .font(.system(size: 13))
+                    .lineSpacing(6)
+                    .scrollContentBackground(.hidden)
+                    .padding(12)
+                    .focused($isFocused)
+                    .onAppear {
+                        DispatchQueue.main.async {
+                            editText = todoList.goals
+                            isFocused = true
+                        }
+                    }
             } else {
                 // View mode - Visual sections
                 ScrollView {
@@ -150,7 +182,7 @@ struct EditableGoalsView: View {
                             Text("No goals yet")
                                 .font(Theme.bodyFont)
                                 .foregroundColor(Theme.secondaryText)
-                            Text("Click edit to add your goals")
+                            Text("Click Edit to add your goals")
                                 .font(Theme.smallFont)
                                 .foregroundColor(Theme.secondaryText.opacity(0.7))
                         }
@@ -167,33 +199,8 @@ struct EditableGoalsView: View {
                 }
             }
         }
-        .overlay(
-            // Edit/Done button
-            Button(action: {
-                if isEditing {
-                    saveAndExitEdit()
-                } else {
-                    editText = todoList.goals
-                    withAnimation(Theme.Animation.quickFade) {
-                        isEditing = true
-                    }
-                }
-            }) {
-                Image(systemName: isEditing ? "checkmark" : "pencil")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(isEditing ? .white : Theme.secondaryText)
-                    .frame(width: 24, height: 24)
-                    .background(
-                        Circle()
-                            .fill(isEditing ? Color.green : Theme.secondaryBackground)
-                    )
-            }
-            .buttonStyle(PlainButtonStyle())
-            .help(isEditing ? "Save" : "Edit goals")
-            .padding(.top, 4)
-            .padding(.trailing, 8),
-            alignment: .topTrailing
-        )
+        .background(Theme.cardBackground)
+        .cornerRadius(Theme.cornerRadius)
         .animation(Theme.Animation.quickFade, value: isEditing)
     }
 
@@ -264,6 +271,116 @@ struct GoalSectionCard: View {
         .animation(Theme.Animation.microSpring, value: isHovered)
         .onHover { hovering in
             isHovered = hovering
+        }
+    }
+}
+
+// Live markdown preview for the editor
+struct MarkdownPreview: View {
+    let text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(parseLines().enumerated()), id: \.offset) { _, line in
+                lineView(for: line)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private enum LineType {
+        case header(level: Int)
+        case bullet
+        case text
+    }
+
+    private struct ParsedLine {
+        let type: LineType
+        let content: String
+    }
+
+    private func parseLines() -> [ParsedLine] {
+        text.components(separatedBy: .newlines).compactMap { line -> ParsedLine? in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty else { return nil }
+
+            // Check for headers
+            if trimmed.hasPrefix("###") {
+                return ParsedLine(type: .header(level: 3), content: String(trimmed.dropFirst(3)).trimmingCharacters(in: .whitespaces))
+            } else if trimmed.hasPrefix("##") {
+                return ParsedLine(type: .header(level: 2), content: String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces))
+            } else if trimmed.hasPrefix("#") && !trimmed.hasPrefix("# ") == false {
+                return ParsedLine(type: .header(level: 1), content: String(trimmed.dropFirst(1)).trimmingCharacters(in: .whitespaces))
+            }
+            // Bullets
+            else if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") {
+                return ParsedLine(type: .bullet, content: String(trimmed.dropFirst(2)))
+            }
+            // Bold headers **text**
+            else if trimmed.hasPrefix("**") {
+                var content = String(trimmed.dropFirst(2))
+                if let endIdx = content.range(of: "**") {
+                    content = String(content[..<endIdx.lowerBound])
+                }
+                return ParsedLine(type: .header(level: 2), content: content)
+            }
+
+            return ParsedLine(type: .text, content: trimmed)
+        }
+    }
+
+    @ViewBuilder
+    private func lineView(for line: ParsedLine) -> some View {
+        switch line.type {
+        case .header(let level):
+            HStack(spacing: 6) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Theme.accent)
+                    .frame(width: 3, height: level == 1 ? 16 : 14)
+                renderContent(line.content)
+                    .font(.system(size: level == 1 ? 14 : 12, weight: .semibold))
+            }
+            .padding(.top, 6)
+
+        case .bullet:
+            HStack(alignment: .top, spacing: 8) {
+                Circle()
+                    .fill(Theme.accent.opacity(0.5))
+                    .frame(width: 4, height: 4)
+                    .padding(.top, 5)
+                renderContent(line.content)
+                    .font(.system(size: 11))
+            }
+            .padding(.leading, 8)
+
+        case .text:
+            renderContent(line.content)
+                .font(.system(size: 11))
+        }
+    }
+
+    @ViewBuilder
+    private func renderContent(_ text: String) -> some View {
+        // Simple text with #tag coloring
+        let words = text.split(separator: " ", omittingEmptySubsequences: false)
+        HStack(spacing: 4) {
+            ForEach(Array(words.enumerated()), id: \.offset) { _, word in
+                let wordStr = String(word)
+                if wordStr.hasPrefix("#") && wordStr.count > 1 {
+                    let tagName = String(wordStr.dropFirst())
+                    Text(wordStr)
+                        .foregroundColor(Theme.colorForTag(tagName))
+                        .fontWeight(.semibold)
+                } else if wordStr.hasPrefix("**") && wordStr.hasSuffix("**") && wordStr.count > 4 {
+                    let boldText = String(wordStr.dropFirst(2).dropLast(2))
+                    Text(boldText)
+                        .fontWeight(.bold)
+                        .foregroundColor(Theme.text)
+                } else {
+                    Text(wordStr)
+                        .foregroundColor(Theme.text)
+                }
+            }
         }
     }
 }
@@ -539,16 +656,9 @@ struct TodoListView: View {
                     HStack(spacing: 0) {
                         // Left Column - Goals
                         VStack(spacing: 0) {
-                            Text("Goals")
-                                .font(Theme.titleFont)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, Theme.contentPadding)
-                                .padding(.top, Theme.contentPadding)
-                                .padding(.bottom, 8)
-
-                            // Goals section (scrollable)
                             EditableGoalsView(todoList: todoList)
                                 .padding(.horizontal, Theme.contentPadding)
+                                .padding(.top, Theme.contentPadding)
                         }
                         .frame(width: leftColumnWidth)
 
@@ -907,30 +1017,65 @@ struct NewTodoInput: View {
                 .padding(.horizontal, Theme.contentPadding)
             }
 
-            // Quick tag buttons
-            if !availableTags.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(availableTags, id: \.self) { tag in
-                            Button(action: {
-                                toggleTag(tag)
-                            }) {
+            // Quick tag buttons - always show section
+            VStack(alignment: .leading, spacing: 4) {
+                if !selectedTags.isEmpty {
+                    // Show selected tags prominently
+                    HStack(spacing: 4) {
+                        Text("Tags:")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(Theme.secondaryText)
+                        ForEach(Array(selectedTags).sorted(), id: \.self) { tag in
+                            HStack(spacing: 2) {
                                 Text("#\(tag)")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(selectedTags.contains(tag) ? .white : Theme.colorForTag(tag))
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(
-                                        Capsule()
-                                            .fill(selectedTags.contains(tag) ? Theme.colorForTag(tag) : Theme.colorForTag(tag).opacity(0.15))
-                                    )
+                                    .font(.system(size: 11, weight: .semibold))
+                                Button(action: { selectedTags.remove(tag) }) {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 8, weight: .bold))
+                                }
+                                .buttonStyle(PlainButtonStyle())
                             }
-                            .buttonStyle(PlainButtonStyle())
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(Theme.colorForTag(tag)))
                         }
+                        Spacer()
                     }
                     .padding(.horizontal, Theme.contentPadding)
                 }
-                .frame(height: 28)
+
+                if !availableTags.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            if selectedTags.isEmpty {
+                                Text("Tags:")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(Theme.secondaryText)
+                            }
+                            ForEach(availableTags.filter { !selectedTags.contains($0) }, id: \.self) { tag in
+                                Button(action: {
+                                    toggleTag(tag)
+                                }) {
+                                    HStack(spacing: 3) {
+                                        Image(systemName: "plus")
+                                            .font(.system(size: 8, weight: .bold))
+                                        Text("#\(tag)")
+                                            .font(.system(size: 11, weight: .medium))
+                                    }
+                                    .foregroundColor(Theme.colorForTag(tag))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Theme.colorForTag(tag).opacity(0.12))
+                                    .cornerRadius(12)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                        .padding(.horizontal, Theme.contentPadding)
+                    }
+                    .frame(height: 28)
+                }
             }
         }
         .padding(.vertical, 8)

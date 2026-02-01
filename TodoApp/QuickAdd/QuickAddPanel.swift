@@ -54,6 +54,25 @@ struct QuickAddPanelView: View {
         return "\(selectedMode.rawValue): \(clipboardText)"
     }
 
+    // Get frequently used tags (excluding context tags already shown as modes)
+    var frequentTags: [String] {
+        let contextTags = Set(["reply", "prep", "deep", "waiting"])
+        return todoList.allTags
+            .filter { !contextTags.contains($0.lowercased()) }
+            .prefix(8)
+            .map { $0 }
+    }
+
+    // Get all tags that will be applied
+    func getAllTags() -> [String] {
+        var tags: [String] = []
+        if let contextTag = selectedMode.contextTag {
+            tags.append(contextTag)
+        }
+        tags.append(contentsOf: additionalTags.sorted())
+        return tags
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -148,25 +167,71 @@ struct QuickAddPanelView: View {
                     }
                 }
 
+                // Additional tags (compact picker)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Add tags:")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            // Show frequently used tags as quick-add chips
+                            ForEach(frequentTags, id: \.self) { tag in
+                                let isSelected = additionalTags.contains(tag)
+                                let tagColor = Theme.colorForTag(tag)
+                                Button(action: {
+                                    if isSelected {
+                                        additionalTags.remove(tag)
+                                    } else {
+                                        additionalTags.insert(tag)
+                                    }
+                                }) {
+                                    Text("#\(tag)")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(isSelected ? .white : .primary)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 5)
+                                                .fill(isSelected ? tagColor : tagColor.opacity(0.12))
+                                        )
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 5)
+                                                .stroke(tagColor.opacity(0.5), lineWidth: isSelected ? 0 : 1)
+                                        )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                    }
+                }
+
                 // Preview
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Will create:")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
 
-                    HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 6) {
                         Text(finalTitle)
                             .font(.system(size: 13, weight: .medium))
                             .lineLimit(1)
 
-                        if let tag = selectedMode.contextTag {
-                            Text("#\(tag)")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(selectedMode.color)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(selectedMode.color.opacity(0.15))
-                                .cornerRadius(6)
+                        // Show all tags that will be added
+                        let allTags = getAllTags()
+                        if !allTags.isEmpty {
+                            HStack(spacing: 4) {
+                                ForEach(allTags, id: \.self) { tag in
+                                    let tagColor = Theme.colorForTag(tag)
+                                    Text("#\(tag)")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundColor(.primary)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 3)
+                                        .background(tagColor.opacity(0.12))
+                                        .cornerRadius(4)
+                                }
+                            }
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -226,16 +291,10 @@ struct QuickAddPanelView: View {
     private func addTodo() {
         guard !finalTitle.isEmpty else { return }
 
-        var tags: [String] = []
-        if let contextTag = selectedMode.contextTag {
-            tags.append(contextTag)
-        }
-        tags.append(contentsOf: additionalTags)
-
         let todo = Todo(
             title: finalTitle,
             isCompleted: false,
-            tags: tags,
+            tags: getAllTags(),
             priority: .thisWeek
         )
 

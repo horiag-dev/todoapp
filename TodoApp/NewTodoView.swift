@@ -63,45 +63,65 @@ struct NewTodoView: View {
                 }
                 
                 // Tags
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text("Tags")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                    
-                    HStack {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 6) {
-                                ForEach(Array(selectedTags), id: \.self) { tag in
+
+                    // Tag selection area with border
+                    Button(action: { showingTagManagement = true }) {
+                        HStack(spacing: 6) {
+                            if selectedTags.isEmpty {
+                                Image(systemName: "tag")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                                Text("Click to add tags...")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                            } else {
+                                ForEach(Array(selectedTags).sorted(), id: \.self) { tag in
                                     let tagColor = Theme.colorForTag(tag)
-                                    HStack(spacing: 4) {
+                                    let isNewTag = !todoList.allTags.contains(tag)
+                                    HStack(spacing: 3) {
                                         Text("#\(tag)")
-                                            .font(.system(size: 12, weight: .semibold))
-                                            .foregroundColor(tagColor)
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundColor(.primary)
+                                        if isNewTag {
+                                            Text("NEW")
+                                                .font(.system(size: 7, weight: .bold))
+                                                .foregroundColor(.white)
+                                                .padding(.horizontal, 3)
+                                                .padding(.vertical, 1)
+                                                .background(Capsule().fill(Color.green))
+                                        }
                                     }
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 5)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
                                     .background(tagColor.opacity(0.15))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .stroke(tagColor, lineWidth: 1.5)
-                                    )
-                                    .cornerRadius(6)
+                                    .cornerRadius(5)
                                 }
                             }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.secondary)
                         }
-
-                        Button(action: { showingTagManagement = true }) {
-                            Image(systemName: "tag")
-                                .foregroundColor(.blue)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .popover(isPresented: $showingTagManagement) {
-                            TagSelectionSheet(
-                                todoList: todoList,
-                                selectedTags: $selectedTags,
-                                isPresented: $showingTagManagement
-                            )
-                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(Color(NSColor.controlBackgroundColor))
+                        .cornerRadius(8)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .popover(isPresented: $showingTagManagement) {
+                        TagSelectionSheet(
+                            todoList: todoList,
+                            selectedTags: $selectedTags,
+                            isPresented: $showingTagManagement
+                        )
                     }
                 }
             }
