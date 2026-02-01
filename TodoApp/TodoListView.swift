@@ -241,9 +241,7 @@ struct GoalSectionCard: View {
                                 .frame(width: 5, height: 5)
                                 .padding(.top, 6)
 
-                            Text(item)
-                                .font(.system(size: 13))
-                                .foregroundColor(Theme.text.opacity(0.85))
+                            GoalItemText(text: item)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
@@ -272,6 +270,38 @@ struct GoalSectionCard: View {
         .onHover { hovering in
             isHovered = hovering
         }
+    }
+}
+
+// Helper view to render goal item text with bold colored tags inline
+struct GoalItemText: View {
+    let text: String
+
+    var body: some View {
+        buildText()
+            .font(.system(size: 13))
+            .foregroundColor(Theme.text.opacity(0.85))
+    }
+
+    private func buildText() -> Text {
+        var result = Text("")
+        let words = text.split(separator: " ", omittingEmptySubsequences: false)
+
+        for (index, word) in words.enumerated() {
+            let wordStr = String(word)
+            let prefix = index > 0 ? " " : ""
+
+            if wordStr.hasPrefix("#") && wordStr.count > 1 {
+                let tagName = String(wordStr.dropFirst())
+                result = result + Text(prefix) + Text("#\(tagName)")
+                    .bold()
+                    .foregroundColor(Theme.colorForTag(tagName))
+            } else {
+                result = result + Text(prefix + wordStr)
+            }
+        }
+
+        return result
     }
 }
 
