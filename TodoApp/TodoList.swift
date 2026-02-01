@@ -73,7 +73,7 @@ class TodoList: ObservableObject {
     
     func showInitialFilePicker() {
         let alert = NSAlert()
-        alert.messageText = "Welcome to Big Rocks!"
+        alert.messageText = "Welcome to Big Rocks First!"
         alert.informativeText = "Your todos are stored in a simple markdown file that you control.\n\nCreate a new file to get started with sample tasks, or open an existing .md file."
         alert.addButton(withTitle: "Create New File")
         alert.addButton(withTitle: "Open Existing File")

@@ -1,10 +1,10 @@
-# Privacy Policy for Big Rocks
+# Privacy Policy for Big Rocks First
 
 **Last Updated: February 2026**
 
 ## Overview
 
-Big Rocks is designed with privacy as a core principle. Your todo data stays on your device in a markdown file you control.
+Big Rocks First is designed with privacy as a core principle. Your todo data stays on your device in a markdown file you control.
 
 ## Data Collection
 
@@ -23,7 +23,7 @@ All your todos, goals, and settings are stored locally on your Mac:
 
 ## Optional AI Feature
 
-Big Rocks includes an optional AI-powered tag suggestion feature that uses Anthropic's Claude API.
+Big Rocks First includes an optional AI-powered tag suggestion feature that uses Anthropic's Claude API.
 
 ### How It Works
 - This feature is **disabled by default**
@@ -47,7 +47,7 @@ When using the AI feature, your data is subject to Anthropic's privacy policy an
 
 ## Third-Party Services
 
-The only third-party service Big Rocks connects to is:
+The only third-party service Big Rocks First connects to is:
 - **Anthropic API** (api.anthropic.com) - Only when you explicitly use the AI tag suggestion feature
 
 ## Data Security
@@ -58,7 +58,7 @@ The only third-party service Big Rocks connects to is:
 
 ## Children's Privacy
 
-Big Rocks does not knowingly collect any information from children under 13.
+Big Rocks First does not knowingly collect any information from children under 13.
 
 ## Changes to This Policy
 
@@ -73,4 +73,4 @@ https://github.com/horiag-dev/todoapp
 
 ## Summary
 
-**In plain terms**: Big Rocks stores everything locally on your Mac. The only time any data leaves your device is if you choose to use the optional AI tag suggestions, which sends only the current todo text to Anthropic's API.
+**In plain terms**: Big Rocks First stores everything locally on your Mac. The only time any data leaves your device is if you choose to use the optional AI tag suggestions, which sends only the current todo text to Anthropic's API.

@@ -1,7 +1,7 @@
-# App Store Metadata for Big Rocks
+# App Store Metadata for Big Rocks First
 
 ## App Name (30 chars max)
-Big Rocks
+Big Rocks First
 
 ## Subtitle (30 chars max)
 Simple markdown-based todos
@@ -14,10 +14,10 @@ todo, tasks, productivity, markdown, goals, mind map, organizer, checklist, plan
 
 ## Description (4000 chars max)
 
-Big Rocks is a beautifully simple task manager that stores your todos in a plain markdown file you control.
+Big Rocks First is a beautifully simple task manager that stores your todos in a plain markdown file you control.
 
 **Your Data, Your Way**
-Unlike other todo apps that lock your data in proprietary formats, Big Rocks uses simple markdown files. Your todos are always accessible, portable, and future-proof.
+Unlike other todo apps that lock your data in proprietary formats, Big Rocks First uses simple markdown files. Your todos are always accessible, portable, and future-proof.
 
 **Key Features**
 
