@@ -64,7 +64,6 @@ struct CenterBranchLine: Shape {
         var path = Path()
 
         let dx = branchPoint.x - centerPoint.x
-        let dy = branchPoint.y - centerPoint.y
 
         // Smooth curve from center outward
         let control1 = CGPoint(
@@ -140,7 +139,6 @@ struct ConnectionLine: Shape {
         var path = Path()
 
         let dx = end.x - start.x
-        let dy = end.y - start.y
 
         let control1 = CGPoint(
             x: start.x + dx * 0.5,
