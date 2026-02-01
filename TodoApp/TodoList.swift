@@ -73,7 +73,7 @@ class TodoList: ObservableObject {
     
     func showInitialFilePicker() {
         let alert = NSAlert()
-        alert.messageText = "Welcome to Todo App!"
+        alert.messageText = "Welcome to Big Rocks!"
         alert.informativeText = "Your todos are stored in a simple markdown file that you control.\n\nCreate a new file to get started with sample tasks, or open an existing .md file."
         alert.addButton(withTitle: "Create New File")
         alert.addButton(withTitle: "Open Existing File")
@@ -130,38 +130,45 @@ class TodoList: ObservableObject {
         return """
         # Goals
 
-        **Getting Started** #welcome
-        - Learn how the app organizes your tasks
-        - Use #tags to categorize items
-        - Try different priority levels
+        **Q1 Launch** #launch
+        - Ship v2.0 by end of March
+        - Hit 10k active users milestone
+        - Achieve 4.5+ App Store rating
 
-        **Work** #work
-        - Focus on high-impact tasks first
-        - Use #prep for meeting preparation
-        - Use #reply for emails to answer
-        - Use #deep for focused work sessions
+        **User Growth** #growth
+        - Improve onboarding conversion to 60%
+        - Reduce churn by 15%
+        - Launch referral program
 
-        **Personal** #personal
-        - Balance work and life
-        - Track habits and routines
+        **Team** #team
+        - Hire senior iOS developer
+        - Complete Q1 performance reviews
+        - Plan team offsite
 
         ---
 
         ### 🟠 This Week
-        - [ ] Review this sample file and customize it #welcome
-        - [ ] Add your first real todo (delete these samples) #welcome
-        - [ ] Explore the mind map view (toggle at top) #welcome
+        - [ ] Finalize v2.0 feature spec with engineering #launch #deep
+        - [ ] Review user research findings from last sprint #growth #deep
+        - [ ] Prepare board deck for Thursday #launch #prep
+        - [ ] Schedule 1:1s with design and engineering leads #team #meeting
 
         ### 🟡 Urgent
-        - [ ] Try clicking a todo to see options #welcome
-        - [ ] Use Cmd+Shift+T for Quick Add from clipboard #welcome
+        - [ ] Reply to investor update request #launch #reply
+        - [ ] Approve marketing assets for launch campaign #launch
+        - [ ] Review candidate portfolio for iOS role #team #deep
 
         ### ⚪ Normal
-        - [ ] Learn about context tags: #prep #reply #deep
-        - [ ] Check the menu bar icon for quick access #welcome
-        - [ ] Edit your Goals section on the left #welcome
+        - [ ] Draft blog post announcing new features #launch #deep
+        - [ ] Sync with support team on FAQ updates #meeting
+        - [ ] Plan user interview sessions for next month #growth #prep
+        - [ ] Research competitor pricing changes #growth #deep
+        - [ ] Update roadmap in Notion #launch
+        - [ ] Book restaurant for team dinner #team
 
         ### ✅ Completed
+        - [x] Send weekly update to stakeholders #launch #reply
+        - [x] Review analytics dashboard for February #growth
 
         ### 🗑️ Deleted
 
