@@ -102,11 +102,15 @@ struct TodoItemView: View {
     @State private var showingAISuggestionAlert = false
     @State private var suggestedContextTag: String? = nil
 
+    // Cached segments for performance - avoid re-parsing links on every render
+    @State private var cachedSegments: [TextSegment] = []
+    @State private var cachedSegmentsTitle: String = ""
+
     // Static cached NSDataDetector for link detection (expensive to create)
     private static let linkDetector: NSDataDetector? = {
         try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
     }()
-    
+
     // Helper struct to represent text segments
     private struct TextSegment: Identifiable {
         let id = UUID()
@@ -114,36 +118,52 @@ struct TodoItemView: View {
         let isLink: Bool
         let url: URL?
     }
-    
+
+    // Get cached segments, only recompute if title changed
+    private var segments: [TextSegment] {
+        if cachedSegmentsTitle == todo.title && !cachedSegments.isEmpty {
+            return cachedSegments
+        }
+        return computeSegments(text: todo.title)
+    }
+
     // Function to split text into segments
-    private func splitIntoSegments(text: String) -> [TextSegment] {
+    private func computeSegments(text: String) -> [TextSegment] {
         var segments: [TextSegment] = []
         let nsString = text as NSString
         var currentIndex = 0
 
         let matches = Self.linkDetector?.matches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count)) ?? []
-        
+
         for match in matches {
             // Add text before link if any
             if match.range.location > currentIndex {
                 let normalText = nsString.substring(with: NSRange(location: currentIndex, length: match.range.location - currentIndex))
                 segments.append(TextSegment(text: normalText, isLink: false, url: nil))
             }
-            
+
             // Add link
             let linkText = nsString.substring(with: match.range)
             segments.append(TextSegment(text: linkText, isLink: true, url: match.url))
-            
+
             currentIndex = match.range.location + match.range.length
         }
-        
+
         // Add remaining text if any
         if currentIndex < nsString.length {
             let normalText = nsString.substring(with: NSRange(location: currentIndex, length: nsString.length - currentIndex))
             segments.append(TextSegment(text: normalText, isLink: false, url: nil))
         }
-        
+
         return segments
+    }
+
+    // Update segment cache when todo title changes
+    private func updateSegmentCache() {
+        if cachedSegmentsTitle != todo.title {
+            cachedSegments = computeSegments(text: todo.title)
+            cachedSegmentsTitle = todo.title
+        }
     }
     
     
@@ -206,7 +226,7 @@ struct TodoItemView: View {
                 // Todo text with links and tags
                 HStack(spacing: Theme.itemSpacing) {
                     HStack(spacing: 0) {
-                        ForEach(splitIntoSegments(text: todo.title)) { segment in
+                        ForEach(segments) { segment in
                             if segment.isLink {
                                 Text(segment.text)
                                     .strikethrough(todo.isCompleted)
@@ -428,7 +448,13 @@ struct TodoItemView: View {
                 saveChanges()
             }
         }
-        .id("\(todo.id)-\(todo.isCompleted)-\(todo.priority.rawValue)")
+        .onAppear {
+            updateSegmentCache()
+        }
+        .onChange(of: todo.title) { _, _ in
+            updateSegmentCache()
+        }
+        .id(todo.id)
     }
     
     private func saveChanges() {

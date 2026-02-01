@@ -1338,18 +1338,18 @@ struct TodoListSections: View {
     private func todosByContext(from todos: [Todo], groupOtherByTags: Bool = false) -> [(context: ContextSection, todos: [Todo])] {
         var result: [(context: ContextSection, todos: [Todo])] = []
 
+        let contextManager = ContextConfigManager.shared
         for contextSection in ContextSection.contextSections {
             let contextTodos: [Todo]
             if contextSection.id == "other" {
-                // "Other" = todos without any context tag
+                // "Other" = todos without any context tag (O(1) lookup per tag)
                 contextTodos = todos.filter { todo in
-                    !todo.tags.contains { tag in
-                        ContextSection.contextTags.contains(tag.lowercased())
-                    }
+                    !todo.tags.contains { contextManager.isContextTag($0) }
                 }
             } else if let contextTag = contextSection.contextTag {
+                let lowercasedContextTag = contextTag.lowercased()
                 contextTodos = todos.filter { todo in
-                    todo.tags.contains { $0.lowercased() == contextTag }
+                    todo.tags.contains { $0.lowercased() == lowercasedContextTag }
                 }
             } else {
                 contextTodos = []
@@ -1391,13 +1391,12 @@ struct TodoListSections: View {
             }.sorted { $0.title.lowercased() < $1.title.lowercased() }
 
         case "other":
+            let contextManager = ContextConfigManager.shared
             return incompleteTodos.filter { todo in
                 let hasToday = todo.tags.contains { $0.lowercased() == "today" }
                 let hasUrgent = todo.tags.contains { $0.lowercased() == "urgent" }
                 let isUrgentPriority = todo.priority == .urgent
-                let hasContextTag = todo.tags.contains { tag in
-                    ContextSection.contextTags.contains(tag.lowercased())
-                }
+                let hasContextTag = todo.tags.contains { contextManager.isContextTag($0) }
                 return !hasToday && !hasUrgent && !isUrgentPriority && !hasContextTag
             }.sorted { $0.title.lowercased() < $1.title.lowercased() }
 
@@ -1516,7 +1515,10 @@ struct TodoListSections: View {
     // Get todos grouped by context only - "Other" is a flat list (no tag headers)
     private func todosByContextOnly(from todos: [Todo]) -> [(context: ContextSection, todos: [Todo])] {
         var result: [(context: ContextSection, todos: [Todo])] = []
-        let contextTags = ContextSection.contextTags
+        let contextManager = ContextConfigManager.shared
+
+        // Pre-compute lowercase titles for sorting (avoid repeated lowercased() calls)
+        let todoTitlesLower = Dictionary(uniqueKeysWithValues: todos.map { ($0.id, $0.title.lowercased()) })
 
         // Group by context tags
         for contextSection in ContextSection.contextSections {
@@ -1524,26 +1526,32 @@ struct TodoListSections: View {
                 continue // Handle "Other" separately
             }
             if let contextTag = contextSection.contextTag {
+                let lowercasedContextTag = contextTag.lowercased()
                 let contextTodos = todos.filter { todo in
-                    todo.tags.contains { $0.lowercased() == contextTag }
+                    todo.tags.contains { $0.lowercased() == lowercasedContextTag }
                 }
                 if !contextTodos.isEmpty {
-                    result.append((contextSection, contextTodos.sorted { $0.title.lowercased() < $1.title.lowercased() }))
+                    let sorted = contextTodos.sorted { todoTitlesLower[$0.id, default: ""] < todoTitlesLower[$1.id, default: ""] }
+                    result.append((contextSection, sorted))
                 }
             }
         }
 
-        // "Other" - todos without context tags, grouped by primary tag but NO headers
+        // "Other" - todos without context tags (O(1) lookup per tag)
         let otherTodos = todos.filter { todo in
-            !todo.tags.contains { tag in contextTags.contains(tag.lowercased()) }
+            !todo.tags.contains { contextManager.isContextTag($0) }
         }
 
         if !otherTodos.isEmpty {
-            // Count tag frequency
+            // Count tag frequency in single pass
             var tagCounts: [String: Int] = [:]
+            var tagLowerMap: [String: String] = [:]  // Cache lowercase versions
             for todo in otherTodos {
                 for tag in todo.tags {
                     tagCounts[tag, default: 0] += 1
+                    if tagLowerMap[tag] == nil {
+                        tagLowerMap[tag] = tag.lowercased()
+                    }
                 }
             }
 
@@ -1552,15 +1560,20 @@ struct TodoListSections: View {
                 let count1 = tagCounts[tag1] ?? 0
                 let count2 = tagCounts[tag2] ?? 0
                 if count1 != count2 { return count1 > count2 }
-                return tag1.lowercased() < tag2.lowercased()
+                return tagLowerMap[tag1, default: ""] < tagLowerMap[tag2, default: ""]
             }
+
+            // Build tag index map for O(1) lookup instead of O(n) firstIndex
+            let tagIndex = Dictionary(uniqueKeysWithValues: sortedTags.enumerated().map { ($1, $0) })
 
             // Assign each todo to its highest-priority (most frequent) tag
             var primaryTag: [UUID: String] = [:]
+            var primaryTagIndex: [UUID: Int] = [:]  // Cache the index too
             for todo in otherTodos {
                 for tag in sortedTags {
                     if todo.tags.contains(tag) {
                         primaryTag[todo.id] = tag
+                        primaryTagIndex[todo.id] = tagIndex[tag] ?? Int.max
                         break
                     }
                 }
@@ -1568,21 +1581,14 @@ struct TodoListSections: View {
 
             // Sort todos: group by primary tag (in frequency order), then by title within group
             let sortedOther = otherTodos.sorted { todo1, todo2 in
-                let tag1 = primaryTag[todo1.id]
-                let tag2 = primaryTag[todo2.id]
+                let idx1 = primaryTagIndex[todo1.id] ?? Int.max
+                let idx2 = primaryTagIndex[todo2.id] ?? Int.max
 
-                // Both have tags - compare by tag priority
-                if let t1 = tag1, let t2 = tag2 {
-                    let idx1 = sortedTags.firstIndex(of: t1) ?? Int.max
-                    let idx2 = sortedTags.firstIndex(of: t2) ?? Int.max
-                    if idx1 != idx2 { return idx1 < idx2 }
-                }
-                // One has tag, one doesn't - tagged first
-                if tag1 != nil && tag2 == nil { return true }
-                if tag1 == nil && tag2 != nil { return false }
+                // Compare by tag priority
+                if idx1 != idx2 { return idx1 < idx2 }
 
-                // Same tag or both untagged - sort by title
-                return todo1.title.lowercased() < todo2.title.lowercased()
+                // Same tag or both untagged - sort by title (using cached lowercase)
+                return todoTitlesLower[todo1.id, default: ""] < todoTitlesLower[todo2.id, default: ""]
             }
 
             result.append((.other, sortedOther))
@@ -1595,18 +1601,27 @@ struct TodoListSections: View {
     // Excludes context tags (prep, reply, deep, waiting) - only shows actual tags
     private func computeTagGroups() -> [(tag: String?, todos: [Todo])] {
         let incompleteTodos = todoList.todos.filter { !$0.isCompleted }
-        let contextTags = ContextSection.contextTags
+        let contextManager = ContextConfigManager.shared
 
-        // Count todos per tag (for priority sorting), excluding context tags
+        // Single pass: count tags and cache non-context tags per todo
         var tagCounts: [String: Int] = [:]
+        var tagLowerMap: [String: String] = [:]
+        var todoNonContextTags: [UUID: [String]] = [:]
+
         for todo in incompleteTodos {
+            var nonContextTags: [String] = []
             for tag in todo.tags {
-                // Skip context tags - they're not regular tags
-                if contextTags.contains(tag.lowercased()) {
+                // O(1) context check
+                if contextManager.isContextTag(tag) {
                     continue
                 }
+                nonContextTags.append(tag)
                 tagCounts[tag, default: 0] += 1
+                if tagLowerMap[tag] == nil {
+                    tagLowerMap[tag] = tag.lowercased()
+                }
             }
+            todoNonContextTags[todo.id] = nonContextTags
         }
 
         // Sort tags by count (descending), then alphabetically
@@ -1616,40 +1631,44 @@ struct TodoListSections: View {
             if count1 != count2 {
                 return count1 > count2
             }
-            return tag1.lowercased() < tag2.lowercased()
+            return tagLowerMap[tag1, default: ""] < tagLowerMap[tag2, default: ""]
         }
 
-        // Assign each todo to its highest-priority tag (excluding context tags)
-        var todoAssignments: [UUID: String] = [:]
+        // Build tag index for O(1) lookup
+        let tagIndex = Dictionary(uniqueKeysWithValues: sortedTags.enumerated().map { ($1, $0) })
+
+        // Assign each todo to its highest-priority tag and group directly
+        var todosByTag: [String: [Todo]] = [:]
+        var untaggedTodos: [Todo] = []
+
         for todo in incompleteTodos {
-            let nonContextTags = todo.tags.filter { !contextTags.contains($0.lowercased()) }
+            let nonContextTags = todoNonContextTags[todo.id] ?? []
             if nonContextTags.isEmpty {
-                continue // Will go to untagged
+                untaggedTodos.append(todo)
+                continue
             }
-            // Find the highest priority tag this todo has
-            for tag in sortedTags {
-                if nonContextTags.contains(tag) {
-                    todoAssignments[todo.id] = tag
-                    break
+            // Find the highest priority tag (lowest index in sortedTags)
+            var bestTag: String? = nil
+            var bestIndex = Int.max
+            for tag in nonContextTags {
+                if let idx = tagIndex[tag], idx < bestIndex {
+                    bestIndex = idx
+                    bestTag = tag
                 }
             }
-        }
-
-        // Build groups
-        var groups: [(tag: String?, todos: [Todo])] = []
-
-        for tag in sortedTags {
-            let tagTodos = incompleteTodos.filter { todoAssignments[$0.id] == tag }
-            if !tagTodos.isEmpty {
-                groups.append((tag: tag, todos: tagTodos))
+            if let tag = bestTag {
+                todosByTag[tag, default: []].append(todo)
             }
         }
 
-        // Untagged todos (todos with no tags OR only context tags)
-        let untaggedTodos = incompleteTodos.filter { todo in
-            let nonContextTags = todo.tags.filter { !contextTags.contains($0.lowercased()) }
-            return nonContextTags.isEmpty
+        // Build groups in sorted order
+        var groups: [(tag: String?, todos: [Todo])] = []
+        for tag in sortedTags {
+            if let todos = todosByTag[tag], !todos.isEmpty {
+                groups.append((tag: tag, todos: todos))
+            }
         }
+
         if !untaggedTodos.isEmpty {
             groups.append((tag: nil, todos: untaggedTodos))
         }

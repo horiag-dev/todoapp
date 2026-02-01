@@ -33,10 +33,15 @@ class ContextConfigManager: ObservableObject {
     @Published var contexts: [ContextConfig] {
         didSet {
             saveContexts()
+            rebuildTagCache()
         }
     }
 
     private let userDefaultsKey = "contextConfigurations"
+
+    // Cached lowercase tags for O(1) lookup
+    private var _cachedContextTagsSet: Set<String> = []
+    private var _cachedContextTags: [String] = []
 
     // Default contexts
     static let defaultContexts: [ContextConfig] = [
@@ -49,14 +54,27 @@ class ContextConfigManager: ObservableObject {
     private init() {
         self.contexts = Self.defaultContexts
         loadContexts()
+        rebuildTagCache()
     }
 
+    /// Cached lowercase context tags for fast access
     var contextTags: [String] {
-        contexts.map { $0.id.lowercased() }
+        _cachedContextTags
+    }
+
+    /// O(1) check if a tag is a context tag
+    func isContextTag(_ tag: String) -> Bool {
+        _cachedContextTagsSet.contains(tag.lowercased())
     }
 
     func context(for tag: String) -> ContextConfig? {
-        contexts.first { $0.id.lowercased() == tag.lowercased() }
+        let lowercased = tag.lowercased()
+        return contexts.first { $0.id.lowercased() == lowercased }
+    }
+
+    private func rebuildTagCache() {
+        _cachedContextTags = contexts.map { $0.id.lowercased() }
+        _cachedContextTagsSet = Set(_cachedContextTags)
     }
 
     func color(for tag: String) -> Color {

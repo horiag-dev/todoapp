@@ -26,6 +26,11 @@ class TodoList: ObservableObject {
     private var saveWorkItem: DispatchWorkItem?
     private let saveDebounceInterval: TimeInterval = 0.5
 
+    // Cached computed properties for performance
+    private var _cachedAllTags: [String]?
+    private var _cachedMindMapNodes: [MindMapNode]?
+    private var _todoTagsHash: Int = 0  // Track changes to invalidate cache
+
     
     var bigThingsMarkdown: String {
         var markdown = ""
@@ -219,13 +224,50 @@ class TodoList: ObservableObject {
     }
     
     var allTags: [String] {
+        let currentHash = computeTagsHash()
+        if let cached = _cachedAllTags, currentHash == _todoTagsHash {
+            return cached
+        }
         let tags = todos.flatMap { $0.tags } + top5Todos.flatMap { $0.tags }
-        return Array(Set(tags)).sorted()
+        let result = Array(Set(tags)).sorted()
+        _cachedAllTags = result
+        _todoTagsHash = currentHash
+        return result
     }
 
-    /// Builds the mind map tree from goals and todos
+    /// Builds the mind map tree from goals and todos (cached)
     var mindMapNodes: [MindMapNode] {
-        MindMapDataBuilder.buildMindMapTree(goals: goals, todos: todos, top5Todos: top5Todos)
+        let currentHash = computeTagsHash()
+        if let cached = _cachedMindMapNodes, currentHash == _todoTagsHash {
+            return cached
+        }
+        let result = MindMapDataBuilder.buildMindMapTree(goals: goals, todos: todos, top5Todos: top5Todos)
+        _cachedMindMapNodes = result
+        return result
+    }
+
+    /// Compute a hash to detect changes in todos/tags
+    private func computeTagsHash() -> Int {
+        var hasher = Hasher()
+        hasher.combine(todos.count)
+        hasher.combine(top5Todos.count)
+        hasher.combine(goals.hashValue)
+        for todo in todos {
+            hasher.combine(todo.id)
+            hasher.combine(todo.tags)
+            hasher.combine(todo.isCompleted)
+        }
+        for todo in top5Todos {
+            hasher.combine(todo.id)
+            hasher.combine(todo.tags)
+        }
+        return hasher.finalize()
+    }
+
+    /// Invalidate caches when data changes
+    private func invalidateCaches() {
+        _cachedAllTags = nil
+        _cachedMindMapNodes = nil
     }
     
     func todosByTag(_ tag: String) -> [Todo] {
