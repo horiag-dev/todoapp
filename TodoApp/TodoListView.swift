@@ -388,6 +388,7 @@ struct MarkdownRenderer: View {
 
 struct TodoListView: View {
     @ObservedObject var todoList: TodoList
+    @ObservedObject private var themeManager = ThemeManager.shared
     @State private var newTodoTitle = ""
     @State private var newTodoPriority: Priority = .urgent
     @State private var leftColumnWidth: CGFloat = 380
@@ -397,7 +398,7 @@ struct TodoListView: View {
 
     var body: some View {
         ZStack {
-            Theme.mainBackgroundGradient
+            themeManager.currentGradient
                 .ignoresSafeArea()
             VStack(spacing: 0) {
                 // Top Bar

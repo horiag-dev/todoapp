@@ -176,17 +176,18 @@ enum Theme {
     }
 }
 
-// MARK: - Theme Presets
+// MARK: - Theme Presets (Light, airy pastels)
 enum GradientTheme: String, CaseIterable, Identifiable {
     case classic = "Classic"
-    case aurora = "Aurora"
-    case sunset = "Sunset"
-    case ocean = "Ocean"
-    case forest = "Forest"
-    case lavender = "Lavender"
-    case midnight = "Midnight"
-    case coral = "Coral"
-    case mint = "Mint"
+    case skyBlue = "Sky Blue"
+    case mintBreeze = "Mint Breeze"
+    case lavenderMist = "Lavender"
+    case peachGlow = "Peach"
+    case oceanMist = "Ocean Mist"
+    case springMeadow = "Meadow"
+    case roseQuartz = "Rose"
+    case arcticAurora = "Arctic"
+    case sunnyDay = "Sunny"
 
     var id: String { rawValue }
 
@@ -197,61 +198,77 @@ enum GradientTheme: String, CaseIterable, Identifiable {
                 Color(NSColor.windowBackgroundColor),
                 Color(NSColor.windowBackgroundColor)
             ]
-        case .aurora:
+        case .skyBlue:
+            // Light sky blue gradient
             return [
-                Color(red: 0.1, green: 0.2, blue: 0.4),
-                Color(red: 0.2, green: 0.3, blue: 0.5),
-                Color(red: 0.3, green: 0.2, blue: 0.5),
-                Color(red: 0.2, green: 0.4, blue: 0.4)
+                Color(red: 0.85, green: 0.92, blue: 1.0),
+                Color(red: 0.9, green: 0.95, blue: 1.0),
+                Color(red: 0.82, green: 0.9, blue: 0.98),
+                Color(red: 0.88, green: 0.94, blue: 1.0)
             ]
-        case .sunset:
+        case .mintBreeze:
+            // Fresh mint/teal pastels
             return [
-                Color(red: 0.95, green: 0.4, blue: 0.3),
-                Color(red: 0.9, green: 0.5, blue: 0.4),
-                Color(red: 0.85, green: 0.45, blue: 0.5),
-                Color(red: 0.4, green: 0.3, blue: 0.5)
+                Color(red: 0.85, green: 0.96, blue: 0.94),
+                Color(red: 0.88, green: 0.98, blue: 0.95),
+                Color(red: 0.82, green: 0.94, blue: 0.92),
+                Color(red: 0.9, green: 0.97, blue: 0.96)
             ]
-        case .ocean:
+        case .lavenderMist:
+            // Soft lavender pastels
             return [
-                Color(red: 0.1, green: 0.3, blue: 0.5),
-                Color(red: 0.15, green: 0.4, blue: 0.55),
-                Color(red: 0.2, green: 0.5, blue: 0.6),
-                Color(red: 0.1, green: 0.35, blue: 0.45)
+                Color(red: 0.92, green: 0.88, blue: 0.98),
+                Color(red: 0.95, green: 0.9, blue: 1.0),
+                Color(red: 0.9, green: 0.86, blue: 0.96),
+                Color(red: 0.94, green: 0.92, blue: 0.99)
             ]
-        case .forest:
+        case .peachGlow:
+            // Warm peach pastels
             return [
-                Color(red: 0.15, green: 0.3, blue: 0.2),
-                Color(red: 0.2, green: 0.35, blue: 0.25),
-                Color(red: 0.25, green: 0.4, blue: 0.3),
-                Color(red: 0.15, green: 0.25, blue: 0.2)
+                Color(red: 1.0, green: 0.92, blue: 0.88),
+                Color(red: 1.0, green: 0.95, blue: 0.9),
+                Color(red: 0.98, green: 0.9, blue: 0.86),
+                Color(red: 1.0, green: 0.94, blue: 0.92)
             ]
-        case .lavender:
+        case .oceanMist:
+            // Blue-green ocean pastels
             return [
-                Color(red: 0.4, green: 0.35, blue: 0.55),
-                Color(red: 0.5, green: 0.4, blue: 0.6),
-                Color(red: 0.45, green: 0.35, blue: 0.5),
-                Color(red: 0.35, green: 0.3, blue: 0.45)
+                Color(red: 0.85, green: 0.94, blue: 0.96),
+                Color(red: 0.88, green: 0.95, blue: 0.97),
+                Color(red: 0.82, green: 0.92, blue: 0.95),
+                Color(red: 0.86, green: 0.93, blue: 0.98)
             ]
-        case .midnight:
+        case .springMeadow:
+            // Fresh green pastels
             return [
-                Color(red: 0.08, green: 0.1, blue: 0.2),
-                Color(red: 0.12, green: 0.15, blue: 0.28),
-                Color(red: 0.1, green: 0.12, blue: 0.22),
-                Color(red: 0.06, green: 0.08, blue: 0.16)
+                Color(red: 0.88, green: 0.96, blue: 0.88),
+                Color(red: 0.92, green: 0.98, blue: 0.9),
+                Color(red: 0.86, green: 0.94, blue: 0.86),
+                Color(red: 0.9, green: 0.97, blue: 0.88)
             ]
-        case .coral:
+        case .roseQuartz:
+            // Soft pink pastels
             return [
-                Color(red: 0.9, green: 0.5, blue: 0.45),
-                Color(red: 0.85, green: 0.55, blue: 0.5),
-                Color(red: 0.8, green: 0.45, blue: 0.45),
-                Color(red: 0.6, green: 0.35, blue: 0.4)
+                Color(red: 0.98, green: 0.9, blue: 0.92),
+                Color(red: 1.0, green: 0.92, blue: 0.94),
+                Color(red: 0.96, green: 0.88, blue: 0.9),
+                Color(red: 0.99, green: 0.94, blue: 0.95)
             ]
-        case .mint:
+        case .arcticAurora:
+            // Cool blue-purple pastels
             return [
-                Color(red: 0.3, green: 0.55, blue: 0.5),
-                Color(red: 0.35, green: 0.6, blue: 0.55),
-                Color(red: 0.4, green: 0.65, blue: 0.6),
-                Color(red: 0.25, green: 0.5, blue: 0.45)
+                Color(red: 0.88, green: 0.92, blue: 0.98),
+                Color(red: 0.9, green: 0.9, blue: 0.98),
+                Color(red: 0.86, green: 0.94, blue: 1.0),
+                Color(red: 0.92, green: 0.9, blue: 0.96)
+            ]
+        case .sunnyDay:
+            // Warm yellow pastels
+            return [
+                Color(red: 1.0, green: 0.98, blue: 0.88),
+                Color(red: 1.0, green: 0.96, blue: 0.85),
+                Color(red: 0.98, green: 0.95, blue: 0.9),
+                Color(red: 1.0, green: 0.97, blue: 0.92)
             ]
         }
     }
@@ -265,10 +282,7 @@ enum GradientTheme: String, CaseIterable, Identifiable {
     }
 
     var isLight: Bool {
-        switch self {
-        case .classic: return true
-        case .aurora, .sunset, .ocean, .forest, .lavender, .midnight, .coral, .mint: return false
-        }
+        true  // All themes are now light
     }
 }
 
@@ -310,54 +324,54 @@ class ThemeManager: ObservableObject {
     }
 }
 
-// MARK: - Mesh Gradient View (Modern multi-color gradient)
+// MARK: - Mesh Gradient View (Light, airy multi-color gradient)
 struct MeshGradientView: View {
     let colors: [Color]
     @State private var animate = false
 
     var body: some View {
         ZStack {
-            // Base layer
+            // Base layer - smooth gradient
             LinearGradient(
                 colors: colors,
-                startPoint: animate ? .topLeading : .topTrailing,
-                endPoint: animate ? .bottomTrailing : .bottomLeading
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
 
-            // Overlay blobs for depth
+            // Soft overlay blobs for subtle depth
             GeometryReader { geo in
                 Circle()
-                    .fill(colors.first?.opacity(0.4) ?? Color.clear)
-                    .blur(radius: 80)
-                    .frame(width: geo.size.width * 0.8, height: geo.size.width * 0.8)
+                    .fill(colors.first?.opacity(0.6) ?? Color.clear)
+                    .blur(radius: 120)
+                    .frame(width: geo.size.width * 0.9, height: geo.size.width * 0.9)
                     .offset(
-                        x: animate ? geo.size.width * 0.1 : geo.size.width * -0.2,
-                        y: animate ? geo.size.height * -0.1 : geo.size.height * 0.1
+                        x: animate ? geo.size.width * -0.1 : geo.size.width * -0.3,
+                        y: animate ? geo.size.height * -0.2 : geo.size.height * -0.1
                     )
 
                 Circle()
-                    .fill(colors.last?.opacity(0.3) ?? Color.clear)
+                    .fill(colors.last?.opacity(0.5) ?? Color.clear)
                     .blur(radius: 100)
-                    .frame(width: geo.size.width * 0.7, height: geo.size.width * 0.7)
+                    .frame(width: geo.size.width * 0.8, height: geo.size.width * 0.8)
                     .offset(
-                        x: animate ? geo.size.width * 0.3 : geo.size.width * 0.5,
-                        y: animate ? geo.size.height * 0.5 : geo.size.height * 0.3
+                        x: animate ? geo.size.width * 0.4 : geo.size.width * 0.5,
+                        y: animate ? geo.size.height * 0.6 : geo.size.height * 0.5
                     )
 
                 if colors.count > 2 {
                     Circle()
-                        .fill(colors[1].opacity(0.25))
-                        .blur(radius: 60)
-                        .frame(width: geo.size.width * 0.5, height: geo.size.width * 0.5)
+                        .fill(colors[1].opacity(0.4))
+                        .blur(radius: 80)
+                        .frame(width: geo.size.width * 0.6, height: geo.size.width * 0.6)
                         .offset(
-                            x: animate ? geo.size.width * 0.6 : geo.size.width * 0.4,
-                            y: animate ? geo.size.height * 0.2 : geo.size.height * 0.4
+                            x: animate ? geo.size.width * 0.5 : geo.size.width * 0.3,
+                            y: animate ? geo.size.height * 0.1 : geo.size.height * 0.3
                         )
                 }
             }
         }
         .onAppear {
-            withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) {
+            withAnimation(.easeInOut(duration: 12).repeatForever(autoreverses: true)) {
                 animate = true
             }
         }
