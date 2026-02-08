@@ -557,8 +557,11 @@ struct TodoListView: View {
                         Button(action: { todoList.openFile() }) {
                             Label("Open File...", systemImage: "folder.badge.plus")
                         }
-                        Button(action: { todoList.createNewFile() }) {
-                            Label("New File...", systemImage: "doc.badge.plus")
+                        Button(action: { todoList.createNewFile(demo: false) }) {
+                            Label("New Blank File...", systemImage: "doc.badge.plus")
+                        }
+                        Button(action: { todoList.createNewFile(demo: true) }) {
+                            Label("New Demo File...", systemImage: "sparkles")
                         }
                     } label: {
                         Image(systemName: "doc.text")
@@ -705,11 +708,9 @@ struct TodoListView: View {
                                 newTodoPriority: $newTodoPriority
                             )
 
-                            // Sticky Top 5 Section (outside ScrollView)
-                            if !todoList.top5Todos.isEmpty {
-                                Top5WeekSection(todoList: todoList)
-                                    .padding(.top, 8)
-                            }
+                            // Sticky Top 5 Section (always visible)
+                            Top5WeekSection(todoList: todoList)
+                                .padding(.top, 8)
 
                             // Scrollable todo list (without Top 5)
                             ScrollView {
@@ -784,10 +785,15 @@ struct FileManagementControls: View {
             
             Spacer()
             
-            Button(action: { todoList.createNewFile() }) {
+            Button(action: { todoList.createNewFile(demo: false) }) {
                 Image(systemName: "doc.badge.plus")
             }
-            .help("Create new todo file")
+            .help("New blank file")
+
+            Button(action: { todoList.createNewFile(demo: true) }) {
+                Image(systemName: "sparkles")
+            }
+            .help("New demo file (with sample todos + AI demo mode)")
             
             Button(action: { todoList.openFile() }) {
                 Image(systemName: "folder.badge.plus")
@@ -1240,12 +1246,15 @@ struct SuggestionChip: View {
 // Prominent sticky Top 5 section
 struct Top5WeekSection: View {
     @ObservedObject var todoList: TodoList
+    @State private var isAddingNew = false
+    @State private var newItemTitle = ""
+    @FocusState private var addFieldFocused: Bool
 
     private let sectionColor = Color.blue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Section header matching Urgent/Normal style
+            // Section header
             HStack(spacing: 10) {
                 Image(systemName: "star.fill")
                     .font(.system(size: 14))
@@ -1264,6 +1273,29 @@ struct Top5WeekSection: View {
                     .background(Capsule().fill(sectionColor))
 
                 Spacer()
+
+                if !todoList.top5Todos.isEmpty {
+                    Button(action: { todoList.clearTop5() }) {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("Clear Top 5 and start fresh")
+                }
+
+                if todoList.top5Todos.count < 5 {
+                    Button(action: {
+                        isAddingNew = true
+                        addFieldFocused = true
+                    }) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(sectionColor)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("Add item to Top 5")
+                }
             }
             .padding(.horizontal, Theme.contentPadding)
             .padding(.vertical, 12)
@@ -1278,6 +1310,50 @@ struct Top5WeekSection: View {
             VStack(spacing: 0) {
                 ForEach(Array(todoList.top5Todos.enumerated()), id: \.element.id) { index, todo in
                     Top5ItemRow(todoList: todoList, todo: todo, rank: index + 1)
+                }
+
+                // Inline add field or empty state
+                if isAddingNew {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus.circle")
+                            .font(.system(size: 14))
+                            .foregroundColor(sectionColor.opacity(0.5))
+
+                        TextField("New Top 5 item...", text: $newItemTitle)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .font(Theme.bodyFont)
+                            .focused($addFieldFocused)
+                            .onSubmit {
+                                addNewItem()
+                            }
+
+                        Button("Cancel") {
+                            isAddingNew = false
+                            newItemTitle = ""
+                        }
+                        .font(.caption)
+                        .buttonStyle(PlainButtonStyle())
+                        .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                } else if todoList.top5Todos.isEmpty {
+                    Button(action: {
+                        isAddingNew = true
+                        addFieldFocused = true
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus.circle.dashed")
+                                .font(.system(size: 13))
+                            Text("What are your top priorities this week?")
+                                .font(.system(size: 12))
+                        }
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
             .padding(.top, 4)
@@ -1300,52 +1376,263 @@ struct Top5WeekSection: View {
         .padding(.bottom, 16)
         .padding(.horizontal, Theme.contentPadding)
     }
+
+    private func addNewItem() {
+        let title = newItemTitle.trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty else { return }
+        let todo = Todo(title: title, priority: .thisWeek)
+        todoList.addTop5Todo(todo)
+        newItemTitle = ""
+        isAddingNew = false
+    }
 }
 
-// Compact row for Top 5 items
+// Compact row for Top 5 items with inline editing
 struct Top5ItemRow: View {
     @ObservedObject var todoList: TodoList
-    let todo: Todo
+    @State var todo: Todo
     let rank: Int
-    @State private var isHovered: Bool = false
+    @State private var isHovered = false
+    @State private var isEditing = false
+    @State private var editedTitle: String = ""
+    @FocusState private var editFocused: Bool
+
+    // AI suggestion state
+    @State private var isLoadingAI = false
+    @State private var showingAISuggestion = false
+    @State private var suggestedContext: String? = nil
 
     private let accentColor = Color.blue
 
     var body: some View {
         HStack(spacing: 8) {
             // Checkbox
-            Button(action: { todoList.toggleTop5Todo(todo) }) {
+            Button(action: {
+                todoList.toggleTop5Todo(todo)
+                if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
+                    todo = updated
+                }
+            }) {
                 Image(systemName: todo.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 14))
                     .foregroundColor(todo.isCompleted ? .green : Theme.secondaryText)
             }
             .buttonStyle(PlainButtonStyle())
 
-            // Title
-            Text(todo.title)
-                .font(Theme.bodyFont)
-                .foregroundColor(todo.isCompleted ? Theme.secondaryText : Theme.text)
-                .strikethrough(todo.isCompleted)
-                .lineLimit(1)
+            if isEditing {
+                TextField("Title", text: $editedTitle)
+                    .textFieldStyle(PlainTextFieldStyle())
+                    .font(Theme.bodyFont)
+                    .focused($editFocused)
+                    .onSubmit { saveEdit() }
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(Theme.background)
+                    .cornerRadius(4)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(accentColor.opacity(0.5), lineWidth: 1)
+                    )
+            } else {
+                // Title
+                Text(todo.title)
+                    .font(Theme.bodyFont)
+                    .foregroundColor(todo.isCompleted ? Theme.secondaryText : Theme.text)
+                    .strikethrough(todo.isCompleted)
+                    .lineLimit(1)
+            }
 
             Spacer()
 
-            // First tag only (compact)
-            if let firstTag = todo.tags.first {
-                Text("#\(firstTag)")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(Theme.colorForTag(firstTag))
+            // Tags (compact)
+            if !isEditing {
+                ForEach(todo.tags.prefix(2), id: \.self) { tag in
+                    Text("#\(tag)")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(Theme.colorForTag(tag))
+                }
             }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 3)
         .background(
             RoundedRectangle(cornerRadius: 4)
-                .fill(isHovered ? accentColor.opacity(0.06) : Color.clear)
+                .fill(isEditing ? accentColor.opacity(0.08) : (isHovered ? accentColor.opacity(0.06) : Color.clear))
         )
         .animation(Theme.Animation.quickFade, value: isHovered)
-        .onHover { hovering in
-            isHovered = hovering
+        .onHover { hovering in isHovered = hovering }
+        .gesture(
+            TapGesture(count: 2).onEnded {
+                editedTitle = todo.title
+                isEditing = true
+                editFocused = true
+            }
+        )
+        .onChange(of: editFocused) { _, focused in
+            if !focused && isEditing { saveEdit() }
+        }
+        .contextMenu {
+            // Edit
+            Button {
+                editedTitle = todo.title
+                isEditing = true
+                editFocused = true
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+
+            Divider()
+
+            // Move up / down
+            Button {
+                todoList.moveTop5Todo(todo, direction: -1)
+            } label: {
+                Label("Move Up", systemImage: "arrow.up")
+            }
+            .disabled(todoList.top5Todos.first?.id == todo.id)
+
+            Button {
+                todoList.moveTop5Todo(todo, direction: 1)
+            } label: {
+                Label("Move Down", systemImage: "arrow.down")
+            }
+            .disabled(todoList.top5Todos.last?.id == todo.id)
+
+            Divider()
+
+            // Context tags
+            Menu("Context") {
+                let contextManager = ContextConfigManager.shared
+                ForEach(contextManager.contexts, id: \.id) { context in
+                    let hasContext = todo.tags.contains { $0.lowercased() == context.id.lowercased() }
+                    Button {
+                        if hasContext {
+                            todoList.removeTagFromTop5Todo(todo, tag: context.id)
+                        } else {
+                            todoList.addTagToTop5Todo(todo, tag: context.id)
+                        }
+                        if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
+                            todo = updated
+                        }
+                    } label: {
+                        Label {
+                            Text(context.name)
+                        } icon: {
+                            Image(systemName: hasContext ? "checkmark.circle.fill" : context.icon)
+                        }
+                    }
+                }
+            }
+
+            // Tags
+            Menu("Tags") {
+                if !todo.tags.isEmpty {
+                    ForEach(todo.tags, id: \.self) { tag in
+                        Button {
+                            todoList.removeTagFromTop5Todo(todo, tag: tag)
+                            if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
+                                todo = updated
+                            }
+                        } label: {
+                            Label("Remove #\(tag)", systemImage: "minus.circle")
+                        }
+                    }
+                    Divider()
+                }
+                let availableTags = todoList.allTags.filter { !todo.tags.contains($0) }
+                ForEach(availableTags, id: \.self) { tag in
+                    Button {
+                        todoList.addTagToTop5Todo(todo, tag: tag)
+                        if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
+                            todo = updated
+                        }
+                    } label: {
+                        Label("Add #\(tag)", systemImage: "plus.circle")
+                    }
+                }
+            }
+
+            // AI Auto-tag
+            if APIKeyManager.shared.hasAPIKey {
+                Button {
+                    fetchAISuggestion()
+                } label: {
+                    Label(isLoadingAI ? "Analyzing..." : "Auto-tag with AI", systemImage: "sparkles")
+                }
+                .disabled(isLoadingAI)
+            }
+
+            Divider()
+
+            // Complete / Uncomplete
+            Button {
+                todoList.toggleTop5Todo(todo)
+                if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
+                    todo = updated
+                }
+            } label: {
+                Label(todo.isCompleted ? "Mark Incomplete" : "Mark Complete", systemImage: todo.isCompleted ? "circle" : "checkmark.circle")
+            }
+
+            // Remove from Top 5
+            Button(role: .destructive) {
+                todoList.deleteTop5Todo(todo)
+            } label: {
+                Label("Remove from Top 5", systemImage: "star.slash")
+            }
+        }
+        .alert("AI Suggestion", isPresented: $showingAISuggestion) {
+            if let context = suggestedContext {
+                Button("Add #\(context)") {
+                    todoList.addTagToTop5Todo(todo, tag: context)
+                    if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
+                        self.todo = updated
+                    }
+                    suggestedContext = nil
+                }
+            }
+            Button("Cancel", role: .cancel) { suggestedContext = nil }
+        } message: {
+            if let context = suggestedContext {
+                Text("Add context tag #\(context) to this todo?")
+            } else {
+                Text("No context suggestion available for this todo.")
+            }
+        }
+    }
+
+    private func saveEdit() {
+        let title = editedTitle.trimmingCharacters(in: .whitespaces)
+        if !title.isEmpty {
+            var updated = todo
+            updated.title = title
+            todoList.updateTop5Todo(updated)
+            todo = updated
+        }
+        isEditing = false
+    }
+
+    private func fetchAISuggestion() {
+        guard !isLoadingAI else { return }
+        isLoadingAI = true
+        Task {
+            do {
+                let suggestion = try await ClaudeCategorizationService.shared.suggestTags(
+                    todoText: todo.title,
+                    existingTags: todoList.allTags
+                )
+                await MainActor.run {
+                    isLoadingAI = false
+                    suggestedContext = suggestion.context
+                    showingAISuggestion = true
+                }
+            } catch {
+                await MainActor.run {
+                    isLoadingAI = false
+                    suggestedContext = nil
+                    showingAISuggestion = true
+                }
+            }
         }
     }
 }

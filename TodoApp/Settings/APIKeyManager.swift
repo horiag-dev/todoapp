@@ -7,8 +7,14 @@ class APIKeyManager {
 
     private let serviceName = "com.todoapp.anthropic"
     private let accountName = "claude-api-key"
+    static let demoKey = "demo"
 
     private init() {}
+
+    /// Returns true when the stored API key is the demo key
+    var isDemoMode: Bool {
+        return getAPIKey() == Self.demoKey
+    }
 
     // MARK: - Public Methods
 

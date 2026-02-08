@@ -38,6 +38,11 @@ class ClaudeCategorizationService {
             throw CategorizationError.noAPIKey
         }
 
+        // Demo mode: return a smart mock response without calling the API
+        if APIKeyManager.shared.isDemoMode {
+            return await demoSuggestTags(todoText: todoText)
+        }
+
         let prompt = buildPrompt(
             todoText: todoText,
             existingTags: existingTags,
@@ -60,6 +65,41 @@ class ClaudeCategorizationService {
         }
 
         return try parseResponse(data)
+    }
+
+    /// Demo mode: suggests a context tag based on keyword matching
+    private func demoSuggestTags(todoText: String) async -> TagSuggestion {
+        // Simulate a brief network delay so the UI feels realistic
+        try? await Task.sleep(nanoseconds: 600_000_000)
+
+        let text = todoText.lowercased()
+        let contexts = ContextConfigManager.shared.contexts
+        let contextIDs = Set(contexts.map { $0.id.lowercased() })
+
+        // Keyword-to-context mapping for realistic demo suggestions
+        let keywords: [(words: [String], context: String)] = [
+            (["meet", "agenda", "standup", "sync", "call", "1:1", "prepare", "presentation", "slides", "brief"], "prep"),
+            (["email", "reply", "respond", "message", "follow up", "slack", "send", "write back", "ping"], "reply"),
+            (["code", "build", "design", "research", "write", "analyze", "debug", "implement", "refactor", "focus", "draft", "review code"], "deep"),
+            (["waiting", "blocked", "pending", "depends", "approval", "sign off", "hear back", "response from"], "waiting"),
+        ]
+
+        for entry in keywords {
+            // Only suggest if this context actually exists in the user's config
+            guard contextIDs.contains(entry.context) else { continue }
+            for word in entry.words {
+                if text.contains(word) {
+                    return TagSuggestion(context: entry.context)
+                }
+            }
+        }
+
+        // Fallback: suggest the first available context
+        if let first = contexts.first {
+            return TagSuggestion(context: first.id)
+        }
+
+        return TagSuggestion()
     }
 
     // MARK: - Private Methods

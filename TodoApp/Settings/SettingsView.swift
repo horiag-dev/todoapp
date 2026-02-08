@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var saveMessage: String = ""
     @State private var showSaveMessage: Bool = false
     @StateObject private var contextConfig = ContextConfigManager.shared
+    @StateObject private var appearanceManager = AppearanceManager.shared
     @State private var editingContext: ContextConfig? = nil
     @State private var showingAddContext: Bool = false
     @Environment(\.dismiss) private var dismiss
@@ -24,6 +25,52 @@ struct SettingsView: View {
                     }
                 }
                 .padding(.bottom, 8)
+
+                // Appearance Section
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: "paintbrush.fill")
+                                .foregroundColor(.blue)
+                            Text("Appearance")
+                                .font(.headline)
+                        }
+
+                        Text("Choose how the app looks. System follows your macOS appearance setting.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        HStack(spacing: 12) {
+                            ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                                Button(action: {
+                                    appearanceManager.currentMode = mode
+                                }) {
+                                    VStack(spacing: 8) {
+                                        Image(systemName: mode.icon)
+                                            .font(.system(size: 24))
+                                            .foregroundColor(appearanceManager.currentMode == mode ? .white : .primary)
+
+                                        Text(mode.rawValue)
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundColor(appearanceManager.currentMode == mode ? .white : .primary)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 16)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(appearanceManager.currentMode == mode ? Color.accentColor : Color.gray.opacity(0.1))
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(appearanceManager.currentMode == mode ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: 1)
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                    }
+                    .padding(8)
+                }
 
                 // Context Categories Section
                 GroupBox {
@@ -121,9 +168,26 @@ struct SettingsView: View {
                             .font(.headline)
                     }
 
-                    Text("Required for auto-categorization of todos. Your key is stored securely in the macOS Keychain.")
+                    Text("Required for auto-categorization of todos. Your key is stored securely in the macOS Keychain. Enter \"demo\" to try the feature without a real key.")
                         .font(.caption)
                         .foregroundColor(.secondary)
+
+                    if APIKeyManager.shared.isDemoMode {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles")
+                            Text("Demo Mode Active")
+                                .font(.caption.bold())
+                            Text("- AI tagging uses sample responses instead of the live API.")
+                                .font(.caption)
+                        }
+                        .foregroundColor(.orange)
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.orange.opacity(0.1))
+                        )
+                    }
 
                     HStack {
                         if showingKey {

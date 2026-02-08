@@ -1,81 +1,72 @@
-# Todo App
+# Big Rocks First
 
-A simple macOS application to manage your todo list with AI-powered refactoring and tag suggestions.
+A macOS productivity app for managing todos with priorities, context tags, goals, and an optional AI-powered auto-tagging feature.
+
+## Quick Start
+
+1. Open `TodoApp.xcodeproj` in Xcode
+2. Build and run (Cmd+R)
+3. The app opens a file picker — create a new `.md` file or open an existing one
+
+## Demo Mode (AI Feature)
+
+The app has an optional AI feature that auto-suggests context tags for your todos. To try it without a real API key:
+
+1. Open **Settings** (gear icon)
+2. In the **Claude API Key** field, type `demo`
+3. Click **Save**
+
+That's it. Now right-click any todo and choose **"Auto-tag with AI"** — the app will suggest a context tag based on the todo's text. Demo mode uses keyword matching to simulate the AI response.
+
+To use the real AI feature instead, replace `demo` with a real API key from [console.anthropic.com](https://console.anthropic.com/).
 
 ## Features
 
-- Add new todos
-- Mark todos as complete/incomplete
-- Delete todos
-- Todos are automatically saved and persist between app launches
-- **NEW: AI-powered todo refactoring** - Automatically improve todo titles and suggest relevant tags
-- **NEW: Smart tag suggestions** - Get contextual tag recommendations based on todo content
-- **NEW: Priority optimization** - AI suggests appropriate priority levels for your todos
+- **Priorities** — Organize todos by This Week, Urgent, and Normal
+- **Top 5 of the Week** — Pin your most important tasks
+- **Context Tags** — Categorize by context (prep, reply, deep work, waiting)
+- **Custom Tags** — Create and manage your own tags
+- **Goals & Big Things** — Markdown notepad for goals with tag linking
+- **Mind Map** — Visual overview of your goals and todos by tag
+- **Quick Add** — Global hotkey (Cmd+Shift+T) to add todos from anywhere
+- **Auto-tag with AI** — Optional Claude-powered context suggestions
+- **Dark/Light/System themes**
+- **Markdown file storage** — Your data is a plain `.md` file you own
 
-## AI Integration
+## AI Auto-Tagging
 
-The app now includes OpenAI integration to help you create better, more actionable todos:
+When enabled, right-clicking a todo shows an **"Auto-tag with AI"** option that analyzes the todo text and suggests one of your configured context tags.
 
-### How to Set Up AI Features
-
-1. **Get an OpenAI API Key:**
-   - Go to https://platform.openai.com/api-keys
-   - Sign in or create an account
-   - Click "Create new secret key"
-   - Copy the key (starts with "sk-")
-
-2. **Configure in the App:**
-   - Click the gear icon (⚙️) in the top-right corner
-   - Paste your API key in the "OpenAI API Configuration" section
-   - Click "Save API Key"
-   - Optionally test the connection
-
-### Using AI Refactoring
-
-1. **Type a todo** in the input field
-2. **Click the magic wand** (🪄) button next to the input field
-3. **Review AI suggestions** - the app will show:
-   - Refactored title (more actionable and clear)
-   - Suggested tags (based on content and existing tags)
-   - Recommended priority level
-4. **Apply suggestions** or dismiss them
-
-### Example
-
-**Original:** "meeting with john"
-**AI Refactored:** "Schedule follow-up meeting with John to discuss project timeline"
-**Suggested Tags:** ["meetings", "john", "project"]
-**Priority:** Normal
+| Mode | How it works |
+|------|-------------|
+| **Demo** (`demo` key) | Keyword matching, no network calls, works offline |
+| **Live** (real API key) | Calls Claude API for intelligent categorization |
 
 ## How to Use
 
-1. Open the project in Xcode
-2. Build and run the application
-3. To add a new todo:
-   - Type your todo in the text field at the top
-   - Click the plus button or press Enter
-   - For AI enhancement, click the magic wand button first
-4. To mark a todo as complete:
-   - Click the circle button next to the todo
-5. To delete a todo:
-   - Click the trash icon next to the todo
+- **Add a todo**: Click "+" or use the input field at the top
+- **Set priority**: Right-click a todo > Priority
+- **Add tags**: Right-click a todo > Tags or Context
+- **AI auto-tag**: Right-click a todo > Auto-tag with AI (requires API key or demo mode)
+- **Edit a todo**: Double-click on its title
+- **Quick Add**: Press Cmd+Shift+T from anywhere (requires accessibility permission)
+- **Mind Map**: Toggle the mind map view from the toolbar
 
 ## Requirements
 
-- macOS 11.0 or later
-- Xcode 13.0 or later
-- OpenAI API key (for AI features)
+- macOS 15.4 or later
+- Xcode 16.3 or later
 
 ## Privacy & Security
 
-- Your OpenAI API key is stored locally in UserDefaults
-- Todo content is sent to OpenAI for processing
-- No data is stored on OpenAI servers beyond the immediate request
-- You can disable AI features by not setting an API key
+- Your API key is stored in the macOS Keychain (not UserDefaults)
+- In demo mode, no data leaves your device
+- In live mode, only the todo text is sent to the Anthropic API for categorization
+- All todo data is stored locally in a `.md` file you choose
 
-## Backup System
+## Backups
 
-The app automatically creates backups every 3 hours in the app's documents directory:
+The app creates automatic backups every 3 hours at:
 ```
-~/Library/Containers/Horia.TodoApp/Data/Documents/TodoAppBackups/
-``` 
+~/Documents/TodoAppBackups/
+```

@@ -74,18 +74,20 @@ class TodoList: ObservableObject {
     func showInitialFilePicker() {
         let alert = NSAlert()
         alert.messageText = "Welcome to Big Rocks First!"
-        alert.informativeText = "Your todos are stored in a simple markdown file that you control.\n\nCreate a new file to get started with sample tasks, or open an existing .md file."
-        alert.addButton(withTitle: "Create New File")
+        alert.informativeText = "Your todos are stored in a simple markdown file that you control.\n\nStart with a demo file to explore all features (including AI tagging), create a blank file, or open an existing .md file."
+        alert.addButton(withTitle: "New Demo File")
+        alert.addButton(withTitle: "New Blank File")
         alert.addButton(withTitle: "Open Existing File")
-        alert.addButton(withTitle: "Cancel")
-        
+
         let response = alert.runModal()
 
         switch response {
         case .alertFirstButtonReturn:
-            showSavePanel()  // Create New File
+            showSavePanel(demo: true)   // New Demo File
         case .alertSecondButtonReturn:
-            showOpenPanel()  // Open Existing File
+            showSavePanel(demo: false)  // New Blank File
+        case .alertThirdButtonReturn:
+            showOpenPanel()             // Open Existing File
         default:
             break
         }
@@ -107,9 +109,9 @@ class TodoList: ObservableObject {
         }
     }
     
-    func showSavePanel() {
+    func showSavePanel(demo: Bool = true) {
         let savePanel = NSSavePanel()
-        savePanel.title = "Create New Todo File"
+        savePanel.title = demo ? "Create Demo File" : "Create New Todo File"
         savePanel.message = "Choose where to save your todo list"
         savePanel.allowedContentTypes = [UTType(filenameExtension: "md") ?? .plainText]
         savePanel.nameFieldStringValue = "todos.md"
@@ -117,18 +119,43 @@ class TodoList: ObservableObject {
 
         savePanel.begin { response in
             if response == .OK, let url = savePanel.url {
-                // Create file with sample content to help new users
-                let sampleContent = Self.sampleFileContent()
-                try? sampleContent.write(to: url, atomically: true, encoding: .utf8)
+                let content = demo ? Self.demoFileContent() : Self.blankFileContent()
+                try? content.write(to: url, atomically: true, encoding: .utf8)
                 self.selectFile(url)
+
+                // Demo file also enables demo mode so AI tagging works immediately
+                if demo && !APIKeyManager.shared.hasAPIKey {
+                    try? APIKeyManager.shared.saveAPIKey(APIKeyManager.demoKey)
+                }
             }
         }
     }
 
-    /// Sample content for new users demonstrating app features
-    static func sampleFileContent() -> String {
+    /// Blank file with just section headers
+    static func blankFileContent() -> String {
         return """
         # Goals
+
+
+        ---
+
+        ### 🟠 This Week
+
+        ### 🟡 Urgent
+
+        ### ⚪ Normal
+
+        ### ✅ Completed
+
+        ### 🗑️ Deleted
+
+        """
+    }
+
+    /// Demo file with sample todos demonstrating all features
+    static func demoFileContent() -> String {
+        return """
+        ## 🎯 Goals
 
         **Q1 Launch** #launch
         - Ship v2.0 by end of March
@@ -145,23 +172,33 @@ class TodoList: ObservableObject {
         - Complete Q1 performance reviews
         - Plan team offsite
 
-        ---
+        ### 🔴 Top 5 of the week
+
+        - [ ] Finalize v2.0 feature spec with engineering #launch
+        - [ ] Prepare board deck for Thursday #launch
+        - [ ] Reply to investor update request #launch
+        - [ ] Review candidate portfolio for iOS role #team
+        - [ ] Plan user interview sessions for next month #growth
+
+        ## 📋 Big Things for the Week
+
+        1. Lock down v2.0 scope and get sign-off
+        2. Close the senior iOS hire
+        3. Send investor update with Q1 numbers
 
         ### 🟠 This Week
-        - [ ] Finalize v2.0 feature spec with engineering #launch #deep
-        - [ ] Review user research findings from last sprint #growth #deep
-        - [ ] Prepare board deck for Thursday #launch #prep
-        - [ ] Schedule 1:1s with design and engineering leads #team #meeting
+        - [ ] Review user research findings from last sprint #growth #deep #today
+        - [ ] Schedule 1:1s with design and engineering leads #team #today
+        - [ ] Approve marketing assets for launch campaign #launch
+        - [ ] Set up analytics events for new features #launch #deep
 
         ### 🟡 Urgent
-        - [ ] Reply to investor update request #launch #reply
-        - [ ] Approve marketing assets for launch campaign #launch
-        - [ ] Review candidate portfolio for iOS role #team #deep
+        - [ ] Fix crash on launch for macOS 14 users #launch #deep
+        - [ ] Respond to App Store review team questions #launch #reply
 
         ### ⚪ Normal
         - [ ] Draft blog post announcing new features #launch #deep
         - [ ] Sync with support team on FAQ updates #meeting
-        - [ ] Plan user interview sessions for next month #growth #prep
         - [ ] Research competitor pricing changes #growth #deep
         - [ ] Update roadmap in Notion #launch
         - [ ] Book restaurant for team dinner #team
@@ -184,8 +221,8 @@ class TodoList: ObservableObject {
         setupBackupTimer()
     }
     
-    func createNewFile() {
-        showSavePanel()
+    func createNewFile(demo: Bool = false) {
+        showSavePanel(demo: demo)
     }
     
     func openFile() {
@@ -757,6 +794,17 @@ class TodoList: ObservableObject {
             top5Todos[index].tags.removeAll { $0 == tag }
             saveTodos()
         }
+    }
+    func moveTop5Todo(_ todo: Todo, direction: Int) {
+        guard let index = top5Todos.firstIndex(where: { $0.id == todo.id }) else { return }
+        let newIndex = index + direction
+        guard newIndex >= 0 && newIndex < top5Todos.count else { return }
+        top5Todos.swapAt(index, newIndex)
+        saveTodos()
+    }
+    func clearTop5() {
+        top5Todos.removeAll()
+        saveTodos()
     }
     
 }
