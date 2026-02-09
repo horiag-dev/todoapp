@@ -2264,8 +2264,9 @@ struct UrgencySectionWithContextGroups: View {
                     )
                 }
             }
+            .padding(.bottom, 4)
         }
-        .background(Theme.cardBackground)
+        .background(urgencySection.color.opacity(0.03))
         .cornerRadius(Theme.cornerRadiusMd)
         .overlay(
             Rectangle()
@@ -2421,7 +2422,7 @@ struct TagGroupSection: View {
                     .padding(.vertical, 4)
                 }
             }
-            .background(Theme.cardBackground)
+            .background(tagColor.opacity(0.03))
             .cornerRadius(Theme.cornerRadiusMd)
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
@@ -2512,7 +2513,7 @@ struct ContextTodoSection: View {
                 }
                 .padding(.vertical, 4)
             }
-            .background(Theme.cardBackground)
+            .background(section.color.opacity(0.03))
             .cornerRadius(Theme.cornerRadiusMd)
             .overlay(
                 Rectangle()
