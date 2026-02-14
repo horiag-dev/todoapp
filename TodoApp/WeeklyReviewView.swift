@@ -1,29 +1,63 @@
 import SwiftUI
 
+// MARK: - Grouping Model
+
+struct SuggestionGroup: Identifiable {
+    let id: UUID // todoId
+    let todoTitle: String
+    let suggestionIndices: [Int]
+}
+
+// MARK: - Weekly Review View
+
 struct WeeklyReviewView: View {
     @Binding var isPresented: Bool
     @ObservedObject var todoList: TodoList
 
     @State private var suggestions: [ReviewSuggestion] = []
+    @State private var goalInsights: [GoalInsight] = []
     @State private var summary: String = ""
     @State private var isLoading: Bool = true
     @State private var errorMessage: String? = nil
+    @State private var loadingProgress: Double = 0.0
+    @State private var loadingTimer: Timer? = nil
 
     private var acceptedCount: Int {
         suggestions.filter { $0.isAccepted }.count
     }
 
+    private var affectedTodoCount: Int {
+        Set(suggestions.filter { $0.isAccepted }.map { $0.todoId }).count
+    }
+
+    private var groupedSuggestions: [SuggestionGroup] {
+        var indexMap: [UUID: [Int]] = [:]
+        var titleMap: [UUID: String] = [:]
+        var order: [UUID] = []
+
+        for (index, suggestion) in suggestions.enumerated() {
+            if indexMap[suggestion.todoId] == nil {
+                order.append(suggestion.todoId)
+                titleMap[suggestion.todoId] = suggestion.todoTitle
+            }
+            indexMap[suggestion.todoId, default: []].append(index)
+        }
+
+        return order.compactMap { todoId in
+            guard let indices = indexMap[todoId],
+                  let title = titleMap[todoId] else { return nil }
+            return SuggestionGroup(id: todoId, todoTitle: title, suggestionIndices: indices)
+        }
+    }
+
     var body: some View {
         ZStack {
-            // Dimmed background
             Color.black.opacity(0.3)
                 .ignoresSafeArea()
                 .onTapGesture { dismiss() }
 
-            // Main card
             VStack(spacing: 0) {
                 reviewHeader
-
                 Divider()
 
                 if isLoading {
@@ -35,11 +69,10 @@ struct WeeklyReviewView: View {
                 }
 
                 Divider()
-
                 reviewFooter
             }
-            .frame(width: 620)
-            .frame(minHeight: 400, maxHeight: 700)
+            .frame(width: 680)
+            .frame(minHeight: 400, maxHeight: 800)
             .background(
                 RoundedRectangle(cornerRadius: Theme.cornerRadiusLg)
                     .fill(Theme.cardBackground)
@@ -82,21 +115,83 @@ struct WeeklyReviewView: View {
     // MARK: - Loading
 
     private var loadingView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             Spacer()
-            ProgressView()
-                .scaleEffect(1.2)
+
+            Image(systemName: "wand.and.stars")
+                .font(.system(size: 32))
+                .foregroundColor(.purple.opacity(0.6))
+
             Text("Analyzing your todos...")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(Theme.secondaryText)
-            Text("Claude is reviewing your tasks against your goals and priorities.")
-                .font(.system(size: 12))
-                .foregroundColor(Theme.secondaryText.opacity(0.7))
-                .multilineTextAlignment(.center)
+
+            // Progress bar
+            VStack(spacing: 8) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Theme.secondaryBackground)
+                            .frame(height: 6)
+
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(
+                                LinearGradient(
+                                    colors: [.purple.opacity(0.7), .purple],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(width: geo.size.width * loadingProgress, height: 6)
+                            .animation(.easeOut(duration: 0.4), value: loadingProgress)
+                    }
+                }
+                .frame(height: 6)
+
+                Text(loadingStepText)
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.secondaryText.opacity(0.7))
+                    .animation(.easeInOut(duration: 0.3), value: loadingStepText)
+            }
+            .frame(width: 280)
+
             Spacer()
         }
         .frame(maxWidth: .infinity, minHeight: 300)
         .padding(24)
+        .onAppear { startLoadingTimer() }
+        .onDisappear { stopLoadingTimer() }
+    }
+
+    private var loadingStepText: String {
+        if loadingProgress < 0.2 {
+            return "Reading your goals and priorities..."
+        } else if loadingProgress < 0.45 {
+            return "Reviewing each todo for clarity..."
+        } else if loadingProgress < 0.7 {
+            return "Checking alignment with your goals..."
+        } else if loadingProgress < 0.85 {
+            return "Generating suggestions..."
+        } else {
+            return "Almost done..."
+        }
+    }
+
+    private func startLoadingTimer() {
+        loadingProgress = 0.0
+        // Tick every 0.5s, fill to ~90% over ~15s (30 ticks × 0.03 = 0.9)
+        loadingTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+            DispatchQueue.main.async {
+                if loadingProgress < 0.9 {
+                    loadingProgress += 0.03
+                }
+            }
+        }
+    }
+
+    private func stopLoadingTimer() {
+        loadingTimer?.invalidate()
+        loadingTimer = nil
     }
 
     // MARK: - Error
@@ -144,11 +239,19 @@ struct WeeklyReviewView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.purple.opacity(0.06))
 
-            // Suggestion cards
             ScrollView {
-                LazyVStack(spacing: 8) {
-                    ForEach(suggestions.indices, id: \.self) { index in
-                        SuggestionCardView(suggestion: $suggestions[index])
+                LazyVStack(spacing: 12) {
+                    // Goal insights section
+                    if !goalInsights.isEmpty {
+                        GoalInsightsSection(insights: goalInsights)
+                    }
+
+                    // Grouped suggestion cards
+                    ForEach(groupedSuggestions) { group in
+                        GroupedSuggestionCard(
+                            group: group,
+                            suggestions: $suggestions
+                        )
                     }
                 }
                 .padding(16)
@@ -161,7 +264,7 @@ struct WeeklyReviewView: View {
     private var reviewFooter: some View {
         HStack {
             if !isLoading && errorMessage == nil {
-                Text("\(acceptedCount) of \(suggestions.count) changes selected")
+                Text("\(acceptedCount) changes across \(affectedTodoCount) todos")
                     .font(.system(size: 12))
                     .foregroundColor(Theme.secondaryText)
             }
@@ -220,12 +323,20 @@ struct WeeklyReviewView: View {
                 availableTags: todoList.allTags
             )
             await MainActor.run {
+                self.loadingProgress = 1.0
+                self.stopLoadingTimer()
+            }
+            // Brief pause at 100% before showing results
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            await MainActor.run {
                 self.suggestions = result.suggestions
+                self.goalInsights = result.goalInsights
                 self.summary = result.summary
                 self.isLoading = false
             }
         } catch {
             await MainActor.run {
+                self.stopLoadingTimer()
                 self.errorMessage = error.localizedDescription
                 self.isLoading = false
             }
@@ -244,7 +355,7 @@ struct WeeklyReviewView: View {
 
             switch suggestion.type {
             case .rephrase:
-                if let newTitle = suggestion.newTitle {
+                if let newTitle = suggestion.newTitle, !newTitle.isEmpty {
                     todo.title = newTitle
                 }
             case .addTags:
@@ -257,7 +368,7 @@ struct WeeklyReviewView: View {
                 if let tags = suggestion.tagsToRemove {
                     todo.tags.removeAll { tags.contains($0) }
                 }
-            case .changePriority:
+            case .changePriority, .moveToToday, .removeFromToday:
                 if let priorityStr = suggestion.newPriority {
                     switch priorityStr {
                     case "today": todo.priority = .today
@@ -266,11 +377,13 @@ struct WeeklyReviewView: View {
                     case "normal": todo.priority = .normal
                     default: break
                     }
+                } else {
+                    switch suggestion.type {
+                    case .moveToToday: todo.priority = .today
+                    case .removeFromToday: todo.priority = .thisWeek
+                    default: break
+                    }
                 }
-            case .moveToToday:
-                todo.priority = .today
-            case .removeFromToday:
-                todo.priority = .thisWeek
             }
 
             todoList.updateTodo(todo)
@@ -286,9 +399,81 @@ struct WeeklyReviewView: View {
     }
 }
 
-// MARK: - Suggestion Card
+// MARK: - Grouped Suggestion Card
 
-struct SuggestionCardView: View {
+struct GroupedSuggestionCard: View {
+    let group: SuggestionGroup
+    @Binding var suggestions: [ReviewSuggestion]
+
+    private var allAccepted: Bool {
+        group.suggestionIndices.allSatisfy { suggestions[$0].isAccepted }
+    }
+
+    private var anyAccepted: Bool {
+        group.suggestionIndices.contains { suggestions[$0].isAccepted }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header: todo title + select-all toggle
+            HStack(spacing: 8) {
+                Button(action: toggleAll) {
+                    Image(systemName: allAccepted ? "checkmark.circle.fill" : (anyAccepted ? "minus.circle.fill" : "circle"))
+                        .font(.system(size: 18))
+                        .foregroundColor(allAccepted ? .green : (anyAccepted ? .orange : Theme.secondaryText.opacity(0.4)))
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                Text(group.todoTitle)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Theme.text)
+                    .lineLimit(2)
+
+                Spacer()
+
+                Text("\(group.suggestionIndices.count) \(group.suggestionIndices.count == 1 ? "change" : "changes")")
+                    .font(.system(size: 10))
+                    .foregroundColor(Theme.secondaryText)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Theme.secondaryBackground)
+                    )
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+
+            ForEach(Array(group.suggestionIndices.enumerated()), id: \.element) { offset, index in
+                Divider()
+                    .padding(.horizontal, 14)
+                    .opacity(0.5)
+
+                SuggestionRow(suggestion: $suggestions[index])
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
+                .fill(anyAccepted ? Theme.secondaryBackground : Theme.secondaryBackground.opacity(0.4))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
+                .stroke(anyAccepted ? Color.purple.opacity(0.2) : Color.clear, lineWidth: 1)
+        )
+        .animation(Theme.Animation.quickFade, value: allAccepted)
+    }
+
+    private func toggleAll() {
+        let newValue = !allAccepted
+        for index in group.suggestionIndices {
+            suggestions[index].isAccepted = newValue
+        }
+    }
+}
+
+// MARK: - Suggestion Row
+
+struct SuggestionRow: View {
     @Binding var suggestion: ReviewSuggestion
 
     private var typeIcon: String {
@@ -325,41 +510,34 @@ struct SuggestionCardView: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            // Accept/reject toggle
+        HStack(alignment: .top, spacing: 10) {
+            // Per-suggestion accept/reject
             Button(action: { suggestion.isAccepted.toggle() }) {
                 Image(systemName: suggestion.isAccepted ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 18))
+                    .font(.system(size: 15))
                     .foregroundColor(suggestion.isAccepted ? .green : Theme.secondaryText.opacity(0.4))
             }
             .buttonStyle(PlainButtonStyle())
             .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 6) {
-                // Type badge + original title
-                HStack(spacing: 6) {
-                    HStack(spacing: 4) {
-                        Image(systemName: typeIcon)
-                            .font(.system(size: 9))
-                        Text(typeLabel)
-                            .font(.system(size: 10, weight: .semibold))
-                    }
-                    .foregroundColor(typeColor)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(typeColor.opacity(0.12))
-                    )
-
-                    Text(suggestion.todoTitle)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(Theme.text)
-                        .lineLimit(1)
+                // Type badge
+                HStack(spacing: 4) {
+                    Image(systemName: typeIcon)
+                        .font(.system(size: 9))
+                    Text(typeLabel)
+                        .font(.system(size: 10, weight: .semibold))
                 }
+                .foregroundColor(typeColor)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(typeColor.opacity(0.12))
+                )
 
-                // Change detail
-                changeDetailView
+                // Editable content
+                editableContent
 
                 // Reason
                 Text(suggestion.reason)
@@ -370,103 +548,335 @@ struct SuggestionCardView: View {
 
             Spacer()
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: Theme.cornerRadius)
-                .fill(suggestion.isAccepted ? Theme.secondaryBackground : Theme.secondaryBackground.opacity(0.4))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.cornerRadius)
-                .stroke(suggestion.isAccepted ? typeColor.opacity(0.3) : Color.clear, lineWidth: 1)
-        )
-        .opacity(suggestion.isAccepted ? 1.0 : 0.6)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .opacity(suggestion.isAccepted ? 1.0 : 0.5)
         .animation(Theme.Animation.quickFade, value: suggestion.isAccepted)
     }
 
+    // MARK: - Editable Content per Type
+
     @ViewBuilder
-    private var changeDetailView: some View {
+    private var editableContent: some View {
         switch suggestion.type {
         case .rephrase:
-            if let newTitle = suggestion.newTitle {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 9))
-                        .foregroundColor(Theme.secondaryText)
-                    Text(newTitle)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.blue)
-                        .lineLimit(2)
-                }
-            }
+            rephraseEditor
         case .addTags:
-            if let tags = suggestion.tagsToAdd {
-                HStack(spacing: 4) {
-                    Text("Add:")
-                        .font(.system(size: 10))
-                        .foregroundColor(Theme.secondaryText)
-                    ForEach(tags, id: \.self) { tag in
-                        TagPillView(tag: tag, size: .small, interactive: false)
-                    }
-                }
-            }
+            addTagsEditor
         case .removeTags:
-            if let tags = suggestion.tagsToRemove {
+            removeTagsEditor
+        case .changePriority, .moveToToday, .removeFromToday:
+            priorityPicker
+        }
+    }
+
+    // MARK: Rephrase Editor
+
+    private var rephraseEditor: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "arrow.right")
+                .font(.system(size: 9))
+                .foregroundColor(Theme.secondaryText)
+
+            if suggestion.isAccepted {
+                TextField(
+                    "New title",
+                    text: Binding(
+                        get: { suggestion.newTitle ?? "" },
+                        set: { suggestion.newTitle = $0 }
+                    )
+                )
+                .textFieldStyle(.plain)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.blue)
+                .padding(4)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.blue.opacity(0.05))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+                )
+            } else {
+                Text(suggestion.newTitle ?? "")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.blue.opacity(0.5))
+                    .lineLimit(2)
+            }
+        }
+    }
+
+    // MARK: Priority Picker
+
+    private var currentPriorityString: String {
+        if let p = suggestion.newPriority {
+            return p
+        }
+        switch suggestion.type {
+        case .moveToToday: return "today"
+        case .removeFromToday: return "thisWeek"
+        default: return "normal"
+        }
+    }
+
+    private var priorityPicker: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if suggestion.isAccepted {
                 HStack(spacing: 4) {
-                    Text("Remove:")
-                        .font(.system(size: 10))
-                        .foregroundColor(Theme.secondaryText)
-                    ForEach(tags, id: \.self) { tag in
-                        Text("#\(tag)")
-                            .font(.system(size: 10))
-                            .strikethrough()
-                            .foregroundColor(.red.opacity(0.7))
+                    ForEach(Priority.allCases, id: \.self) { priority in
+                        let priorityStr = priorityKeyFor(priority)
+                        let isSelected = currentPriorityString == priorityStr
+
+                        Button(action: {
+                            suggestion.newPriority = priorityStr
+                        }) {
+                            HStack(spacing: 3) {
+                                Image(systemName: priority.icon)
+                                    .font(.system(size: 8))
+                                Text(priority.rawValue)
+                                    .font(.system(size: 9, weight: isSelected ? .bold : .medium))
+                            }
+                            .foregroundColor(isSelected ? .white : priority.color)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(isSelected ? priority.color : priority.color.opacity(0.12))
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
-            }
-        case .changePriority:
-            if let priority = suggestion.newPriority {
+            } else {
                 HStack(spacing: 4) {
                     Text("Move to:")
                         .font(.system(size: 10))
                         .foregroundColor(Theme.secondaryText)
-                    Text(priorityLabel(priority))
+                    Text(priorityDisplayLabel(currentPriorityString))
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(priorityColor(priority))
+                        .foregroundColor(Theme.secondaryText)
                 }
-            }
-        case .moveToToday:
-            HStack(spacing: 4) {
-                Text("Move to")
-                    .font(.system(size: 10))
-                    .foregroundColor(Theme.secondaryText)
-                TagPillView(tag: "today", size: .small, interactive: false)
-            }
-        case .removeFromToday:
-            HStack(spacing: 4) {
-                Text("Remove from")
-                    .font(.system(size: 10))
-                    .foregroundColor(Theme.secondaryText)
-                Text("Today")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(.secondary)
             }
         }
     }
 
-    private func priorityLabel(_ priority: String) -> String {
+    private func priorityKeyFor(_ priority: Priority) -> String {
         switch priority {
+        case .today: return "today"
+        case .thisWeek: return "thisWeek"
+        case .urgent: return "urgent"
+        case .normal: return "normal"
+        }
+    }
+
+    private func priorityDisplayLabel(_ key: String) -> String {
+        switch key {
+        case "today": return "Today"
         case "thisWeek": return "This Week"
         case "urgent": return "Urgent"
         case "normal": return "Normal"
-        default: return priority
+        default: return key
         }
     }
 
-    private func priorityColor(_ priority: String) -> Color {
-        switch priority {
-        case "thisWeek": return Color(red: 0.95, green: 0.5, blue: 0.0)
-        case "urgent": return Color(red: 0.9, green: 0.75, blue: 0.0)
-        default: return Theme.accent
+    // MARK: Add Tags Editor
+
+    private var addTagsEditor: some View {
+        HStack(spacing: 4) {
+            Text("Add:")
+                .font(.system(size: 10))
+                .foregroundColor(Theme.secondaryText)
+
+            if let tags = suggestion.tagsToAdd, !tags.isEmpty {
+                ForEach(tags, id: \.self) { tag in
+                    HStack(spacing: 2) {
+                        TagPillView(tag: tag, size: .small, interactive: false)
+
+                        if suggestion.isAccepted {
+                            Button(action: {
+                                suggestion.tagsToAdd?.removeAll { $0 == tag }
+                                if suggestion.tagsToAdd?.isEmpty == true {
+                                    suggestion.isAccepted = false
+                                }
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Theme.secondaryText.opacity(0.5))
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                }
+            } else {
+                Text("(none)")
+                    .font(.system(size: 10))
+                    .foregroundColor(Theme.secondaryText.opacity(0.5))
+            }
         }
+    }
+
+    // MARK: Remove Tags Editor
+
+    private var removeTagsEditor: some View {
+        HStack(spacing: 4) {
+            Text("Remove:")
+                .font(.system(size: 10))
+                .foregroundColor(Theme.secondaryText)
+
+            if let tags = suggestion.tagsToRemove, !tags.isEmpty {
+                ForEach(tags, id: \.self) { tag in
+                    HStack(spacing: 2) {
+                        Text("#\(tag)")
+                            .font(.system(size: 10))
+                            .strikethrough()
+                            .foregroundColor(.red.opacity(0.7))
+
+                        if suggestion.isAccepted {
+                            Button(action: {
+                                suggestion.tagsToRemove?.removeAll { $0 == tag }
+                                if suggestion.tagsToRemove?.isEmpty == true {
+                                    suggestion.isAccepted = false
+                                }
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Theme.secondaryText.opacity(0.5))
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                }
+            } else {
+                Text("(none)")
+                    .font(.system(size: 10))
+                    .foregroundColor(Theme.secondaryText.opacity(0.5))
+            }
+        }
+    }
+}
+
+// MARK: - Goal Insights Section
+
+struct GoalInsightsSection: View {
+    let insights: [GoalInsight]
+    @State private var isExpanded: Bool = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            Button(action: { withAnimation(Theme.Animation.quickFade) { isExpanded.toggle() } }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "target")
+                        .font(.system(size: 14))
+                        .foregroundColor(.orange)
+
+                    Text("Goal Alignment")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(Theme.text)
+
+                    Text("\(insights.count)")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(.orange))
+
+                    Spacer()
+
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(Theme.secondaryText)
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(insights) { insight in
+                        Divider()
+                            .padding(.horizontal, 14)
+                            .opacity(0.5)
+
+                        GoalInsightRow(insight: insight)
+                    }
+                }
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
+                .fill(Color.orange.opacity(0.04))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
+                .stroke(Color.orange.opacity(0.2), lineWidth: 1)
+        )
+    }
+}
+
+struct GoalInsightRow: View {
+    let insight: GoalInsight
+
+    private var icon: String {
+        switch insight.type {
+        case .noTodos: return "exclamationmark.triangle"
+        case .suggestGoal: return "lightbulb"
+        case .misaligned: return "arrow.triangle.branch"
+        }
+    }
+
+    private var iconColor: Color {
+        switch insight.type {
+        case .noTodos: return .red
+        case .suggestGoal: return .yellow
+        case .misaligned: return .orange
+        }
+    }
+
+    private var typeLabel: String {
+        switch insight.type {
+        case .noTodos: return "No Todos"
+        case .suggestGoal: return "Suggested Goal"
+        case .misaligned: return "Misaligned"
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 12))
+                .foregroundColor(iconColor)
+                .frame(width: 20)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(typeLabel)
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(iconColor)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(iconColor.opacity(0.12))
+                        )
+
+                    Text(insight.title)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(Theme.text)
+                }
+
+                Text(insight.detail)
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.secondaryText)
+                    .lineLimit(2)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
     }
 }

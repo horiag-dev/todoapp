@@ -17,10 +17,10 @@ struct ReviewSuggestion: Identifiable {
     let todoTitle: String
     let type: ReviewSuggestionType
     let reason: String
-    let newTitle: String?
-    let tagsToAdd: [String]?
-    let tagsToRemove: [String]?
-    let newPriority: String?
+    var newTitle: String?
+    var tagsToAdd: [String]?
+    var tagsToRemove: [String]?
+    var newPriority: String?
     var isAccepted: Bool
 
     init(
@@ -48,9 +48,23 @@ struct ReviewSuggestion: Identifiable {
     }
 }
 
+struct GoalInsight: Identifiable {
+    let id = UUID()
+    let type: GoalInsightType
+    let title: String
+    let detail: String
+}
+
+enum GoalInsightType: String {
+    case noTodos = "no_todos"         // Goal with no supporting todos
+    case suggestGoal = "suggest_goal" // Cluster of todos suggesting an unstated goal
+    case misaligned = "misaligned"    // Todos that don't support any goal
+}
+
 struct WeeklyReviewResult {
     let summary: String
     let suggestions: [ReviewSuggestion]
+    let goalInsights: [GoalInsight]
 }
 
 enum WeeklyReviewError: Error, LocalizedError {
@@ -211,8 +225,16 @@ class WeeklyReviewService {
         - For todos currently in "Today" that aren't urgent or time-sensitive, suggest removing from today.
         - For poorly worded todos, always suggest a rephrase.
 
+        ## Goal Alignment Analysis
+        Also analyze the alignment between goals and todos. Provide 2-5 insights:
+        - **no_todos**: A stated goal that has NO supporting todos — it's being neglected.
+        - **suggest_goal**: A cluster of todos that suggests an unstated goal the user might want to add.
+        - **misaligned**: Todos that don't clearly support any stated goal — they may be distractions.
+
+        Each insight has: "type" (no_todos, suggest_goal, or misaligned), "title" (short label), "detail" (1 sentence explanation).
+
         Respond with ONLY valid JSON (no markdown code fences, no extra text):
-        {"summary": "Brief 1-2 sentence assessment.", "suggestions": [{"todo_id": "uuid", "todo_title": "original title", "type": "rephrase", "reason": "Why", "new_title": "Better title", "tags_to_add": null, "tags_to_remove": null, "new_priority": null}]}
+        {"summary": "Brief 1-2 sentence assessment.", "suggestions": [{"todo_id": "uuid", "todo_title": "original title", "type": "rephrase", "reason": "Why", "new_title": "Better title", "tags_to_add": null, "tags_to_remove": null, "new_priority": null}], "goal_insights": [{"type": "no_todos", "title": "Goal name", "detail": "Explanation"}]}
         """
     }
 
@@ -307,7 +329,21 @@ class WeeklyReviewService {
             }
         }
 
-        return WeeklyReviewResult(summary: summary, suggestions: suggestions)
+        // Parse goal insights
+        var goalInsights: [GoalInsight] = []
+        if let insightsArray = resultDict["goal_insights"] as? [[String: Any]] {
+            for dict in insightsArray {
+                guard let typeStr = dict["type"] as? String,
+                      let type = GoalInsightType(rawValue: typeStr),
+                      let title = dict["title"] as? String,
+                      let detail = dict["detail"] as? String else {
+                    continue
+                }
+                goalInsights.append(GoalInsight(type: type, title: title, detail: detail))
+            }
+        }
+
+        return WeeklyReviewResult(summary: summary, suggestions: suggestions, goalInsights: goalInsights)
     }
 
     // MARK: - Demo Mode
@@ -378,11 +414,40 @@ class WeeklyReviewService {
             default:
                 break
             }
+
+            // Add extra suggestions for the first 3 todos to demo grouping
+            if index < 3 {
+                if index % 5 != 0 {
+                    suggestions.append(ReviewSuggestion(
+                        todoId: todo.id,
+                        todoTitle: todo.title,
+                        type: .rephrase,
+                        reason: "Making this more actionable and specific.",
+                        newTitle: "Action: \(todo.title)"
+                    ))
+                }
+                if index % 5 != 2 {
+                    suggestions.append(ReviewSuggestion(
+                        todoId: todo.id,
+                        todoTitle: todo.title,
+                        type: .changePriority,
+                        reason: "Consider reprioritizing based on your goals.",
+                        newPriority: "urgent"
+                    ))
+                }
+            }
         }
+
+        let demoInsights: [GoalInsight] = [
+            GoalInsight(type: .noTodos, title: "Health & Fitness", detail: "You have goals around health but no todos supporting them this week."),
+            GoalInsight(type: .suggestGoal, title: "Team Communication", detail: "Several todos involve meetings and follow-ups — consider adding a communication goal."),
+            GoalInsight(type: .misaligned, title: "Unrelated Tasks", detail: "A few todos don't clearly map to any of your stated goals and may be distractions.")
+        ]
 
         return WeeklyReviewResult(
             summary: "Your todos are generally well-organized but several items could use clearer phrasing and better priority alignment with your goals. Consider focusing deep work items earlier in the week.",
-            suggestions: suggestions
+            suggestions: suggestions,
+            goalInsights: demoInsights
         )
     }
 }
