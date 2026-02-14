@@ -1,73 +1,58 @@
 import SwiftUI
 import AppKit
 
-// MARK: - Quick Add Mode
-enum QuickAddMode: String, CaseIterable {
-    case reply = "Reply to"
-    case prep = "Prep for"
-    case deep = "Deep work"
-    case custom = "Custom"
-
-    var icon: String {
-        switch self {
-        case .reply: return "arrowshape.turn.up.left.fill"
-        case .prep: return "calendar"
-        case .deep: return "brain.head.profile"
-        case .custom: return "pencil"
-        }
-    }
-
-    var contextTag: String? {
-        switch self {
-        case .reply: return "reply"
-        case .prep: return "prep"
-        case .deep: return "deep"
-        case .custom: return nil
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .reply: return Color(red: 0.5, green: 0.8, blue: 0.5)
-        case .prep: return Color(red: 0.4, green: 0.6, blue: 0.9)
-        case .deep: return Color(red: 0.7, green: 0.5, blue: 0.9)
-        case .custom: return .gray
-        }
-    }
-}
-
 // MARK: - Quick Add Panel View
 struct QuickAddPanelView: View {
     @ObservedObject var todoList: TodoList
+    @ObservedObject var contextManager = ContextConfigManager.shared
     @Binding var isPresented: Bool
 
-    @State private var clipboardText: String = ""
-    @State private var selectedMode: QuickAddMode = .reply
-    @State private var customTitle: String = ""
+    @State private var todoText: String = ""
+    @State private var selectedContextId: String? = nil  // nil means no context prefix
     @State private var additionalTags: Set<String> = []
-    @FocusState private var isTitleFocused: Bool
+    @State private var newTagText: String = ""
+    @FocusState private var isTextFocused: Bool
+    @FocusState private var isNewTagFocused: Bool
+
+    // Urgency tags that should always be available
+    private let urgencyTags = ["thisweek", "urgent"]
+
+    var selectedContext: ContextConfig? {
+        guard let id = selectedContextId else { return nil }
+        return contextManager.contexts.first { $0.id == id }
+    }
 
     var finalTitle: String {
-        if selectedMode == .custom {
-            return customTitle.isEmpty ? clipboardText : customTitle
+        if let context = selectedContext {
+            return "\(context.name) for: \(todoText)"
         }
-        return "\(selectedMode.rawValue): \(clipboardText)"
+        return todoText
     }
 
     // Get frequently used tags (excluding context tags already shown as modes)
     var frequentTags: [String] {
-        let contextTags = Set(["reply", "prep", "deep", "waiting"])
-        return todoList.allTags
-            .filter { !contextTags.contains($0.lowercased()) }
-            .prefix(8)
-            .map { $0 }
+        let contextTagsSet = Set(contextManager.contextTags)
+        let urgencySet = Set(urgencyTags)
+
+        // Start with urgency tags, then add user's tags
+        var result = urgencyTags
+
+        let userTags = todoList.allTags
+            .filter { tag in
+                let lowered = tag.lowercased()
+                return !contextTagsSet.contains(lowered) && !urgencySet.contains(lowered)
+            }
+            .prefix(5)
+
+        result.append(contentsOf: userTags)
+        return result
     }
 
     // Get all tags that will be applied
     func getAllTags() -> [String] {
         var tags: [String] = []
-        if let contextTag = selectedMode.contextTag {
-            tags.append(contextTag)
+        if let context = selectedContext {
+            tags.append(context.id)
         }
         tags.append(contentsOf: additionalTags.sorted())
         return tags
@@ -97,20 +82,19 @@ struct QuickAddPanelView: View {
             Divider()
 
             VStack(spacing: 16) {
-                // Clipboard content preview
+                // Todo text input (editable)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("From clipboard:")
+                    Text("Todo:")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
 
-                    Text(clipboardText.isEmpty ? "No text in clipboard" : clipboardText)
+                    TextField("What do you need to do?", text: $todoText)
+                        .textFieldStyle(.plain)
                         .font(.system(size: 13))
-                        .foregroundColor(clipboardText.isEmpty ? .secondary : .primary)
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(10)
                         .background(Color.gray.opacity(0.1))
                         .cornerRadius(8)
+                        .focused($isTextFocused)
                 }
 
                 // Mode selection
@@ -119,51 +103,59 @@ struct QuickAddPanelView: View {
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
 
-                    HStack(spacing: 8) {
-                        ForEach(QuickAddMode.allCases, id: \.self) { mode in
-                            Button(action: {
-                                selectedMode = mode
-                                if mode == .custom {
-                                    isTitleFocused = true
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            // Dynamic context buttons from ContextConfigManager
+                            ForEach(contextManager.contexts) { context in
+                                let isSelected = selectedContextId == context.id
+                                Button(action: {
+                                    selectedContextId = context.id
+                                }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: context.icon)
+                                            .font(.system(size: 11))
+                                        Text("\(context.name) for")
+                                            .font(.system(size: 12, weight: .medium))
+                                    }
+                                    .foregroundColor(isSelected ? .white : context.color)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(isSelected ? context.color : context.color.opacity(0.15))
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(context.color, lineWidth: isSelected ? 0 : 1)
+                                    )
                                 }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+
+                            // No context button (plain text, no prefix)
+                            Button(action: {
+                                selectedContextId = nil
                             }) {
                                 HStack(spacing: 6) {
-                                    Image(systemName: mode.icon)
+                                    Image(systemName: "text.cursor")
                                         .font(.system(size: 11))
-                                    Text(mode.rawValue)
+                                    Text("Plain")
                                         .font(.system(size: 12, weight: .medium))
                                 }
-                                .foregroundColor(selectedMode == mode ? .white : mode.color)
+                                .foregroundColor(selectedContextId == nil ? .white : .gray)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 8)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .fill(selectedMode == mode ? mode.color : mode.color.opacity(0.15))
+                                        .fill(selectedContextId == nil ? Color.gray : Color.gray.opacity(0.15))
                                 )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .stroke(mode.color, lineWidth: selectedMode == mode ? 0 : 1)
+                                        .stroke(Color.gray, lineWidth: selectedContextId == nil ? 0 : 1)
                                 )
                             }
                             .buttonStyle(PlainButtonStyle())
                         }
-                    }
-                }
-
-                // Custom title (only for custom mode)
-                if selectedMode == .custom {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Custom title:")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-
-                        TextField("Enter todo title...", text: $customTitle)
-                            .textFieldStyle(.plain)
-                            .font(.system(size: 13))
-                            .padding(10)
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(8)
-                            .focused($isTitleFocused)
                     }
                 }
 
@@ -202,7 +194,53 @@ struct QuickAddPanelView: View {
                                 }
                                 .buttonStyle(PlainButtonStyle())
                             }
+
+                            // Show any custom-added tags that aren't in frequent tags
+                            ForEach(Array(additionalTags.filter { !frequentTags.contains($0) }), id: \.self) { tag in
+                                let tagColor = Theme.colorForTag(tag)
+                                Button(action: {
+                                    additionalTags.remove(tag)
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Text("#\(tag)")
+                                            .font(.system(size: 11, weight: .medium))
+                                        Image(systemName: "xmark")
+                                            .font(.system(size: 8, weight: .bold))
+                                    }
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 5)
+                                            .fill(tagColor)
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
                         }
+                    }
+
+                    // Custom tag input
+                    HStack(spacing: 8) {
+                        TextField("Add custom tag...", text: $newTagText)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 12))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(6)
+                            .focused($isNewTagFocused)
+                            .onSubmit {
+                                addCustomTag()
+                            }
+
+                        Button(action: addCustomTag) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(newTagText.isEmpty ? .gray : .blue)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .disabled(newTagText.isEmpty)
                     }
                 }
 
@@ -266,7 +304,7 @@ struct QuickAddPanelView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 .keyboardShortcut(.defaultAction)
-                .disabled(clipboardText.isEmpty && customTitle.isEmpty)
+                .disabled(todoText.isEmpty)
             }
             .padding(16)
         }
@@ -276,16 +314,32 @@ struct QuickAddPanelView: View {
         .shadow(color: .black.opacity(0.2), radius: 20, y: 10)
         .onAppear {
             loadClipboard()
+            // Select first context by default
+            if selectedContextId == nil, let firstContext = contextManager.contexts.first {
+                selectedContextId = firstContext.id
+            }
         }
     }
 
     private func loadClipboard() {
         if let string = NSPasteboard.general.string(forType: .string) {
             // Clean up the clipboard text - remove extra whitespace
-            clipboardText = string.trimmingCharacters(in: .whitespacesAndNewlines)
+            todoText = string.trimmingCharacters(in: .whitespacesAndNewlines)
                 .components(separatedBy: .newlines)
                 .first ?? string
         }
+        // Focus the text field
+        isTextFocused = true
+    }
+
+    private func addCustomTag() {
+        let tag = newTagText.trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "#", with: "")
+            .replacingOccurrences(of: " ", with: "-")
+        guard !tag.isEmpty else { return }
+        additionalTags.insert(tag)
+        newTagText = ""
     }
 
     private func addTodo() {
@@ -330,7 +384,7 @@ class QuickAddWindowController: NSObject {
 
         // Create a borderless window
         let hostingView = NSHostingView(rootView: contentView)
-        hostingView.frame = CGRect(x: 0, y: 0, width: 420, height: 380)
+        hostingView.frame = CGRect(x: 0, y: 0, width: 420, height: 440)
 
         let window = NSPanel(
             contentRect: hostingView.frame,

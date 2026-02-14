@@ -175,16 +175,8 @@ struct TodoItemView: View {
         _editedTitle = State(initialValue: todo.title)
     }
 
-    // Add this computed property to sort tags
     private var sortedTags: [String] {
-        let todayTag = todo.tags.first { $0.lowercased() == "today" }
-        let otherTags = todo.tags.filter { $0.lowercased() != "today" }.sorted()
-        
-        if let todayTag = todayTag {
-            return [todayTag] + otherTags
-        } else {
-            return otherTags
-        }
+        todo.tags.sorted()
     }
     
     var body: some View {
@@ -276,6 +268,16 @@ struct TodoItemView: View {
             // Priority actions
             if !isTop5 && !todo.isCompleted {
                 Menu("Priority") {
+                    Button {
+                        var updatedTodo = todo
+                        updatedTodo.priority = .today
+                        todoList.updateTodo(updatedTodo)
+                        todo = updatedTodo
+                    } label: {
+                        Label("Today", systemImage: "sun.max.fill")
+                    }
+                    .disabled(todo.priority == .today)
+
                     Button {
                         var updatedTodo = todo
                         updatedTodo.priority = .thisWeek

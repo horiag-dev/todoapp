@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct TodoApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var todoList = TodoList()
     @State private var showQuickAdd = false
 

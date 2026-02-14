@@ -2,6 +2,10 @@ import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
+extension Notification.Name {
+    static let showWalkthrough = Notification.Name("showWalkthrough")
+}
+
 class TodoList: ObservableObject {
     @Published var todos: [Todo] = []
     @Published var deletedTodos: [Todo] = []
@@ -127,6 +131,13 @@ class TodoList: ObservableObject {
                 if demo && !APIKeyManager.shared.hasAPIKey {
                     try? APIKeyManager.shared.saveAPIKey(APIKeyManager.demoKey)
                 }
+
+                // Show walkthrough for new demo files
+                if demo {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        NotificationCenter.default.post(name: .showWalkthrough, object: nil)
+                    }
+                }
             }
         }
     }
@@ -138,6 +149,8 @@ class TodoList: ObservableObject {
 
 
         ---
+
+        ### ☀️ Today
 
         ### 🟠 This Week
 
@@ -186,9 +199,11 @@ class TodoList: ObservableObject {
         2. Close the senior iOS hire
         3. Send investor update with Q1 numbers
 
+        ### ☀️ Today
+        - [ ] Review user research findings from last sprint #growth #deep
+        - [ ] Schedule 1:1s with design and engineering leads #team
+
         ### 🟠 This Week
-        - [ ] Review user research findings from last sprint #growth #deep #today
-        - [ ] Schedule 1:1s with design and engineering leads #team #today
         - [ ] Approve marketing assets for launch campaign #launch
         - [ ] Set up analytics events for new features #launch #deep
 
@@ -378,18 +393,12 @@ class TodoList: ObservableObject {
     }
 
     /// Removes the #today tag from all todos that have it
+    /// Moves all .today priority todos back to .thisWeek
     func clearTodayTags() {
         var changed = false
         for i in 0..<todos.count {
-            if let tagIndex = todos[i].tags.firstIndex(where: { $0.lowercased() == "today" }) {
-                todos[i].tags.remove(at: tagIndex)
-                changed = true
-            }
-        }
-        // Also clear from top5Todos
-        for i in 0..<top5Todos.count {
-            if let tagIndex = top5Todos[i].tags.firstIndex(where: { $0.lowercased() == "today" }) {
-                top5Todos[i].tags.remove(at: tagIndex)
+            if todos[i].priority == .today {
+                todos[i].priority = .thisWeek
                 changed = true
             }
         }
@@ -481,7 +490,8 @@ class TodoList: ObservableObject {
             markdownContent += "\n"
         }
 
-        // Group todos by priority in a single pass
+        // Group todos by priority in a single pass, separating #today tagged todos
+        var todayTodos: [Todo] = []
         var thisWeekTodos: [Todo] = []
         var urgentTodos: [Todo] = []
         var normalTodos: [Todo] = []
@@ -492,6 +502,8 @@ class TodoList: ObservableObject {
                 completedTodos.append(todo)
             } else {
                 switch todo.priority {
+                case .today:
+                    todayTodos.append(todo)
                 case .thisWeek:
                     thisWeekTodos.append(todo)
                 case .urgent:
@@ -502,7 +514,16 @@ class TodoList: ObservableObject {
             }
         }
 
-        // Add this week todos (highest priority after Top 5)
+        // Add today todos (highest priority section)
+        if !todayTodos.isEmpty {
+            markdownContent += "### ☀️ Today\n\n"
+            for todo in todayTodos {
+                markdownContent += formatTodo(todo)
+            }
+            markdownContent += "\n"
+        }
+
+        // Add this week todos
         if !thisWeekTodos.isEmpty {
             markdownContent += "### 🟠 This Week\n\n"
             for todo in thisWeekTodos {
@@ -555,11 +576,11 @@ class TodoList: ObservableObject {
     
     private func formatTodo(_ todo: Todo) -> String {
         var todoString = "- [\(todo.isCompleted ? "x" : " ")] \(todo.title)"
-        
+
         if !todo.tags.isEmpty {
             todoString += " \(todo.tags.map { "#\($0)" }.joined(separator: " "))"
         }
-        
+
         return todoString + "\n"
     }
     
@@ -583,6 +604,7 @@ class TodoList: ObservableObject {
             var isInDeletedSection = false
             var isInBigThingsSection = false
             var isInTop5Section = false
+            var isInTodaySection = false
 
             for line in lines {
                 if line.hasPrefix("## ") {
@@ -592,16 +614,19 @@ class TodoList: ObservableObject {
                         isInDeletedSection = false
                         isInBigThingsSection = false
                         isInTop5Section = false
+                        isInTodaySection = false
                     } else if sectionName.contains("📋") {
                         isInGoalsSection = false
                         isInDeletedSection = false
                         isInBigThingsSection = true
                         isInTop5Section = false
+                        isInTodaySection = false
                     } else {
                         isInGoalsSection = false
                         isInDeletedSection = false
                         isInBigThingsSection = false
                         isInTop5Section = false
+                        isInTodaySection = false
                     }
                 } else if line.hasPrefix("### ") {
                     // Always reset all section flags on new ### section
@@ -609,48 +634,31 @@ class TodoList: ObservableObject {
                     isInBigThingsSection = false
                     isInTop5Section = false
                     isInDeletedSection = false
+                    isInTodaySection = false
                     let sectionName = line.replacingOccurrences(of: "### ", with: "").trimmingCharacters(in: .whitespaces)
                     let trimmedSection = sectionName.trimmingCharacters(in: .whitespacesAndNewlines)
                     if trimmedSection.localizedCaseInsensitiveContains("Top 5 of the week") &&
                         (trimmedSection.contains("🔴") || trimmedSection.contains("🗓️")) {
                         isInTop5Section = true
-                        isInDeletedSection = false
                         currentPriority = .normal // Not used for top5
+                    } else if sectionName.contains("☀️") || sectionName.localizedCaseInsensitiveContains("Today") {
+                        // Today section - todos here get .today priority
+                        isInTodaySection = true
+                        currentPriority = .today
                     } else if sectionName.contains("🟠") || sectionName.localizedCaseInsensitiveContains("This Week") {
                         // This Week section (new priority level)
                         currentPriority = .thisWeek
-                        isInTop5Section = false
-                        isInDeletedSection = false
-                        isInBigThingsSection = false
                     } else if sectionName.contains("🔴") {
                         currentPriority = .urgent
-                        isInTop5Section = false
-                        isInDeletedSection = false
-                        isInBigThingsSection = false
                     } else if sectionName.contains("🔵") {
                         currentPriority = .normal
-                        isInTop5Section = false
-                        isInDeletedSection = false
-                        isInBigThingsSection = false
                     } else if sectionName.contains("⚪") {
                         // Migration: treat "When there's time" as normal
                         currentPriority = .normal
-                        isInTop5Section = false
-                        isInDeletedSection = false
-                        isInBigThingsSection = false
                     } else if sectionName.contains("✅") {
                         currentPriority = .normal
-                        isInTop5Section = false
-                        isInDeletedSection = false
-                        isInBigThingsSection = false
                     } else if sectionName.contains("🗑️") {
                         isInDeletedSection = true
-                        isInTop5Section = false
-                        isInBigThingsSection = false
-                    } else {
-                        isInTop5Section = false
-                        isInDeletedSection = false
-                        isInBigThingsSection = false
                     }
                 } else if isInGoalsSection && !line.isEmpty && !line.hasPrefix("##") {
                     newGoals.append(line)
@@ -675,17 +683,24 @@ class TodoList: ObservableObject {
                 } else if !isInGoalsSection && !isInTop5Section && !isInBigThingsSection && line.hasPrefix("- [") {
                     let components = line.components(separatedBy: "] ")
                     guard components.count >= 2 else { continue }
-                    
+
                     let isCompleted = components[0].contains("x")
                     let rest = components[1]
-                    
+
                     // Split title and tags
                     let parts = rest.components(separatedBy: " #")
                     let title = parts[0]
-                    let tags = parts.dropFirst().map { $0.trimmingCharacters(in: .whitespaces) }
-                    
-                    let todo = Todo(title: title, isCompleted: isCompleted, tags: tags, priority: currentPriority)
-                    
+                    var tags = parts.dropFirst().map { $0.trimmingCharacters(in: .whitespaces) }
+
+                    // Migration: if a todo has #today tag in a non-Today section, upgrade to .today priority
+                    var effectivePriority = currentPriority
+                    if tags.contains(where: { $0.lowercased() == "today" }) {
+                        effectivePriority = .today
+                        tags.removeAll { $0.lowercased() == "today" }
+                    }
+
+                    let todo = Todo(title: title, isCompleted: isCompleted, tags: tags, priority: effectivePriority)
+
                     if isInDeletedSection {
                         newDeletedTodos.append(todo)
                     } else {

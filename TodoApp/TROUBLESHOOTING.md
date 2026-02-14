@@ -1,20 +1,22 @@
 # Troubleshooting API Key Issues
 
-If your OpenAI API key isn't working, here are the most common solutions:
+If your Anthropic API key isn't working, here are the most common solutions:
 
-## 🔍 Quick Checks
+## Quick Checks
 
 1. **API Key Format**
-   - Must start with `sk-`
-   - Should be about 51 characters long
+   - Must start with `sk-ant-`
    - No extra spaces or characters
 
 2. **API Key Validity**
    - Make sure you copied the entire key
-   - Check that your OpenAI account has credits
+   - Check that your Anthropic account has credits
    - Verify the key hasn't been revoked
 
-## 🛠️ Step-by-Step Debugging
+3. **Demo Mode**
+   - Enter `demo` as the API key to use built-in keyword tagging (no network required)
+
+## Step-by-Step Debugging
 
 ### 1. Check Console Output
 When you test the connection, check the Xcode console for detailed error messages:
@@ -25,7 +27,7 @@ When you test the connection, check the Xcode console for detailed error message
 
 **"Invalid API key" (401 error)**
 - Your API key is incorrect or expired
-- Solution: Generate a new key from OpenAI
+- Solution: Generate a new key from Anthropic
 
 **"Rate limit exceeded" (429 error)**
 - You've made too many requests
@@ -44,13 +46,14 @@ When you test the connection, check the Xcode console for detailed error message
 You can test your API key manually using curl:
 
 ```bash
-curl -X POST https://api.openai.com/v1/chat/completions \
-  -H "Authorization: Bearer YOUR_API_KEY_HERE" \
+curl -X POST https://api.anthropic.com/v1/messages \
+  -H "x-api-key: YOUR_API_KEY_HERE" \
+  -H "anthropic-version: 2023-06-01" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-3.5-turbo",
-    "messages": [{"role": "user", "content": "Hello"}],
-    "max_tokens": 10
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 10,
+    "messages": [{"role": "user", "content": "Hello"}]
   }'
 ```
 
@@ -58,31 +61,28 @@ Replace `YOUR_API_KEY_HERE` with your actual API key.
 
 ### 4. Getting a New API Key
 
-1. Go to https://platform.openai.com/api-keys
-2. Sign in to your OpenAI account
-3. Click "Create new secret key"
-4. Copy the entire key (starts with `sk-`)
+1. Go to https://console.anthropic.com/settings/keys
+2. Sign in to your Anthropic account
+3. Click "Create Key"
+4. Copy the entire key (starts with `sk-ant-`)
 5. Paste it in the app settings
 
 ### 5. Account Issues
 
-- **No credits**: Add payment method to your OpenAI account
-- **Account suspended**: Contact OpenAI support
-- **Free tier limits**: Check your usage at https://platform.openai.com/usage
+- **No credits**: Add payment method to your Anthropic account
+- **Account suspended**: Contact Anthropic support
+- **Usage limits**: Check your usage at https://console.anthropic.com/settings/usage
 
-## 🐛 Still Having Issues?
+## Still Having Issues?
 
 1. **Check the console output** in Xcode for specific error messages
 2. **Try the manual curl test** above
-3. **Verify your OpenAI account** has credits
+3. **Verify your Anthropic account** has credits
 4. **Generate a fresh API key** and try again
+5. **Try demo mode** — enter `demo` as the API key to verify the app works without network
 
-## 📞 Getting Help
+## Getting Help
 
-If you're still having issues:
-1. Check the console output for specific error messages
-2. Try the manual curl test to verify your key works
-3. Make sure your OpenAI account has credits
-4. Generate a new API key and try again
+If you're still having issues, file an issue at the project's GitHub repository.
 
-The app will show detailed error messages in the settings panel to help identify the specific issue. 
+The app will show detailed error messages in the settings panel to help identify the specific issue.

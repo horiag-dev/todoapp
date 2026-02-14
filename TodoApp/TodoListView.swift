@@ -544,6 +544,8 @@ struct TodoListView: View {
     @State private var groupingMode: GroupingMode = .contextMode  // Grouping mode toggle
     @State private var searchText: String = ""  // Search filter
     @State private var isSearching: Bool = false  // Show search bar
+    @State private var showingWalkthrough: Bool = false  // Walkthrough guide
+    @State private var showingWeeklyReview: Bool = false  // AI weekly review
 
     var body: some View {
         ZStack {
@@ -640,6 +642,38 @@ struct TodoListView: View {
                     .help(isSearching ? "Close Search" : "Search Todos")
                     .keyboardShortcut("f", modifiers: .command)
 
+                    // Weekly Review button
+                    Button(action: {
+                        withAnimation(Theme.Animation.quickFade) {
+                            showingWeeklyReview = true
+                        }
+                    }) {
+                        Image(systemName: "wand.and.stars")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(showingWeeklyReview ? Theme.accent : Theme.secondaryText)
+                            .frame(width: 28, height: 28)
+                            .background(
+                                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                                    .fill(showingWeeklyReview ? Theme.accent.opacity(0.15) : Color.clear)
+                            )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("AI Weekly Review")
+
+                    // Guide button
+                    Button(action: {
+                        withAnimation(Theme.Animation.quickFade) {
+                            showingWalkthrough = true
+                        }
+                    }) {
+                        Image(systemName: "questionmark.circle")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(Theme.secondaryText)
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("App Guide")
+
                     // Settings button
                     Button(action: { showingSettings = true }) {
                         Image(systemName: "gear")
@@ -728,6 +762,30 @@ struct TodoListView: View {
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
+        }
+        .overlay {
+            if showingWalkthrough {
+                WalkthroughView(isPresented: $showingWalkthrough)
+            }
+        }
+        .overlay {
+            if showingWeeklyReview {
+                WeeklyReviewView(isPresented: $showingWeeklyReview, todoList: todoList)
+            }
+        }
+        .onAppear {
+            if !UserDefaults.standard.bool(forKey: "hasSeenWalkthrough") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    withAnimation(Theme.Animation.quickFade) {
+                        showingWalkthrough = true
+                    }
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showWalkthrough)) { _ in
+            withAnimation(Theme.Animation.quickFade) {
+                showingWalkthrough = true
+            }
         }
     }
 
@@ -937,14 +995,16 @@ struct NewTodoInput: View {
                     .foregroundColor(newTodoPriority.color)
                     .onTapGesture {
                         withAnimation(Theme.Animation.microSpring) {
-                            // Cycle through priorities: thisWeek -> urgent -> normal -> thisWeek
+                            // Cycle through priorities: today -> thisWeek -> urgent -> normal -> today
                             switch newTodoPriority {
+                            case .today:
+                                newTodoPriority = .thisWeek
                             case .thisWeek:
                                 newTodoPriority = .urgent
                             case .urgent:
                                 newTodoPriority = .normal
                             case .normal:
-                                newTodoPriority = .thisWeek
+                                newTodoPriority = .today
                             }
                         }
                     }
@@ -1742,8 +1802,8 @@ struct TodoListSections: View {
                 if !matchesTitle && !matchesTags { return nil }
             }
 
-            // Pre-compute tag flags (O(1) set lookups)
-            let hasToday = tagsLower.contains("today")
+            // Pre-compute flags (priority-based for today, tag-based for others)
+            let hasToday = todo.priority == .today
             let hasThisWeek = tagsLower.contains("thisweek")
             let hasUrgent = tagsLower.contains("urgent")
 
@@ -2266,7 +2326,12 @@ struct UrgencySectionWithContextGroups: View {
             }
             .padding(.bottom, 4)
         }
-        .background(urgencySection.color.opacity(0.03))
+        .background(
+            ZStack {
+                Theme.cardBackground
+                urgencySection.color.opacity(0.04)
+            }
+        )
         .cornerRadius(Theme.cornerRadiusMd)
         .overlay(
             Rectangle()
@@ -2422,7 +2487,12 @@ struct TagGroupSection: View {
                     .padding(.vertical, 4)
                 }
             }
-            .background(tagColor.opacity(0.03))
+            .background(
+                ZStack {
+                    Theme.cardBackground
+                    tagColor.opacity(0.04)
+                }
+            )
             .cornerRadius(Theme.cornerRadiusMd)
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
@@ -2513,7 +2583,12 @@ struct ContextTodoSection: View {
                 }
                 .padding(.vertical, 4)
             }
-            .background(section.color.opacity(0.03))
+            .background(
+                ZStack {
+                    Theme.cardBackground
+                    section.color.opacity(0.04)
+                }
+            )
             .cornerRadius(Theme.cornerRadiusMd)
             .overlay(
                 Rectangle()
