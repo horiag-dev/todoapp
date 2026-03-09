@@ -277,20 +277,6 @@ struct TodoPrioritySection: View {
                             // Tag group with border
                             let tagColor = Theme.colorForTag(group.tag)
                             VStack(alignment: .leading, spacing: 0) {
-                                // Tag sub-header
-                                HStack(spacing: 6) {
-                                    Circle()
-                                        .fill(tagColor)
-                                        .frame(width: 6, height: 6)
-                                    Text(group.tag)
-                                        .font(.system(size: 11, weight: .semibold))
-                                        .foregroundColor(Theme.secondaryText)
-                                    Spacer()
-                                }
-                                .padding(.leading, 10)
-                                .padding(.top, 6)
-                                .padding(.bottom, 2)
-
                                 ForEach(group.todos) { todo in
                                     TodoItemView(todoList: todoList, todo: todo, isTop5: isTop5, groupColor: section.color)
                                 }
