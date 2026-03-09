@@ -137,6 +137,11 @@ struct TodoListSections: View {
                 TodoPrioritySection(todoList: todoList, section: .normal, todos: normalTodos)
             }
 
+            // Reading List section
+            if !todoList.readingList.isEmpty {
+                ReadingListSection(todoList: todoList)
+            }
+
             let completedTodos = sortByTitle(cats.completed)
             if !completedTodos.isEmpty {
                 TodoPrioritySection(todoList: todoList, section: .completed, todos: completedTodos)
@@ -276,6 +281,124 @@ struct TodoPrioritySection: View {
                 NSApp.keyWindow?.makeFirstResponder(nil)
             }
         }
+    }
+}
+
+// Reading List section styled like priority sections
+struct ReadingListSection: View {
+    @ObservedObject var todoList: TodoList
+    @State private var isAdding = false
+    @State private var newItem = ""
+    @FocusState private var addFocused: Bool
+
+    private let sectionColor = Color.orange
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Section header
+            HStack(spacing: 10) {
+                Image(systemName: "book.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(sectionColor)
+                    .frame(width: 16, height: 16)
+
+                Text("To Read")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(Theme.text)
+
+                Text("\(todoList.readingList.count)")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(sectionColor))
+
+                Spacer()
+
+                Button(action: {
+                    isAdding = true
+                    addFocused = true
+                }) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(sectionColor)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help("Add link or article")
+            }
+            .padding(.horizontal, Theme.contentPadding)
+            .padding(.vertical, 12)
+            .background(sectionColor.opacity(0.06))
+
+            Rectangle()
+                .fill(sectionColor.opacity(0.5))
+                .frame(height: 2)
+
+            // Items
+            LazyVStack(spacing: 0) {
+                ForEach(Array(todoList.readingList.enumerated()), id: \.offset) { index, item in
+                    ReadingListItem(item: item) {
+                        todoList.removeReadingItem(at: index)
+                    }
+                }
+
+                if isAdding {
+                    HStack(spacing: 6) {
+                        Image(systemName: "link.badge.plus")
+                            .font(.system(size: 11))
+                            .foregroundColor(sectionColor.opacity(0.5))
+
+                        TextField("Paste link or title...", text: $newItem)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .font(.system(size: 12))
+                            .focused($addFocused)
+                            .onSubmit { addItem() }
+
+                        Button("Cancel") {
+                            isAdding = false
+                            newItem = ""
+                        }
+                        .font(.system(size: 10))
+                        .buttonStyle(PlainButtonStyle())
+                        .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, Theme.contentPadding)
+                    .padding(.vertical, 6)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .background(
+            ZStack {
+                Theme.cardBackground
+                sectionColor.opacity(0.04)
+            }
+        )
+        .cornerRadius(Theme.cornerRadiusMd)
+        .overlay(
+            Rectangle()
+                .fill(sectionColor)
+                .frame(width: 3),
+            alignment: .leading
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusMd))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
+                .stroke(sectionColor.opacity(0.15), lineWidth: 1)
+        )
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            NSApp.keyWindow?.makeFirstResponder(nil)
+        }
+    }
+
+    private func addItem() {
+        let item = newItem.trimmingCharacters(in: .whitespaces)
+        guard !item.isEmpty else { return }
+        todoList.addReadingItem(item)
+        newItem = ""
+        isAdding = false
     }
 }
 

@@ -192,7 +192,6 @@ struct TodoListView: View {
                         ScrollView {
                             VStack(spacing: 12) {
                                 EditableGoalsView(todoList: todoList)
-                                ReadingListView(todoList: todoList)
                             }
                             .padding(.horizontal, Theme.contentPadding)
                             .padding(.top, Theme.contentPadding)
