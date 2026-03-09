@@ -187,6 +187,26 @@ struct TodoPrioritySection: View {
     let todos: [Todo]
     var isTop5: Bool = false
 
+    private struct TagGroup {
+        let tag: String
+        let todos: [Todo]
+    }
+
+    /// Groups todos by their first alphabetical tag. Todos with no tags go under "Other".
+    private func groupedByPrimaryTag(_ todos: [Todo]) -> [TagGroup] {
+        var groups: [String: [Todo]] = [:]
+        for todo in todos {
+            let primaryTag = todo.tags.sorted().first ?? "Other"
+            groups[primaryTag, default: []].append(todo)
+        }
+        // Sort groups: named tags alphabetically, "Other" last
+        return groups.sorted { a, b in
+            if a.key == "Other" { return false }
+            if b.key == "Other" { return true }
+            return a.key.lowercased() < b.key.lowercased()
+        }.map { TagGroup(tag: $0.key, todos: $0.value) }
+    }
+
     var body: some View {
         if !todos.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
@@ -251,8 +271,25 @@ struct TodoPrioritySection: View {
                     .frame(height: 2)
 
                 LazyVStack(spacing: 0) {
-                    ForEach(todos) { todo in
-                        TodoItemView(todoList: todoList, todo: todo, isTop5: isTop5, groupColor: section.color)
+                    let grouped = groupedByPrimaryTag(todos)
+                    ForEach(grouped, id: \.tag) { group in
+                        if grouped.count > 1 {
+                            // Tag sub-header
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .fill(Theme.colorForTag(group.tag))
+                                    .frame(width: 6, height: 6)
+                                Text(group.tag)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(Theme.secondaryText)
+                            }
+                            .padding(.horizontal, Theme.contentPadding)
+                            .padding(.top, 8)
+                            .padding(.bottom, 2)
+                        }
+                        ForEach(group.todos) { todo in
+                            TodoItemView(todoList: todoList, todo: todo, isTop5: isTop5, groupColor: section.color)
+                        }
                     }
                 }
                 .padding(.vertical, 4)
