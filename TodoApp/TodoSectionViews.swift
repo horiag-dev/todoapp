@@ -272,8 +272,15 @@ struct TodoPrioritySection: View {
 
                 LazyVStack(spacing: 0) {
                     let grouped = groupedByPrimaryTag(todos)
-                    ForEach(grouped, id: \.tag) { group in
+                    ForEach(Array(grouped.enumerated()), id: \.element.tag) { index, group in
                         if grouped.count > 1 {
+                            // Divider between tag groups (not before first)
+                            if index > 0 {
+                                Rectangle()
+                                    .fill(Color.primary.opacity(0.15))
+                                    .frame(height: 0.5)
+                                    .padding(.horizontal, Theme.contentPadding)
+                            }
                             // Tag sub-header
                             HStack(spacing: 6) {
                                 Circle()
@@ -282,9 +289,10 @@ struct TodoPrioritySection: View {
                                 Text(group.tag)
                                     .font(.system(size: 11, weight: .semibold))
                                     .foregroundColor(Theme.secondaryText)
+                                Spacer()
                             }
-                            .padding(.horizontal, Theme.contentPadding)
-                            .padding(.top, 8)
+                            .padding(.leading, Theme.contentPadding)
+                            .padding(.top, index > 0 ? 6 : 4)
                             .padding(.bottom, 2)
                         }
                         ForEach(group.todos) { todo in
