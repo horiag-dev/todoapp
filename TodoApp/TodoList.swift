@@ -440,6 +440,11 @@ class TodoList: ObservableObject {
         readingList.remove(at: index)
         saveTodos()
     }
+
+    func moveToReadingList(_ todo: Todo) {
+        readingList.append(todo.title)
+        deleteTodo(todo)
+    }
     
     func saveTodos() {
         // Cancel any pending save operation

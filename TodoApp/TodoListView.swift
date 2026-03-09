@@ -459,13 +459,18 @@ struct NewTodoInput: View {
         VStack(spacing: 6) {
             // Main input row
             HStack(spacing: 10) {
-                // Priority indicator - cycles through thisWeek -> urgent -> normal
-                Image(systemName: newTodoPriority.icon)
-                    .font(.system(size: 14))
-                    .foregroundColor(newTodoPriority.color)
+                // Priority label - click to cycle: today -> urgent -> thisWeek -> normal
+                Text(newTodoPriority.rawValue)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(newTodoPriority.color)
+                    )
                     .onTapGesture {
                         withAnimation(Theme.Animation.microSpring) {
-                            // Cycle through priorities: today -> urgent -> thisWeek -> normal -> today
                             switch newTodoPriority {
                             case .today:
                                 newTodoPriority = .urgent

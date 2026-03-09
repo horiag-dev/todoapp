@@ -385,6 +385,15 @@ struct TodoItemView: View {
                 Label(todo.isCompleted ? "Mark Incomplete" : "Mark Complete", systemImage: todo.isCompleted ? "circle" : "checkmark.circle")
             }
 
+            // Move to Reading List
+            if !isTop5 {
+                Button {
+                    todoList.moveToReadingList(todo)
+                } label: {
+                    Label("Move to Reading List", systemImage: "book")
+                }
+            }
+
             Divider()
 
             // Delete
