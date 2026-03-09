@@ -618,21 +618,7 @@ struct NewTodoInput: View {
                                 Button(action: {
                                     toggleTag(tag)
                                 }) {
-                                    HStack(spacing: 3) {
-                                        Image(systemName: "plus")
-                                            .font(.system(size: 8, weight: .bold))
-                                        Text("#\(tag)")
-                                            .font(.system(size: 11, weight: .medium))
-                                    }
-                                    .foregroundColor(Theme.colorForTag(tag))
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Theme.colorForTag(tag).opacity(0.25))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Theme.colorForTag(tag).opacity(0.5), lineWidth: 1)
-                                    )
-                                    .cornerRadius(12)
+                                    TagPillView(tag: tag, size: .small)
                                 }
                                 .buttonStyle(PlainButtonStyle())
                             }
