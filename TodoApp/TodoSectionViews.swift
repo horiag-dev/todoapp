@@ -298,7 +298,7 @@ struct TodoPrioritySection: View {
                             .background(tagColor.opacity(0.03))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 6)
-                                    .stroke(tagColor.opacity(0.25), lineWidth: 1)
+                                    .stroke(tagColor.opacity(0.5), lineWidth: 1)
                             )
                             .cornerRadius(6)
                             .padding(.horizontal, 6)
