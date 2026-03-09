@@ -20,3 +20,18 @@ DerivedData
 
 # Swift Package Manager
 .build/
+
+# User data files (personal todos)
+*.worktodo*.md
+new_worktodo*.md
+
+# Build artifacts
+*.app
+temp_iconset/
+
+# IDE
+*.code-workspace
+
+# Screenshots (local only)
+Screenshots/
+*.zip
