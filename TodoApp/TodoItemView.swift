@@ -275,16 +275,6 @@ struct TodoItemView: View {
 
                     Button {
                         var updatedTodo = todo
-                        updatedTodo.priority = .thisWeek
-                        todoList.updateTodo(updatedTodo)
-                        todo = updatedTodo
-                    } label: {
-                        Label("This Week", systemImage: "calendar.badge.exclamationmark")
-                    }
-                    .disabled(todo.priority == .thisWeek)
-
-                    Button {
-                        var updatedTodo = todo
                         updatedTodo.priority = .urgent
                         todoList.updateTodo(updatedTodo)
                         todo = updatedTodo
@@ -292,6 +282,16 @@ struct TodoItemView: View {
                         Label("Urgent", systemImage: "flag.fill")
                     }
                     .disabled(todo.priority == .urgent)
+
+                    Button {
+                        var updatedTodo = todo
+                        updatedTodo.priority = .thisWeek
+                        todoList.updateTodo(updatedTodo)
+                        todo = updatedTodo
+                    } label: {
+                        Label("This Week", systemImage: "calendar.badge.exclamationmark")
+                    }
+                    .disabled(todo.priority == .thisWeek)
 
                     Button {
                         var updatedTodo = todo

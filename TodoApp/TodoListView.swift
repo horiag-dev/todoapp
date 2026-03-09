@@ -627,7 +627,11 @@ struct NewTodoInput: View {
                                     .foregroundColor(Theme.colorForTag(tag))
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
-                                    .background(Theme.colorForTag(tag).opacity(0.12))
+                                    .background(Theme.colorForTag(tag).opacity(0.25))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Theme.colorForTag(tag).opacity(0.5), lineWidth: 1)
+                                    )
                                     .cornerRadius(12)
                                 }
                                 .buttonStyle(PlainButtonStyle())
