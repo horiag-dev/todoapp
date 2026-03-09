@@ -487,13 +487,13 @@ struct NewTodoInput: View {
                     .foregroundColor(newTodoPriority.color)
                     .onTapGesture {
                         withAnimation(Theme.Animation.microSpring) {
-                            // Cycle through priorities: today -> thisWeek -> urgent -> normal -> today
+                            // Cycle through priorities: today -> urgent -> thisWeek -> normal -> today
                             switch newTodoPriority {
                             case .today:
-                                newTodoPriority = .thisWeek
-                            case .thisWeek:
                                 newTodoPriority = .urgent
                             case .urgent:
+                                newTodoPriority = .thisWeek
+                            case .thisWeek:
                                 newTodoPriority = .normal
                             case .normal:
                                 newTodoPriority = .today

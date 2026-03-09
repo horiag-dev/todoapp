@@ -146,13 +146,13 @@ struct TodoListSections: View {
                 continue
             }
 
-            // Priority order: today > thisWeek > urgent > normal
+            // Priority order: today > urgent > thisWeek > normal
             if meta.hasToday {
                 result.today.append(meta)
-            } else if meta.hasThisWeek || meta.todo.priority == .thisWeek {
-                result.thisWeek.append(meta)
             } else if meta.hasUrgent || meta.todo.priority == .urgent {
                 result.urgent.append(meta)
+            } else if meta.hasThisWeek || meta.todo.priority == .thisWeek {
+                result.thisWeek.append(meta)
             } else {
                 result.normal.append(meta)
             }
@@ -309,7 +309,7 @@ struct TodoListSections: View {
         .padding(.bottom)
     }
 
-    // Context mode view - Today (flat), This Week, Urgent/Normal with context sub-groups
+    // Context mode view - Today (flat), Urgent, This Week, Normal with context sub-groups
     @ViewBuilder
     private var contextModeView: some View {
         // Use pre-categorized todos (single-pass optimization)
@@ -326,16 +326,6 @@ struct TodoListSections: View {
             )
         }
 
-        // This Week section with context sub-groups
-        let thisWeekTodos = sortByTitle(cats.thisWeek)
-        if !thisWeekTodos.isEmpty {
-            UrgencySectionWithContextGroups(
-                todoList: todoList,
-                urgencySection: .thisWeek,
-                todosByContext: todosByContextOnly(from: thisWeekTodos)
-            )
-        }
-
         // Urgent section with context sub-groups
         let urgentTodos = sortByTitle(cats.urgent)
         if !urgentTodos.isEmpty {
@@ -343,6 +333,16 @@ struct TodoListSections: View {
                 todoList: todoList,
                 urgencySection: .urgent,
                 todosByContext: todosByContextOnly(from: urgentTodos)
+            )
+        }
+
+        // This Week section with context sub-groups
+        let thisWeekTodos = sortByTitle(cats.thisWeek)
+        if !thisWeekTodos.isEmpty {
+            UrgencySectionWithContextGroups(
+                todoList: todoList,
+                urgencySection: .thisWeek,
+                todosByContext: todosByContextOnly(from: thisWeekTodos)
             )
         }
 

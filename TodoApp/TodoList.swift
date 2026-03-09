@@ -524,19 +524,19 @@ class TodoList: ObservableObject {
             markdownContent += "\n"
         }
 
-        // Add this week todos
-        if !thisWeekTodos.isEmpty {
-            markdownContent += "### 🟠 This Week\n\n"
-            for todo in thisWeekTodos {
+        // Add urgent todos
+        if !urgentTodos.isEmpty {
+            markdownContent += "### 🔴 Urgent\n\n"
+            for todo in urgentTodos {
                 markdownContent += formatTodo(todo)
             }
             markdownContent += "\n"
         }
 
-        // Add urgent todos
-        if !urgentTodos.isEmpty {
-            markdownContent += "### 🔴 Urgent\n\n"
-            for todo in urgentTodos {
+        // Add this week todos
+        if !thisWeekTodos.isEmpty {
+            markdownContent += "### 🟠 This Week\n\n"
+            for todo in thisWeekTodos {
                 markdownContent += formatTodo(todo)
             }
             markdownContent += "\n"

@@ -3,8 +3,8 @@ import SwiftUI
 
 enum Priority: String, Codable, CaseIterable {
     case today = "Today"
-    case thisWeek = "This Week"
     case urgent = "Urgent"
+    case thisWeek = "This Week"
     case normal = "Normal"
 
     var color: Color {
