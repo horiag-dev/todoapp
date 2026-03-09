@@ -270,33 +270,43 @@ struct TodoPrioritySection: View {
                     .fill(section.color.opacity(0.5))
                     .frame(height: 2)
 
-                LazyVStack(spacing: 0) {
+                LazyVStack(spacing: 6) {
                     let grouped = groupedByPrimaryTag(todos)
-                    ForEach(Array(grouped.enumerated()), id: \.element.tag) { index, group in
+                    ForEach(grouped, id: \.tag) { group in
                         if grouped.count > 1 {
-                            // Divider between tag groups (not before first)
-                            if index > 0 {
-                                Rectangle()
-                                    .fill(Color.primary.opacity(0.15))
-                                    .frame(height: 0.5)
-                                    .padding(.horizontal, Theme.contentPadding)
+                            // Tag group with border
+                            let tagColor = Theme.colorForTag(group.tag)
+                            VStack(alignment: .leading, spacing: 0) {
+                                // Tag sub-header
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(tagColor)
+                                        .frame(width: 6, height: 6)
+                                    Text(group.tag)
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(Theme.secondaryText)
+                                    Spacer()
+                                }
+                                .padding(.leading, 10)
+                                .padding(.top, 6)
+                                .padding(.bottom, 2)
+
+                                ForEach(group.todos) { todo in
+                                    TodoItemView(todoList: todoList, todo: todo, isTop5: isTop5, groupColor: section.color)
+                                }
                             }
-                            // Tag sub-header
-                            HStack(spacing: 6) {
-                                Circle()
-                                    .fill(Theme.colorForTag(group.tag))
-                                    .frame(width: 6, height: 6)
-                                Text(group.tag)
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(Theme.secondaryText)
-                                Spacer()
+                            .background(tagColor.opacity(0.03))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(tagColor.opacity(0.25), lineWidth: 1)
+                            )
+                            .cornerRadius(6)
+                            .padding(.horizontal, 6)
+                        } else {
+                            // Single group — no border needed
+                            ForEach(group.todos) { todo in
+                                TodoItemView(todoList: todoList, todo: todo, isTop5: isTop5, groupColor: section.color)
                             }
-                            .padding(.leading, Theme.contentPadding)
-                            .padding(.top, index > 0 ? 6 : 4)
-                            .padding(.bottom, 2)
-                        }
-                        ForEach(group.todos) { todo in
-                            TodoItemView(todoList: todoList, todo: todo, isTop5: isTop5, groupColor: section.color)
                         }
                     }
                 }
