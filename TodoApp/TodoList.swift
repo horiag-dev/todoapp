@@ -28,6 +28,7 @@ class TodoList: ObservableObject {
     // Debounce save operations to reduce disk I/O
     private var saveWorkItem: DispatchWorkItem?
     private let saveDebounceInterval: TimeInterval = 0.5
+    private let saveQueue = DispatchQueue(label: "com.todoapp.save", qos: .utility)
 
     // Cached computed properties for performance
     private var _cachedAllTags: [String]?
@@ -48,11 +49,11 @@ class TodoList: ObservableObject {
     private let fileManager = FileManager.default
     private let documentsDirectory: URL
     
+    @Published var lastSaveError: String?
+
     init() {
-        guard let docsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            fatalError("Unable to access documents directory")
-        }
-        documentsDirectory = docsDir
+        documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? fileManager.temporaryDirectory
         
         // Try to load the last used file path
         if let lastPath = UserDefaults.standard.string(forKey: "lastTodoFilePath") {
@@ -445,9 +446,9 @@ class TodoList: ObservableObject {
         }
         saveWorkItem = workItem
 
-        // Schedule the save on a background queue after the debounce interval
-        DispatchQueue.main.asyncAfter(deadline: .now() + saveDebounceInterval) {
-            DispatchQueue.global(qos: .utility).async(execute: workItem)
+        // Schedule the save on a serial queue after the debounce interval
+        DispatchQueue.main.asyncAfter(deadline: .now() + saveDebounceInterval) { [weak self] in
+            self?.saveQueue.async(execute: workItem)
         }
     }
 
@@ -569,8 +570,13 @@ class TodoList: ObservableObject {
 
         do {
             try markdownContent.write(to: fileURL, atomically: true, encoding: .utf8)
+            DispatchQueue.main.async { [weak self] in
+                self?.lastSaveError = nil
+            }
         } catch {
-            // Silently fail - file write errors are rare and user can retry
+            DispatchQueue.main.async { [weak self] in
+                self?.lastSaveError = "Failed to save: \(error.localizedDescription)"
+            }
         }
     }
     

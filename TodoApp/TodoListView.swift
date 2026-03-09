@@ -713,6 +713,31 @@ struct TodoListView: View {
                     .padding(.bottom, 8)
                 }
 
+                // Save error banner
+                if let error = todoList.lastSaveError {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 11))
+                        Text(error)
+                            .font(.system(size: 11))
+                        Spacer()
+                        Button("Retry") { todoList.saveTodos() }
+                            .font(.system(size: 11, weight: .medium))
+                        Button(action: { todoList.lastSaveError = nil }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 10))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.red.opacity(0.85))
+                    .cornerRadius(6)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 4)
+                }
+
                 // Main Content - Either Mind Map or List View
                 if isInMindMapMode {
                     // Mind Map View
@@ -1469,9 +1494,7 @@ struct Top5ItemRow: View {
             // Checkbox
             Button(action: {
                 todoList.toggleTop5Todo(todo)
-                if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
-                    todo = updated
-                }
+                refreshTodo()
             }) {
                 Image(systemName: todo.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 14))
@@ -1571,9 +1594,7 @@ struct Top5ItemRow: View {
                         } else {
                             todoList.addTagToTop5Todo(todo, tag: context.id)
                         }
-                        if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
-                            todo = updated
-                        }
+                        refreshTodo()
                     } label: {
                         Label {
                             Text(context.name)
@@ -1590,9 +1611,7 @@ struct Top5ItemRow: View {
                     ForEach(todo.tags, id: \.self) { tag in
                         Button {
                             todoList.removeTagFromTop5Todo(todo, tag: tag)
-                            if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
-                                todo = updated
-                            }
+                            refreshTodo()
                         } label: {
                             Label("Remove #\(tag)", systemImage: "minus.circle")
                         }
@@ -1603,9 +1622,7 @@ struct Top5ItemRow: View {
                 ForEach(availableTags, id: \.self) { tag in
                     Button {
                         todoList.addTagToTop5Todo(todo, tag: tag)
-                        if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
-                            todo = updated
-                        }
+                        refreshTodo()
                     } label: {
                         Label("Add #\(tag)", systemImage: "plus.circle")
                     }
@@ -1627,9 +1644,7 @@ struct Top5ItemRow: View {
             // Complete / Uncomplete
             Button {
                 todoList.toggleTop5Todo(todo)
-                if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
-                    todo = updated
-                }
+                refreshTodo()
             } label: {
                 Label(todo.isCompleted ? "Mark Incomplete" : "Mark Complete", systemImage: todo.isCompleted ? "circle" : "checkmark.circle")
             }
@@ -1645,9 +1660,7 @@ struct Top5ItemRow: View {
             if let context = suggestedContext {
                 Button("Add #\(context)") {
                     todoList.addTagToTop5Todo(todo, tag: context)
-                    if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
-                        self.todo = updated
-                    }
+                    refreshTodo()
                     suggestedContext = nil
                 }
             }
@@ -1658,6 +1671,13 @@ struct Top5ItemRow: View {
             } else {
                 Text("No context suggestion available for this todo.")
             }
+        }
+    }
+
+    /// Re-sync local @State todo from TodoList after a mutation
+    private func refreshTodo() {
+        if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
+            todo = updated
         }
     }
 

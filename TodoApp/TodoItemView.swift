@@ -106,11 +106,6 @@ struct TodoItemView: View {
     @State private var cachedSegments: [TextSegment] = []
     @State private var cachedSegmentsTitle: String = ""
 
-    // Static cached NSDataDetector for link detection (expensive to create)
-    private static let linkDetector: NSDataDetector? = {
-        try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
-    }()
-
     // Helper struct to represent text segments
     private struct TextSegment: Identifiable {
         let id = UUID()
@@ -133,7 +128,7 @@ struct TodoItemView: View {
         let nsString = text as NSString
         var currentIndex = 0
 
-        let matches = Self.linkDetector?.matches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count)) ?? []
+        let matches = Todo.linkDetector?.matches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count)) ?? []
 
         for match in matches {
             // Add text before link if any
@@ -331,16 +326,7 @@ struct TodoItemView: View {
                                 todoList.addTag(to: todo, tag: context.id)
                             }
                         }
-                        // Refresh
-                        if isTop5 {
-                            if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
-                                self.todo = updated
-                            }
-                        } else {
-                            if let updated = todoList.todos.first(where: { $0.id == todo.id }) {
-                                self.todo = updated
-                            }
-                        }
+                        refreshTodo()
                     } label: {
                         Label {
                             Text(context.name)
@@ -362,16 +348,7 @@ struct TodoItemView: View {
                             } else {
                                 todoList.removeTag(from: todo, tag: tag)
                             }
-                            // Refresh
-                            if isTop5 {
-                                if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
-                                    self.todo = updated
-                                }
-                            } else {
-                                if let updated = todoList.todos.first(where: { $0.id == todo.id }) {
-                                    self.todo = updated
-                                }
-                            }
+                            refreshTodo()
                         } label: {
                             Label("Remove #\(tag)", systemImage: "minus.circle")
                         }
@@ -389,16 +366,7 @@ struct TodoItemView: View {
                             } else {
                                 todoList.addTag(to: todo, tag: tag)
                             }
-                            // Refresh
-                            if isTop5 {
-                                if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
-                                    self.todo = updated
-                                }
-                            } else {
-                                if let updated = todoList.todos.first(where: { $0.id == todo.id }) {
-                                    self.todo = updated
-                                }
-                            }
+                            refreshTodo()
                         } label: {
                             Label("Add #\(tag)", systemImage: "plus.circle")
                         }
@@ -510,6 +478,19 @@ struct TodoItemView: View {
         .id(todo.id)
     }
     
+    /// Re-sync local @State todo from TodoList after a mutation
+    private func refreshTodo() {
+        if isTop5 {
+            if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
+                todo = updated
+            }
+        } else {
+            if let updated = todoList.todos.first(where: { $0.id == todo.id }) {
+                todo = updated
+            }
+        }
+    }
+
     private func saveChanges() {
         if !editedTitle.isEmpty {
             var updatedTodo = todo
@@ -531,16 +512,10 @@ struct TodoItemView: View {
 
         if isTop5 {
             todoList.addTagToTop5Todo(todo, tag: tag)
-            if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
-                todo = updated
-            }
         } else {
             todoList.addTag(to: todo, tag: tag)
-            if let updated = todoList.todos.first(where: { $0.id == todo.id }) {
-                todo = updated
-            }
         }
-
+        refreshTodo()
         newTagText = ""
     }
 
@@ -588,15 +563,10 @@ struct TodoItemView: View {
     private func applyAISuggestion(_ context: String) {
         if isTop5 {
             todoList.addTagToTop5Todo(todo, tag: context)
-            if let updated = todoList.top5Todos.first(where: { $0.id == todo.id }) {
-                todo = updated
-            }
         } else {
             todoList.addTag(to: todo, tag: context)
-            if let updated = todoList.todos.first(where: { $0.id == todo.id }) {
-                todo = updated
-            }
         }
+        refreshTodo()
         suggestedContextTag = nil
     }
 }
