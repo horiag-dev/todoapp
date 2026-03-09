@@ -161,17 +161,6 @@ class WeeklyReviewService {
             )
         }
 
-        let contexts = ContextConfigManager.shared.contexts
-        let contextDescriptions = contexts.map { ctx -> String in
-            switch ctx.id.lowercased() {
-            case "prep": return "  - #\(ctx.id): meeting preparation, pre-meeting tasks, agendas"
-            case "reply": return "  - #\(ctx.id): emails to send, messages to respond to, follow-ups"
-            case "deep": return "  - #\(ctx.id): focused work requiring concentration - coding, writing, research"
-            case "waiting": return "  - #\(ctx.id): blocked items, waiting on someone else"
-            default: return "  - #\(ctx.id): \(ctx.name)"
-            }
-        }.joined(separator: "\n")
-
         let bigThingsText = bigThings.isEmpty
             ? "(None set)"
             : bigThings.enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(separator: "\n")
@@ -195,9 +184,6 @@ class WeeklyReviewService {
         ## Top 5 Priorities
         \(top5Text)
 
-        ## Available Context Tags
-        \(contextDescriptions)
-
         ## All Existing Tags in Use
         \(existingTagsList)
 
@@ -209,7 +195,7 @@ class WeeklyReviewService {
 
         Types of suggestions you can make:
         - **rephrase**: Fix grammar, typos, vagueness, or make the title more actionable and specific. Provide "new_title".
-        - **add_tags**: Add context tags that fit the work type. Provide "tags_to_add" array. Only use tags from the existing tags or context tags listed above.
+        - **add_tags**: Add tags that fit the work type. Provide "tags_to_add" array. Only use tags from the existing tags listed above.
         - **remove_tags**: Remove tags that don't fit. Provide "tags_to_remove" array.
         - **change_priority**: Move to a different priority section. Provide "new_priority" ("today", "thisWeek", "urgent", or "normal"). Consider alignment with goals and top 5.
         - **move_to_today**: This todo should be done today (changes priority to Today). No extra fields needed.
@@ -217,7 +203,7 @@ class WeeklyReviewService {
 
         Rules:
         - Reference todos by their exact todo_id from the list above.
-        - Only use tags that already exist in the available tags list or context tags listed above.
+        - Only use tags that already exist in the available tags list above.
         - Do NOT suggest new todos. Only modify existing ones.
         - Focus on alignment with goals and priorities.
         - Be concise in reasons (1 sentence max).
@@ -367,16 +353,13 @@ class WeeklyReviewService {
                     newTitle: "Review and finalize: \(todo.title)"
                 ))
             case 1:
-                let contexts = ContextConfigManager.shared.contexts
-                if let ctx = contexts.first {
-                    suggestions.append(ReviewSuggestion(
-                        todoId: todo.id,
-                        todoTitle: todo.title,
-                        type: .addTags,
-                        reason: "This looks like it fits the \(ctx.name) context.",
-                        tagsToAdd: [ctx.id]
-                    ))
-                }
+                suggestions.append(ReviewSuggestion(
+                    todoId: todo.id,
+                    todoTitle: todo.title,
+                    type: .addTags,
+                    reason: "Adding a tag to help organize this task.",
+                    tagsToAdd: ["review"]
+                ))
             case 2:
                 suggestions.append(ReviewSuggestion(
                     todoId: todo.id,

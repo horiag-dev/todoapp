@@ -8,7 +8,7 @@ struct TodoListView: View {
     @State private var leftColumnWidth: CGFloat = 380
     @State private var isInMindMapMode: Bool = false  // Toggle between list and mind map views
     @State private var showingSettings: Bool = false  // Settings sheet
-    @State private var groupingMode: GroupingMode = .contextMode  // Grouping mode toggle
+    @State private var selectedTag: String? = nil  // Tag filter
     @State private var searchText: String = ""  // Search filter
     @State private var isSearching: Bool = false  // Show search bar
     @State private var showingWalkthrough: Bool = false  // Walkthrough guide
@@ -61,31 +61,6 @@ struct TodoListView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     .help(isInMindMapMode ? "Switch to List View" : "Switch to Mind Map View")
-
-                    // Grouping mode toggle (only in list mode)
-                    if !isInMindMapMode {
-                        Button(action: {
-                            withAnimation(Theme.Animation.quickFade) {
-                                groupingMode = (groupingMode == .contextMode) ? .tagMode : .contextMode
-                            }
-                        }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: groupingMode == .contextMode ? "square.grid.2x2" : "tag")
-                                    .font(.system(size: 11, weight: .medium))
-                                Text(groupingMode == .contextMode ? "Context" : "Tags")
-                                    .font(.system(size: 10, weight: .medium))
-                            }
-                            .foregroundColor(Theme.secondaryText)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(Theme.secondaryBackground)
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .help(groupingMode == .contextMode ? "Switch to Tag grouping" : "Switch to Context grouping")
-                    }
 
                     // Search button
                     Button(action: {
@@ -243,7 +218,7 @@ struct TodoListView: View {
 
                             // Scrollable todo list (without Top 5)
                             ScrollView {
-                                TodoListSections(todoList: todoList, excludeTop5: true, groupingMode: $groupingMode, searchText: searchText)
+                                TodoListSections(todoList: todoList, excludeTop5: true, searchText: searchText)
                             }
                             .scrollIndicators(.hidden)
                             .clipped()
@@ -467,7 +442,7 @@ struct NewTodoInput: View {
     @State private var selectedTags: Set<String> = []
 
     // AI Suggestion state
-    @State private var suggestedContext: String? = nil
+    @State private var suggestedTag: String? = nil
     @State private var isLoadingSuggestions: Bool = false
     @State private var suggestionError: String? = nil
     @State private var showSuggestions: Bool = false
@@ -513,7 +488,7 @@ struct NewTodoInput: View {
                         // Reset suggestions when title changes significantly
                         if showSuggestions && newValue.count < 3 {
                             showSuggestions = false
-                            suggestedContext = nil
+                            suggestedTag = nil
                         }
                     }
 
@@ -546,25 +521,21 @@ struct NewTodoInput: View {
             .padding(.horizontal, Theme.contentPadding)
 
             // AI Suggestions row
-            if showSuggestions && suggestedContext != nil {
+            if showSuggestions, let tag = suggestedTag {
                 HStack(spacing: 8) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 10))
                         .foregroundColor(.purple)
 
-                    Text("Context:")
+                    Text("Suggested:")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(Theme.secondaryText)
 
-                    // Context tag suggestion
-                    if let context = suggestedContext {
-                        SuggestionChip(
-                            tag: context,
-                            isSelected: selectedTags.contains(context),
-                            isContext: true
-                        ) {
-                            toggleTag(context)
-                        }
+                    SuggestionChip(
+                        tag: tag,
+                        isSelected: selectedTags.contains(tag)
+                    ) {
+                        toggleTag(tag)
                     }
 
                     Spacer()
@@ -691,12 +662,12 @@ struct NewTodoInput: View {
                 )
 
                 await MainActor.run {
-                    suggestedContext = suggestion.context
-                    // Auto-apply the context tag if found
-                    if let context = suggestion.context {
-                        selectedTags.insert(context)
+                    suggestedTag = suggestion.suggestedTag
+                    // Auto-apply the suggested tag if found
+                    if let tag = suggestion.suggestedTag {
+                        selectedTags.insert(tag)
                     }
-                    showSuggestions = suggestion.context != nil
+                    showSuggestions = suggestion.suggestedTag != nil
                     isLoadingSuggestions = false
                 }
             } catch {
@@ -730,7 +701,7 @@ struct NewTodoInput: View {
             todoList.addTodo(todo)
             newTodoTitle = ""
             selectedTags.removeAll()
-            suggestedContext = nil
+            suggestedTag = nil
             showSuggestions = false
             newTodoPriority = .thisWeek
         }

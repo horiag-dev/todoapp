@@ -4,19 +4,12 @@ import SwiftUI
 struct SuggestionChip: View {
     let tag: String
     let isSelected: Bool
-    let isContext: Bool
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 3) {
-                if isContext {
-                    Image(systemName: iconForContext(tag))
-                        .font(.system(size: 8))
-                }
-                Text("#\(tag)")
-                    .font(.system(size: 10, weight: .medium))
-            }
+            Text("#\(tag)")
+                .font(.system(size: 10, weight: .medium))
             .foregroundColor(isSelected ? .white : Theme.colorForTag(tag))
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
@@ -24,22 +17,8 @@ struct SuggestionChip: View {
                 Capsule()
                     .fill(isSelected ? Theme.colorForTag(tag) : Theme.colorForTag(tag).opacity(0.2))
             )
-            .overlay(
-                Capsule()
-                    .stroke(isContext ? Color.purple.opacity(0.5) : Color.clear, lineWidth: 1)
-            )
         }
         .buttonStyle(PlainButtonStyle())
-    }
-
-    private func iconForContext(_ context: String) -> String {
-        switch context.lowercased() {
-        case "prep": return "calendar"
-        case "reply": return "arrowshape.turn.up.left"
-        case "deep": return "brain.head.profile"
-        case "waiting": return "hourglass"
-        default: return "tag"
-        }
     }
 }
 
@@ -201,7 +180,7 @@ struct Top5ItemRow: View {
     // AI suggestion state
     @State private var isLoadingAI = false
     @State private var showingAISuggestion = false
-    @State private var suggestedContext: String? = nil
+    @State private var suggestedTag: String? = nil
 
     private let accentColor = Color.blue
 
@@ -299,28 +278,6 @@ struct Top5ItemRow: View {
 
             Divider()
 
-            // Context tags
-            Menu("Context") {
-                let contextManager = ContextConfigManager.shared
-                ForEach(contextManager.contexts, id: \.id) { context in
-                    let hasContext = todo.tags.contains { $0.lowercased() == context.id.lowercased() }
-                    Button {
-                        if hasContext {
-                            todoList.removeTagFromTop5Todo(todo, tag: context.id)
-                        } else {
-                            todoList.addTagToTop5Todo(todo, tag: context.id)
-                        }
-                        refreshTodo()
-                    } label: {
-                        Label {
-                            Text(context.name)
-                        } icon: {
-                            Image(systemName: hasContext ? "checkmark.circle.fill" : context.icon)
-                        }
-                    }
-                }
-            }
-
             // Tags
             Menu("Tags") {
                 if !todo.tags.isEmpty {
@@ -373,19 +330,19 @@ struct Top5ItemRow: View {
             }
         }
         .alert("AI Suggestion", isPresented: $showingAISuggestion) {
-            if let context = suggestedContext {
-                Button("Add #\(context)") {
-                    todoList.addTagToTop5Todo(todo, tag: context)
+            if let tag = suggestedTag {
+                Button("Add #\(tag)") {
+                    todoList.addTagToTop5Todo(todo, tag: tag)
                     refreshTodo()
-                    suggestedContext = nil
+                    suggestedTag = nil
                 }
             }
-            Button("Cancel", role: .cancel) { suggestedContext = nil }
+            Button("Cancel", role: .cancel) { suggestedTag = nil }
         } message: {
-            if let context = suggestedContext {
-                Text("Add context tag #\(context) to this todo?")
+            if let tag = suggestedTag {
+                Text("Add tag #\(tag) to this todo?")
             } else {
-                Text("No context suggestion available for this todo.")
+                Text("No tag suggestion available for this todo.")
             }
         }
     }
@@ -419,13 +376,13 @@ struct Top5ItemRow: View {
                 )
                 await MainActor.run {
                     isLoadingAI = false
-                    suggestedContext = suggestion.context
+                    suggestedTag = suggestion.suggestedTag
                     showingAISuggestion = true
                 }
             } catch {
                 await MainActor.run {
                     isLoadingAI = false
-                    suggestedContext = nil
+                    suggestedTag = nil
                     showingAISuggestion = true
                 }
             }

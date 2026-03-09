@@ -4,58 +4,29 @@ import AppKit
 // MARK: - Quick Add Panel View
 struct QuickAddPanelView: View {
     @ObservedObject var todoList: TodoList
-    @ObservedObject var contextManager = ContextConfigManager.shared
     @Binding var isPresented: Bool
 
     @State private var todoText: String = ""
-    @State private var selectedContextId: String? = nil  // nil means no context prefix
     @State private var additionalTags: Set<String> = []
     @State private var newTagText: String = ""
     @FocusState private var isTextFocused: Bool
     @FocusState private var isNewTagFocused: Bool
 
-    // Urgency tags that should always be available
-    private let urgencyTags = ["thisweek", "urgent"]
-
-    var selectedContext: ContextConfig? {
-        guard let id = selectedContextId else { return nil }
-        return contextManager.contexts.first { $0.id == id }
-    }
-
-    var finalTitle: String {
-        if let context = selectedContext {
-            return "\(context.name) for: \(todoText)"
-        }
-        return todoText
-    }
-
-    // Get frequently used tags (excluding context tags already shown as modes)
+    // Get frequently used tags
     var frequentTags: [String] {
-        let contextTagsSet = Set(contextManager.contextTags)
+        let urgencyTags = ["thisweek", "urgent"]
         let urgencySet = Set(urgencyTags)
 
-        // Start with urgency tags, then add user's tags
         var result = urgencyTags
 
         let userTags = todoList.allTags
             .filter { tag in
-                let lowered = tag.lowercased()
-                return !contextTagsSet.contains(lowered) && !urgencySet.contains(lowered)
+                !urgencySet.contains(tag.lowercased())
             }
             .prefix(5)
 
         result.append(contentsOf: userTags)
         return result
-    }
-
-    // Get all tags that will be applied
-    func getAllTags() -> [String] {
-        var tags: [String] = []
-        if let context = selectedContext {
-            tags.append(context.id)
-        }
-        tags.append(contentsOf: additionalTags.sorted())
-        return tags
     }
 
     var body: some View {
@@ -82,7 +53,7 @@ struct QuickAddPanelView: View {
             Divider()
 
             VStack(spacing: 16) {
-                // Todo text input (editable)
+                // Todo text input
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Todo:")
                         .font(.system(size: 11))
@@ -97,69 +68,7 @@ struct QuickAddPanelView: View {
                         .focused($isTextFocused)
                 }
 
-                // Mode selection
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Add as:")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            // Dynamic context buttons from ContextConfigManager
-                            ForEach(contextManager.contexts) { context in
-                                let isSelected = selectedContextId == context.id
-                                Button(action: {
-                                    selectedContextId = context.id
-                                }) {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: context.icon)
-                                            .font(.system(size: 11))
-                                        Text("\(context.name) for")
-                                            .font(.system(size: 12, weight: .medium))
-                                    }
-                                    .foregroundColor(isSelected ? .white : context.color)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(isSelected ? context.color : context.color.opacity(0.15))
-                                    )
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(context.color, lineWidth: isSelected ? 0 : 1)
-                                    )
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                            }
-
-                            // No context button (plain text, no prefix)
-                            Button(action: {
-                                selectedContextId = nil
-                            }) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "text.cursor")
-                                        .font(.system(size: 11))
-                                    Text("Plain")
-                                        .font(.system(size: 12, weight: .medium))
-                                }
-                                .foregroundColor(selectedContextId == nil ? .white : .gray)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(selectedContextId == nil ? Color.gray : Color.gray.opacity(0.15))
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Color.gray, lineWidth: selectedContextId == nil ? 0 : 1)
-                                )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                    }
-                }
-
-                // Additional tags (compact picker)
+                // Tags
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Add tags:")
                         .font(.system(size: 11))
@@ -167,7 +76,6 @@ struct QuickAddPanelView: View {
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
-                            // Show frequently used tags as quick-add chips
                             ForEach(frequentTags, id: \.self) { tag in
                                 let isSelected = additionalTags.contains(tag)
                                 let tagColor = Theme.colorForTag(tag)
@@ -195,7 +103,6 @@ struct QuickAddPanelView: View {
                                 .buttonStyle(PlainButtonStyle())
                             }
 
-                            // Show any custom-added tags that aren't in frequent tags
                             ForEach(Array(additionalTags.filter { !frequentTags.contains($0) }), id: \.self) { tag in
                                 let tagColor = Theme.colorForTag(tag)
                                 Button(action: {
@@ -251,12 +158,11 @@ struct QuickAddPanelView: View {
                         .foregroundColor(.secondary)
 
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(finalTitle)
+                        Text(todoText)
                             .font(.system(size: 13, weight: .medium))
                             .lineLimit(1)
 
-                        // Show all tags that will be added
-                        let allTags = getAllTags()
+                        let allTags = Array(additionalTags).sorted()
                         if !allTags.isEmpty {
                             HStack(spacing: 4) {
                                 ForEach(allTags, id: \.self) { tag in
@@ -314,21 +220,15 @@ struct QuickAddPanelView: View {
         .shadow(color: .black.opacity(0.2), radius: 20, y: 10)
         .onAppear {
             loadClipboard()
-            // Select first context by default
-            if selectedContextId == nil, let firstContext = contextManager.contexts.first {
-                selectedContextId = firstContext.id
-            }
         }
     }
 
     private func loadClipboard() {
         if let string = NSPasteboard.general.string(forType: .string) {
-            // Clean up the clipboard text - remove extra whitespace
             todoText = string.trimmingCharacters(in: .whitespacesAndNewlines)
                 .components(separatedBy: .newlines)
                 .first ?? string
         }
-        // Focus the text field
         isTextFocused = true
     }
 
@@ -343,12 +243,12 @@ struct QuickAddPanelView: View {
     }
 
     private func addTodo() {
-        guard !finalTitle.isEmpty else { return }
+        guard !todoText.isEmpty else { return }
 
         let todo = Todo(
-            title: finalTitle,
+            title: todoText,
             isCompleted: false,
-            tags: getAllTags(),
+            tags: Array(additionalTags).sorted(),
             priority: .thisWeek
         )
 
@@ -371,10 +271,8 @@ class QuickAddWindowController: NSObject {
     func showQuickAddPanel() {
         guard let todoList = todoList else { return }
 
-        // Close existing window if any
         window?.close()
 
-        // Create the SwiftUI view
         let isPresented = Binding<Bool>(
             get: { self.window != nil },
             set: { if !$0 { self.closePanel() } }
@@ -382,9 +280,8 @@ class QuickAddWindowController: NSObject {
 
         let contentView = QuickAddPanelView(todoList: todoList, isPresented: isPresented)
 
-        // Create a borderless window
         let hostingView = NSHostingView(rootView: contentView)
-        hostingView.frame = CGRect(x: 0, y: 0, width: 420, height: 440)
+        hostingView.frame = CGRect(x: 0, y: 0, width: 420, height: 400)
 
         let window = NSPanel(
             contentRect: hostingView.frame,
@@ -403,12 +300,11 @@ class QuickAddWindowController: NSObject {
         window.isOpaque = false
         window.hasShadow = true
 
-        // Center on screen
         if let screen = NSScreen.main {
             let screenFrame = screen.visibleFrame
             let windowFrame = window.frame
             let x = screenFrame.midX - windowFrame.width / 2
-            let y = screenFrame.midY - windowFrame.height / 2 + 100 // Slightly above center
+            let y = screenFrame.midY - windowFrame.height / 2 + 100
             window.setFrameOrigin(NSPoint(x: x, y: y))
         }
 

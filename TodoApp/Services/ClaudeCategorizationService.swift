@@ -1,11 +1,11 @@
 import Foundation
 
-/// Result of context suggestion from Claude
+/// Result of tag suggestion from Claude
 struct TagSuggestion: Codable {
-    let context: String?      // Context tag (prep, reply, deep, waiting)
+    let suggestedTag: String?
 
-    init(context: String? = nil) {
-        self.context = context
+    init(suggestedTag: String? = nil) {
+        self.suggestedTag = suggestedTag
     }
 }
 
@@ -14,21 +14,11 @@ class ClaudeCategorizationService {
     static let shared = ClaudeCategorizationService()
 
     private let apiURL = URL(string: "https://api.anthropic.com/v1/messages")!
-    private let modelID = "claude-sonnet-4-20250514"  // Better quality for categorization
+    private let modelID = "claude-sonnet-4-20250514"
 
     private init() {}
 
-    // Available context tags for categorization (from configuration)
-    var contextTags: [String] {
-        ContextConfigManager.shared.contextTags
-    }
-
-    /// Suggests tags for a todo item using Claude
-    /// - Parameters:
-    ///   - todoText: The todo item text to analyze
-    ///   - existingTags: Tags already in use in the app
-    ///   - goalSections: Names of goal sections for context
-    /// - Returns: Tag suggestion with context and additional tags
+    /// Suggests a tag for a todo item using Claude
     func suggestTags(
         todoText: String,
         existingTags: [String] = [],
@@ -40,7 +30,7 @@ class ClaudeCategorizationService {
 
         // Demo mode: return a smart mock response without calling the API
         if APIKeyManager.shared.isDemoMode {
-            return await demoSuggestTags(todoText: todoText)
+            return await demoSuggestTags(todoText: todoText, existingTags: existingTags)
         }
 
         let prompt = buildPrompt(
@@ -64,39 +54,39 @@ class ClaudeCategorizationService {
             throw CategorizationError.apiError(httpResponse.statusCode, "Unknown error")
         }
 
-        return try parseResponse(data)
+        return try parseResponse(data, existingTags: existingTags)
     }
 
-    /// Demo mode: suggests a context tag based on keyword matching
-    private func demoSuggestTags(todoText: String) async -> TagSuggestion {
-        // Simulate a brief network delay so the UI feels realistic
+    /// Demo mode: suggests a tag based on keyword matching
+    private func demoSuggestTags(todoText: String, existingTags: [String]) async -> TagSuggestion {
         try? await Task.sleep(nanoseconds: 600_000_000)
 
         let text = todoText.lowercased()
-        let contexts = ContextConfigManager.shared.contexts
-        let contextIDs = Set(contexts.map { $0.id.lowercased() })
 
-        // Keyword-to-context mapping for realistic demo suggestions
-        let keywords: [(words: [String], context: String)] = [
-            (["meet", "agenda", "standup", "sync", "call", "1:1", "prepare", "presentation", "slides", "brief"], "prep"),
-            (["email", "reply", "respond", "message", "follow up", "slack", "send", "write back", "ping"], "reply"),
-            (["code", "build", "design", "research", "write", "analyze", "debug", "implement", "refactor", "focus", "draft", "review code"], "deep"),
-            (["waiting", "blocked", "pending", "depends", "approval", "sign off", "hear back", "response from"], "waiting"),
+        // Keyword-to-tag mapping for realistic demo suggestions
+        let keywords: [(words: [String], tag: String)] = [
+            (["meet", "standup", "sync", "call", "1:1"], "meeting"),
+            (["email", "reply", "respond", "message", "slack"], "comms"),
+            (["code", "build", "debug", "implement", "refactor"], "dev"),
+            (["design", "mockup", "wireframe", "figma"], "design"),
+            (["review", "feedback", "approve"], "review"),
+            (["write", "draft", "blog", "doc"], "writing"),
+            (["plan", "roadmap", "strategy"], "planning"),
+            (["hire", "interview", "candidate"], "hiring"),
         ]
 
+        let existingSet = Set(existingTags.map { $0.lowercased() })
+
         for entry in keywords {
-            // Only suggest if this context actually exists in the user's config
-            guard contextIDs.contains(entry.context) else { continue }
             for word in entry.words {
                 if text.contains(word) {
-                    return TagSuggestion(context: entry.context)
+                    // Prefer matching an existing tag
+                    if existingSet.contains(entry.tag) {
+                        return TagSuggestion(suggestedTag: entry.tag)
+                    }
+                    return TagSuggestion(suggestedTag: entry.tag)
                 }
             }
-        }
-
-        // Fallback: suggest the first available context
-        if let first = contexts.first {
-            return TagSuggestion(context: first.id)
         }
 
         return TagSuggestion()
@@ -105,37 +95,25 @@ class ClaudeCategorizationService {
     // MARK: - Private Methods
 
     private func buildPrompt(todoText: String, existingTags: [String], goalSections: [String]) -> String {
-        let contexts = ContextConfigManager.shared.contexts
-        let contextTagsList = contexts.map { $0.id }.joined(separator: ", ")
-
-        // Build context descriptions
-        let contextDescriptions = contexts.map { context -> String in
-            switch context.id.lowercased() {
-            case "prep": return "- \(context.id): meeting preparation, pre-meeting tasks, agendas, materials to prepare before a meeting"
-            case "reply": return "- \(context.id): emails to send, messages to respond to, follow-ups to write"
-            case "deep": return "- \(context.id): focused work requiring concentration - coding, writing, research, analysis"
-            case "waiting": return "- \(context.id): blocked items, waiting on someone else, pending responses"
-            default: return "- \(context.id): tasks related to \(context.name.lowercased())"
-            }
-        }.joined(separator: "\n")
+        let tagsList = existingTags.joined(separator: ", ")
 
         return """
-        Categorize this todo into ONE context category.
+        Suggest ONE tag for this todo item.
 
         Todo: "\(todoText)"
 
-        Available contexts: \(contextTagsList)
-        \(contextDescriptions)
+        Existing tags in use: \(tagsList)
 
         Rules:
-        - Choose exactly ONE context that best fits, or null if none fit well
-        - Only use the exact context names listed above
+        - Prefer an existing tag if one fits well
+        - If no existing tag fits, suggest a short, descriptive new tag (1-2 words, lowercase)
+        - If no tag makes sense, return null
 
         Respond with ONLY this JSON format:
-        {"context": "prep"}
+        {"tag": "tagname"}
 
-        Or if no context fits:
-        {"context": null}
+        Or if no tag fits:
+        {"tag": null}
         """
     }
 
@@ -158,8 +136,7 @@ class ClaudeCategorizationService {
         return request
     }
 
-    private func parseResponse(_ data: Data) throws -> TagSuggestion {
-        // Parse the Claude API response
+    private func parseResponse(_ data: Data, existingTags: [String]) throws -> TagSuggestion {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let content = json["content"] as? [[String: Any]],
               let firstContent = content.first,
@@ -167,10 +144,8 @@ class ClaudeCategorizationService {
             throw CategorizationError.parseError("Invalid response structure")
         }
 
-        // Extract JSON from the response text - handle potential markdown wrapping
         var cleanedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // Remove markdown code blocks if present
         if cleanedText.hasPrefix("```") {
             if let jsonStart = cleanedText.range(of: "{"),
                let jsonEnd = cleanedText.range(of: "}", options: .backwards) {
@@ -178,21 +153,14 @@ class ClaudeCategorizationService {
             }
         }
 
-        // Try to parse the JSON response
         guard let jsonData = cleanedText.data(using: .utf8),
               let suggestionDict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
-            // If parsing fails, return empty suggestion
             return TagSuggestion()
         }
 
-        let context = suggestionDict["context"] as? String
+        let tag = suggestionDict["tag"] as? String
 
-        // Validate context is one of our known context tags
-        let validContext = context.flatMap { ctx in
-            contextTags.contains(ctx.lowercased()) ? ctx.lowercased() : nil
-        }
-
-        return TagSuggestion(context: validContext)
+        return TagSuggestion(suggestedTag: tag)
     }
 }
 

@@ -39,7 +39,7 @@ struct WalkthroughView: View {
             icon: "checklist",
             iconColor: .green,
             title: "Organize by Priority & Context",
-            body: "Todos are grouped by urgency (Today / This Week / Urgent / Normal) and context tags (prep / reply / deep / waiting). Right-click any todo for actions like edit, move, or delete.",
+            body: "Todos are grouped by priority: Today, Urgent, This Week, and Normal. Right-click any todo for actions like edit, tag, move, or delete.",
             codeSnippet: nil
         ),
         WalkthroughStep(
@@ -56,14 +56,14 @@ struct WalkthroughView: View {
             - [ ] Finalize v2.0 feature spec #launch
 
             ### 🟠 This Week
-            - [ ] Review user research #growth #deep
+            - [ ] Review user research #growth
             """
         ),
         WalkthroughStep(
             icon: "sparkles",
             iconColor: .pink,
             title: "Auto-tag with AI",
-            body: "Right-click any todo → \"Auto-tag with AI\" to automatically add context tags. Works out of the box in demo mode (enter demo as API key) or with your own Anthropic API key.",
+            body: "Right-click any todo → \"Auto-tag with AI\" to automatically suggest tags. Works out of the box in demo mode (enter demo as API key) or with your own Anthropic API key.",
             codeSnippet: nil
         ),
     ]

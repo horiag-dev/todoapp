@@ -97,10 +97,10 @@ struct TodoItemView: View {
     @State private var newTagText = ""
     @FocusState private var focusField: Bool
 
-    // AI Context Suggestion state
+    // AI Suggestion state
     @State private var isLoadingAISuggestions = false
     @State private var showingAISuggestionAlert = false
-    @State private var suggestedContextTag: String? = nil
+    @State private var suggestedTag: String? = nil
 
     // Cached segments for performance - avoid re-parsing links on every render
     @State private var cachedSegments: [TextSegment] = []
@@ -305,38 +305,6 @@ struct TodoItemView: View {
                 }
             }
 
-            // Context submenu - quick access to context tags
-            Menu("Context") {
-                let contextManager = ContextConfigManager.shared
-                ForEach(contextManager.contexts, id: \.id) { context in
-                    let hasContext = todo.tags.contains { $0.lowercased() == context.id.lowercased() }
-                    Button {
-                        if hasContext {
-                            // Remove context tag
-                            if isTop5 {
-                                todoList.removeTagFromTop5Todo(todo, tag: context.id)
-                            } else {
-                                todoList.removeTag(from: todo, tag: context.id)
-                            }
-                        } else {
-                            // Add context tag
-                            if isTop5 {
-                                todoList.addTagToTop5Todo(todo, tag: context.id)
-                            } else {
-                                todoList.addTag(to: todo, tag: context.id)
-                            }
-                        }
-                        refreshTodo()
-                    } label: {
-                        Label {
-                            Text(context.name)
-                        } icon: {
-                            Image(systemName: hasContext ? "checkmark.circle.fill" : context.icon)
-                        }
-                    }
-                }
-            }
-
             // Tags submenu
             Menu("Tags") {
                 // Current tags (to remove)
@@ -442,19 +410,19 @@ struct TodoItemView: View {
             Text("Enter a name for the new tag")
         }
         .alert("AI Suggestion", isPresented: $showingAISuggestionAlert) {
-            if let context = suggestedContextTag {
-                Button("Add #\(context)") {
-                    applyAISuggestion(context)
+            if let tag = suggestedTag {
+                Button("Add #\(tag)") {
+                    applyAISuggestion(tag)
                 }
             }
             Button("Cancel", role: .cancel) {
-                suggestedContextTag = nil
+                suggestedTag = nil
             }
         } message: {
-            if let context = suggestedContextTag {
-                Text("Add context tag #\(context) to this todo?")
+            if let tag = suggestedTag {
+                Text("Add tag #\(tag) to this todo?")
             } else {
-                Text("No context suggestion available for this todo.")
+                Text("No tag suggestion available for this todo.")
             }
         }
         .gesture(
@@ -533,41 +501,41 @@ struct TodoItemView: View {
 
                 await MainActor.run {
                     isLoadingAISuggestions = false
-                    if let context = suggestion.context {
+                    if let tag = suggestion.suggestedTag {
                         // Check if todo already has this tag
-                        if !todo.tags.contains(where: { $0.lowercased() == context.lowercased() }) {
+                        if !todo.tags.contains(where: { $0.lowercased() == tag.lowercased() }) {
                             // Show confirmation dialog
-                            suggestedContextTag = context
+                            suggestedTag = tag
                             showingAISuggestionAlert = true
                         } else {
                             // Already has this tag - show info
-                            suggestedContextTag = nil
+                            suggestedTag = nil
                             showingAISuggestionAlert = true
                         }
                     } else {
                         // No suggestion - show info
-                        suggestedContextTag = nil
+                        suggestedTag = nil
                         showingAISuggestionAlert = true
                     }
                 }
             } catch {
                 await MainActor.run {
                     isLoadingAISuggestions = false
-                    suggestedContextTag = nil
+                    suggestedTag = nil
                     showingAISuggestionAlert = true
                 }
             }
         }
     }
 
-    private func applyAISuggestion(_ context: String) {
+    private func applyAISuggestion(_ tag: String) {
         if isTop5 {
-            todoList.addTagToTop5Todo(todo, tag: context)
+            todoList.addTagToTop5Todo(todo, tag: tag)
         } else {
-            todoList.addTag(to: todo, tag: context)
+            todoList.addTag(to: todo, tag: tag)
         }
         refreshTodo()
-        suggestedContextTag = nil
+        suggestedTag = nil
     }
 }
 

@@ -76,14 +76,6 @@ enum Theme {
     static let thisWeekTagColor = Color(red: 0.95, green: 0.5, blue: 0.0)   // Orange for #thisweek
     static let urgentTagColor = Color(red: 0.9, green: 0.75, blue: 0.0)     // Yellow for #urgent
 
-    // Context tag colors
-    static let contextTagColors: [String: Color] = [
-        "prep": Color(red: 0.4, green: 0.6, blue: 0.9),
-        "reply": Color(red: 0.5, green: 0.8, blue: 0.5),
-        "deep": Color(red: 0.7, green: 0.5, blue: 0.9),
-        "waiting": Color(red: 0.6, green: 0.6, blue: 0.6)
-    ]
-
     // Track used colors and tag assignments
     private static var usedColors: Set<Int> = []
     private static var tagColorMap: [String: Color] = [:]
@@ -103,12 +95,7 @@ enum Theme {
             return urgentTagColor
         }
 
-        // 2. Check context tags (pre-assigned colors)
-        if let contextColor = contextTagColors[tagKey] {
-            return contextColor
-        }
-
-        // 3. Return cached color if already assigned
+        // 2. Return cached color if already assigned
         if let existingColor = tagColorMap[tagKey] {
             return existingColor
         }
@@ -143,5 +130,31 @@ enum Theme {
     static func resetTagColors() {
         usedColors.removeAll()
         tagColorMap.removeAll()
+    }
+}
+
+// MARK: - Color Extensions for Hex Conversion
+
+extension Color {
+    init?(hex: String) {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+
+        var rgb: UInt64 = 0
+        guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else { return nil }
+
+        let r = Double((rgb & 0xFF0000) >> 16) / 255.0
+        let g = Double((rgb & 0x00FF00) >> 8) / 255.0
+        let b = Double(rgb & 0x0000FF) / 255.0
+
+        self.init(red: r, green: g, blue: b)
+    }
+
+    func toHex() -> String? {
+        guard let components = NSColor(self).usingColorSpace(.deviceRGB) else { return nil }
+        let r = Int(components.redComponent * 255)
+        let g = Int(components.greenComponent * 255)
+        let b = Int(components.blueComponent * 255)
+        return String(format: "#%02X%02X%02X", r, g, b)
     }
 }
