@@ -533,3 +533,181 @@ struct MarkdownRenderer: View {
         .cornerRadius(8)
     }
 }
+
+// MARK: - Reading List View
+
+struct ReadingListView: View {
+    @ObservedObject var todoList: TodoList
+    @State private var isAdding = false
+    @State private var newItem = ""
+    @FocusState private var addFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack(spacing: 8) {
+                Image(systemName: "book.fill")
+                    .font(.system(size: 13))
+                    .foregroundColor(.orange)
+
+                Text("To Read")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Theme.text)
+
+                Text("\(todoList.readingList.count)")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(.orange))
+
+                Spacer()
+
+                Button(action: {
+                    isAdding = true
+                    addFocused = true
+                }) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.orange)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help("Add link or article")
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(Color.orange.opacity(0.08))
+
+            Rectangle()
+                .fill(Color.orange.opacity(0.3))
+                .frame(height: 1)
+
+            // Items
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(todoList.readingList.enumerated()), id: \.offset) { index, item in
+                    ReadingListItem(item: item) {
+                        todoList.removeReadingItem(at: index)
+                    }
+                }
+
+                if isAdding {
+                    HStack(spacing: 6) {
+                        Image(systemName: "link.badge.plus")
+                            .font(.system(size: 11))
+                            .foregroundColor(.orange.opacity(0.5))
+
+                        TextField("Paste link or title...", text: $newItem)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .font(.system(size: 12))
+                            .focused($addFocused)
+                            .onSubmit { addItem() }
+
+                        Button("Cancel") {
+                            isAdding = false
+                            newItem = ""
+                        }
+                        .font(.system(size: 10))
+                        .buttonStyle(PlainButtonStyle())
+                        .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                } else if todoList.readingList.isEmpty {
+                    Button(action: {
+                        isAdding = true
+                        addFocused = true
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus.circle.dashed")
+                                .font(.system(size: 11))
+                            Text("Add articles, links, or books")
+                                .font(.system(size: 11))
+                        }
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .background(Theme.cardBackground)
+        .cornerRadius(Theme.cornerRadiusMd)
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.cornerRadiusMd)
+                .stroke(Color.orange.opacity(0.15), lineWidth: 1)
+        )
+    }
+
+    private func addItem() {
+        let item = newItem.trimmingCharacters(in: .whitespaces)
+        guard !item.isEmpty else { return }
+        todoList.addReadingItem(item)
+        newItem = ""
+        isAdding = false
+    }
+}
+
+struct ReadingListItem: View {
+    let item: String
+    let onDelete: () -> Void
+    @State private var isHovered = false
+
+    // Extract URL from item text (could be "https://... description" or just "https://...")
+    private var linkURL: URL? {
+        let words = item.components(separatedBy: " ")
+        if let first = words.first, let url = URL(string: first), url.scheme != nil {
+            return url
+        }
+        return nil
+    }
+
+    private var displayText: String {
+        if let url = linkURL {
+            let remaining = item.dropFirst(url.absoluteString.count).trimmingCharacters(in: .whitespaces)
+            return remaining.isEmpty ? url.host ?? url.absoluteString : remaining
+        }
+        return item
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: linkURL != nil ? "link" : "book")
+                .font(.system(size: 10))
+                .foregroundColor(.orange.opacity(0.6))
+                .frame(width: 14)
+
+            if let url = linkURL {
+                Link(destination: url) {
+                    Text(displayText)
+                        .font(.system(size: 12))
+                        .foregroundColor(.blue)
+                        .underline(isHovered)
+                        .lineLimit(2)
+                }
+            } else {
+                Text(displayText)
+                    .font(.system(size: 12))
+                    .foregroundColor(Theme.text)
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            if isHovered {
+                Button(action: onDelete) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 4)
+        .background(isHovered ? Color.orange.opacity(0.04) : Color.clear)
+        .onHover { isHovered = $0 }
+    }
+}

@@ -10,6 +10,7 @@ class TodoList: ObservableObject {
     @Published var todos: [Todo] = []
     @Published var deletedTodos: [Todo] = []
     @Published var bigThings: [String] = []
+    @Published var readingList: [String] = [] // "To Read" pile - links and articles
     @Published var goals: String = ""
     @Published var selectedFile: URL? {
         didSet {
@@ -200,22 +201,28 @@ class TodoList: ObservableObject {
         2. Close the senior iOS hire
         3. Send investor update with Q1 numbers
 
+        ## 📚 To Read
+
+        - https://developer.apple.com/wwdc25/ WWDC 2025 announcements
+        - https://www.swiftbysundell.com/articles/the-power-of-swift-concurrency/ Swift concurrency deep dive
+        - https://blog.pragmaticengineer.com/shipping-to-production/ Shipping to production best practices
+
         ### ☀️ Today
-        - [ ] Review user research findings from last sprint #growth #deep
+        - [ ] Review user research findings from last sprint #growth
         - [ ] Schedule 1:1s with design and engineering leads #team
+
+        ### 🔴 Urgent
+        - [ ] Fix crash on launch for macOS 14 users #launch
+        - [ ] Respond to App Store review team questions #launch
 
         ### 🟠 This Week
         - [ ] Approve marketing assets for launch campaign #launch
-        - [ ] Set up analytics events for new features #launch #deep
+        - [ ] Set up analytics events for new features #launch
 
-        ### 🟡 Urgent
-        - [ ] Fix crash on launch for macOS 14 users #launch #deep
-        - [ ] Respond to App Store review team questions #launch #reply
-
-        ### ⚪ Normal
-        - [ ] Draft blog post announcing new features #launch #deep
+        ### 🔵 Normal
+        - [ ] Draft blog post announcing new features #launch
         - [ ] Sync with support team on FAQ updates #meeting
-        - [ ] Research competitor pricing changes #growth #deep
+        - [ ] Research competitor pricing changes #growth
         - [ ] Update roadmap in Notion #launch
         - [ ] Book restaurant for team dinner #team
 
@@ -420,6 +427,19 @@ class TodoList: ObservableObject {
         bigThings.remove(at: index)
         saveTodos()
     }
+
+    func addReadingItem(_ item: String) {
+        if !item.isEmpty {
+            readingList.append(item)
+            saveTodos()
+        }
+    }
+
+    func removeReadingItem(at index: Int) {
+        guard index >= 0 && index < readingList.count else { return }
+        readingList.remove(at: index)
+        saveTodos()
+    }
     
     func saveTodos() {
         // Cancel any pending save operation
@@ -430,6 +450,7 @@ class TodoList: ObservableObject {
         let currentTop5Todos = top5Todos
         let currentDeletedTodos = deletedTodos
         let currentBigThings = bigThings
+        let currentReadingList = readingList
         let currentGoals = goals
         let fileURL = todosFileURL
 
@@ -440,6 +461,7 @@ class TodoList: ObservableObject {
                 top5Todos: currentTop5Todos,
                 deletedTodos: currentDeletedTodos,
                 bigThings: currentBigThings,
+                readingList: currentReadingList,
                 goals: currentGoals,
                 fileURL: fileURL
             )
@@ -457,6 +479,7 @@ class TodoList: ObservableObject {
         top5Todos: [Todo],
         deletedTodos: [Todo],
         bigThings: [String],
+        readingList: [String],
         goals: String,
         fileURL: URL?
     ) {
@@ -487,6 +510,15 @@ class TodoList: ObservableObject {
             markdownContent += "## 📋 Big Things for the Week\n\n"
             for (index, thing) in bigThings.enumerated() {
                 markdownContent += "\(index + 1). \(thing)\n"
+            }
+            markdownContent += "\n"
+        }
+
+        // Add reading list
+        if !readingList.isEmpty {
+            markdownContent += "## 📚 To Read\n\n"
+            for item in readingList {
+                markdownContent += "- \(item)\n"
             }
             markdownContent += "\n"
         }
@@ -605,10 +637,12 @@ class TodoList: ObservableObject {
             var newTop5Todos: [Todo] = []
             var newDeletedTodos: [Todo] = []
             var newBigThings: [String] = []
+            var newReadingList: [String] = []
             var newGoals: [String] = []
             var isInGoalsSection = false
             var isInDeletedSection = false
             var isInBigThingsSection = false
+            var isInReadingListSection = false
             var isInTop5Section = false
             var isInTodaySection = false
 
@@ -619,18 +653,28 @@ class TodoList: ObservableObject {
                         isInGoalsSection = true
                         isInDeletedSection = false
                         isInBigThingsSection = false
+                        isInReadingListSection = false
                         isInTop5Section = false
                         isInTodaySection = false
                     } else if sectionName.contains("📋") {
                         isInGoalsSection = false
                         isInDeletedSection = false
                         isInBigThingsSection = true
+                        isInReadingListSection = false
+                        isInTop5Section = false
+                        isInTodaySection = false
+                    } else if sectionName.contains("📚") {
+                        isInGoalsSection = false
+                        isInDeletedSection = false
+                        isInBigThingsSection = false
+                        isInReadingListSection = true
                         isInTop5Section = false
                         isInTodaySection = false
                     } else {
                         isInGoalsSection = false
                         isInDeletedSection = false
                         isInBigThingsSection = false
+                        isInReadingListSection = false
                         isInTop5Section = false
                         isInTodaySection = false
                     }
@@ -638,6 +682,7 @@ class TodoList: ObservableObject {
                     // Always reset all section flags on new ### section
                     isInGoalsSection = false
                     isInBigThingsSection = false
+                    isInReadingListSection = false
                     isInTop5Section = false
                     isInDeletedSection = false
                     isInTodaySection = false
@@ -686,7 +731,12 @@ class TodoList: ObservableObject {
                     if let thing = line.split(separator: ".", maxSplits: 1).last {
                         newBigThings.append(thing.trimmingCharacters(in: .whitespaces))
                     }
-                } else if !isInGoalsSection && !isInTop5Section && !isInBigThingsSection && line.hasPrefix("- [") {
+                } else if isInReadingListSection && line.hasPrefix("- ") {
+                    let item = String(line.dropFirst(2)).trimmingCharacters(in: .whitespaces)
+                    if !item.isEmpty {
+                        newReadingList.append(item)
+                    }
+                } else if !isInGoalsSection && !isInTop5Section && !isInBigThingsSection && !isInReadingListSection && line.hasPrefix("- [") {
                     let components = line.components(separatedBy: "] ")
                     guard components.count >= 2 else { continue }
 
@@ -719,6 +769,7 @@ class TodoList: ObservableObject {
             top5Todos = newTop5Todos
             deletedTodos = newDeletedTodos
             bigThings = newBigThings
+            readingList = newReadingList
             goals = newGoals.joined(separator: "\n")
 
             // Create initial backup after loading
@@ -731,6 +782,7 @@ class TodoList: ObservableObject {
             top5Todos = []
             deletedTodos = []
             bigThings = []
+            readingList = []
             goals = ""
         }
     }

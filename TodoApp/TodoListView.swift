@@ -213,11 +213,14 @@ struct TodoListView: View {
                 } else {
                     // List View with Resizable Columns
                     HStack(spacing: 0) {
-                        // Left Column - Goals
-                        VStack(spacing: 0) {
-                            EditableGoalsView(todoList: todoList)
-                                .padding(.horizontal, Theme.contentPadding)
-                                .padding(.top, Theme.contentPadding)
+                        // Left Column - Goals & Reading List
+                        ScrollView {
+                            VStack(spacing: 12) {
+                                EditableGoalsView(todoList: todoList)
+                                ReadingListView(todoList: todoList)
+                            }
+                            .padding(.horizontal, Theme.contentPadding)
+                            .padding(.top, Theme.contentPadding)
                         }
                         .frame(width: leftColumnWidth)
 
