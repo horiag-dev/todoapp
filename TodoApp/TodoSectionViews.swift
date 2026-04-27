@@ -270,7 +270,11 @@ struct TodoPrioritySection: View {
                     .fill(section.color.opacity(0.5))
                     .frame(height: 2)
 
-                LazyVStack(spacing: 6) {
+                // VStack (not Lazy) so all rows lay out eagerly and the section
+                // reports its true height immediately. Lazy realization here was
+                // causing visible jumps at section edges as off-screen rows
+                // materialized and grew the section height during scroll.
+                VStack(spacing: 6) {
                     let grouped = groupedByPrimaryTag(todos)
                     ForEach(grouped, id: \.tag) { group in
                         if grouped.count > 1 {
@@ -375,8 +379,8 @@ struct ReadingListSection: View {
                 .fill(sectionColor.opacity(0.5))
                 .frame(height: 2)
 
-            // Items
-            LazyVStack(spacing: 0) {
+            // Items — eager VStack to avoid section-edge jump while scrolling.
+            VStack(spacing: 0) {
                 ForEach(Array(todoList.readingList.enumerated()), id: \.offset) { index, item in
                     ReadingListItem(item: item) {
                         todoList.removeReadingItem(at: index)
