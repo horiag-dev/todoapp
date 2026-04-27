@@ -7,11 +7,15 @@ extension Notification.Name {
 }
 
 class TodoList: ObservableObject {
-    @Published var todos: [Todo] = []
+    @Published var todos: [Todo] = [] {
+        didSet { invalidateCaches() }
+    }
     @Published var deletedTodos: [Todo] = []
     @Published var bigThings: [String] = []
     @Published var readingList: [String] = [] // "To Read" pile - links and articles
-    @Published var goals: String = ""
+    @Published var goals: String = "" {
+        didSet { invalidateCaches() }
+    }
     @Published var selectedFile: URL? {
         didSet {
             if let file = selectedFile {
@@ -21,7 +25,9 @@ class TodoList: ObservableObject {
     }
     @Published var isDeletedSectionCollapsed = true
     @Published var todosFileURL: URL?
-    @Published var top5Todos: [Todo] = [] // Top 5 of the week todos
+    @Published var top5Todos: [Todo] = [] {
+        didSet { invalidateCaches() }
+    }
 
     private var backupTimer: Timer?
     private let backupInterval: TimeInterval = 10800 // 3 hours in seconds
@@ -31,10 +37,10 @@ class TodoList: ObservableObject {
     private let saveDebounceInterval: TimeInterval = 0.5
     private let saveQueue = DispatchQueue(label: "com.todoapp.save", qos: .utility)
 
-    // Cached computed properties for performance
+    // Cached computed properties for performance.
+    // Invalidated via invalidateCaches() from didSet on todos/top5Todos/goals.
     private var _cachedAllTags: [String]?
     private var _cachedMindMapNodes: [MindMapNode]?
-    private var _todoTagsHash: Int = 0  // Track changes to invalidate cache
 
     
     var bigThingsMarkdown: String {
@@ -334,21 +340,18 @@ class TodoList: ObservableObject {
     }
     
     var allTags: [String] {
-        let currentHash = computeTagsHash()
-        if let cached = _cachedAllTags, currentHash == _todoTagsHash {
+        if let cached = _cachedAllTags {
             return cached
         }
         let tags = todos.flatMap { $0.tags } + top5Todos.flatMap { $0.tags }
         let result = Array(Set(tags)).sorted()
         _cachedAllTags = result
-        _todoTagsHash = currentHash
         return result
     }
 
     /// Builds the mind map tree from goals and todos (cached)
     var mindMapNodes: [MindMapNode] {
-        let currentHash = computeTagsHash()
-        if let cached = _cachedMindMapNodes, currentHash == _todoTagsHash {
+        if let cached = _cachedMindMapNodes {
             return cached
         }
         let result = MindMapDataBuilder.buildMindMapTree(goals: goals, todos: todos, top5Todos: top5Todos)
@@ -356,25 +359,6 @@ class TodoList: ObservableObject {
         return result
     }
 
-    /// Compute a hash to detect changes in todos/tags
-    private func computeTagsHash() -> Int {
-        var hasher = Hasher()
-        hasher.combine(todos.count)
-        hasher.combine(top5Todos.count)
-        hasher.combine(goals.hashValue)
-        for todo in todos {
-            hasher.combine(todo.id)
-            hasher.combine(todo.tags)
-            hasher.combine(todo.isCompleted)
-        }
-        for todo in top5Todos {
-            hasher.combine(todo.id)
-            hasher.combine(todo.tags)
-        }
-        return hasher.finalize()
-    }
-
-    /// Invalidate caches when data changes
     private func invalidateCaches() {
         _cachedAllTags = nil
         _cachedMindMapNodes = nil
