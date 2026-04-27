@@ -249,7 +249,7 @@ struct QuickAddPanelView: View {
             title: todoText,
             isCompleted: false,
             tags: Array(additionalTags).sorted(),
-            priority: .thisWeek
+            priority: .today
         )
 
         todoList.addTodo(todo)

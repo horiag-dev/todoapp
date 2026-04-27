@@ -160,7 +160,7 @@ struct Top5WeekSection: View {
     private func addNewItem() {
         let title = newItemTitle.trimmingCharacters(in: .whitespaces)
         guard !title.isEmpty else { return }
-        let todo = Todo(title: title, priority: .thisWeek)
+        let todo = Todo(title: title, priority: .today)
         todoList.addTop5Todo(todo)
         newItemTitle = ""
         isAddingNew = false

@@ -4,7 +4,7 @@ struct NewTodoView: View {
     @ObservedObject var todoList: TodoList
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
-    @State private var priority: Priority = .thisWeek
+    @State private var priority: Priority = .today
     @State private var showingTagManagement = false
     @State private var selectedTags: Set<String> = []
     

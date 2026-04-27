@@ -4,7 +4,7 @@ import AppKit
 struct TodoListView: View {
     @ObservedObject var todoList: TodoList
     @State private var newTodoTitle = ""
-    @State private var newTodoPriority: Priority = .thisWeek
+    @State private var newTodoPriority: Priority = .today
     @State private var leftColumnWidth: CGFloat = 380
     @State private var isInMindMapMode: Bool = false  // Toggle between list and mind map views
     @State private var showingSettings: Bool = false  // Settings sheet
@@ -271,7 +271,7 @@ struct TodoListView: View {
             )
             todoList.addTodo(todo)
             newTodoTitle = ""
-            newTodoPriority = .thisWeek
+            newTodoPriority = .today
         }
     }
 
@@ -697,7 +697,7 @@ struct NewTodoInput: View {
             selectedTags.removeAll()
             suggestedTag = nil
             showSuggestions = false
-            newTodoPriority = .thisWeek
+            newTodoPriority = .today
         }
     }
 
