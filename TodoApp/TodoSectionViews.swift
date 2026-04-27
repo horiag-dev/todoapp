@@ -119,12 +119,12 @@ struct TodoListSections: View {
 
             let todayTodos = sortByTitle(cats.today)
             if !todayTodos.isEmpty {
-                TodoPrioritySection(todoList: todoList, section: .today, todos: todayTodos)
+                TodoPrioritySection(todoList: todoList, section: .today, todos: todayTodos, groupByTag: false)
             }
 
             let urgentTodos = sortByTitle(cats.urgent)
             if !urgentTodos.isEmpty {
-                TodoPrioritySection(todoList: todoList, section: .urgent, todos: urgentTodos)
+                TodoPrioritySection(todoList: todoList, section: .urgent, todos: urgentTodos, groupByTag: false)
             }
 
             let thisWeekTodos = sortByTitle(cats.thisWeek)
@@ -134,7 +134,7 @@ struct TodoListSections: View {
 
             let normalTodos = sortByTitle(cats.normal)
             if !normalTodos.isEmpty {
-                TodoPrioritySection(todoList: todoList, section: .normal, todos: normalTodos)
+                TodoPrioritySection(todoList: todoList, section: .normal, todos: normalTodos, defaultCollapsed: true)
             }
 
             // Reading List section
@@ -144,7 +144,7 @@ struct TodoListSections: View {
 
             let completedTodos = sortByTitle(cats.completed)
             if !completedTodos.isEmpty {
-                TodoPrioritySection(todoList: todoList, section: .completed, todos: completedTodos)
+                TodoPrioritySection(todoList: todoList, section: .completed, todos: completedTodos, groupByTag: false, defaultCollapsed: true)
             }
 
             // Deleted section
@@ -186,6 +186,29 @@ struct TodoPrioritySection: View {
     let section: PrioritySection
     let todos: [Todo]
     var isTop5: Bool = false
+    /// When true, render todos in tag-based bordered groups. When false,
+    /// render as a flat list (no bordered containers, no per-tag clustering).
+    var groupByTag: Bool = true
+    /// When true, the section starts collapsed and shows a chevron toggle
+    /// in the header. When false, no chevron and the section is always open.
+    var defaultCollapsed: Bool = false
+
+    @State private var isCollapsed: Bool
+
+    init(todoList: TodoList,
+         section: PrioritySection,
+         todos: [Todo],
+         isTop5: Bool = false,
+         groupByTag: Bool = true,
+         defaultCollapsed: Bool = false) {
+        self.todoList = todoList
+        self.section = section
+        self.todos = todos
+        self.isTop5 = isTop5
+        self.groupByTag = groupByTag
+        self.defaultCollapsed = defaultCollapsed
+        self._isCollapsed = State(initialValue: defaultCollapsed)
+    }
 
     private struct TagGroup {
         let tag: String
@@ -259,6 +282,22 @@ struct TodoPrioritySection: View {
                         .buttonStyle(PlainButtonStyle())
                         .help("Remove today priority from all items")
                     }
+
+                    if defaultCollapsed {
+                        Button(action: {
+                            withAnimation(Theme.Animation.quickFade) {
+                                isCollapsed.toggle()
+                            }
+                        }) {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.secondary)
+                                .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                                .frame(width: 14, height: 14)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .help(isCollapsed ? "Expand" : "Collapse")
+                    }
                 }
                 .padding(.horizontal, Theme.contentPadding)
                 .padding(.vertical, 12)
@@ -266,41 +305,50 @@ struct TodoPrioritySection: View {
                     section.color.opacity(section.id == "today" || section.id == "urgent" ? 0.1 : 0.06)
                 )
 
-                Rectangle()
-                    .fill(section.color.opacity(0.5))
-                    .frame(height: 2)
+                if !isCollapsed {
+                    Rectangle()
+                        .fill(section.color.opacity(0.5))
+                        .frame(height: 2)
 
-                // VStack (not Lazy) so all rows lay out eagerly and the section
-                // reports its true height immediately. Lazy realization here was
-                // causing visible jumps at section edges as off-screen rows
-                // materialized and grew the section height during scroll.
-                VStack(spacing: 6) {
-                    let grouped = groupedByPrimaryTag(todos)
-                    ForEach(grouped, id: \.tag) { group in
-                        if grouped.count > 1 {
-                            // Tag group with border
-                            let tagColor = Theme.colorForTag(group.tag)
-                            VStack(alignment: .leading, spacing: 0) {
-                                ForEach(group.todos) { todo in
-                                    TodoItemView(todoList: todoList, todo: todo, isTop5: isTop5, groupColor: section.color)
+                    // VStack (not Lazy) so all rows lay out eagerly and the section
+                    // reports its true height immediately. Lazy realization here was
+                    // causing visible jumps at section edges as off-screen rows
+                    // materialized and grew the section height during scroll.
+                    VStack(spacing: groupByTag ? 6 : 0) {
+                        if groupByTag {
+                            let grouped = groupedByPrimaryTag(todos)
+                            ForEach(grouped, id: \.tag) { group in
+                                if grouped.count > 1 {
+                                    // Tag group with border
+                                    let tagColor = Theme.colorForTag(group.tag)
+                                    VStack(alignment: .leading, spacing: 0) {
+                                        ForEach(group.todos) { todo in
+                                            TodoItemView(todoList: todoList, todo: todo, isTop5: isTop5, groupColor: section.color)
+                                        }
+                                    }
+                                    .background(tagColor.opacity(0.03))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(tagColor.opacity(0.5), lineWidth: 1)
+                                    )
+                                    .cornerRadius(6)
+                                    .padding(.horizontal, 6)
+                                } else {
+                                    // Single group — no border needed
+                                    ForEach(group.todos) { todo in
+                                        TodoItemView(todoList: todoList, todo: todo, isTop5: isTop5, groupColor: section.color)
+                                    }
                                 }
                             }
-                            .background(tagColor.opacity(0.03))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .stroke(tagColor.opacity(0.5), lineWidth: 1)
-                            )
-                            .cornerRadius(6)
-                            .padding(.horizontal, 6)
                         } else {
-                            // Single group — no border needed
-                            ForEach(group.todos) { todo in
+                            // Flat list — todos arrive already alphabetised by parent.
+                            ForEach(todos) { todo in
                                 TodoItemView(todoList: todoList, todo: todo, isTop5: isTop5, groupColor: section.color)
                             }
                         }
                     }
+                    .padding(.vertical, 4)
                 }
-                .padding(.vertical, 4)
             }
             .background(
                 ZStack {
