@@ -6,175 +6,246 @@
 <title>Big Rocks First</title>
 <style>
   :root{
-    --paper:#EFEDE7; --raised:#F7F6F1; --ink:#1B2023; --soft:#585f5b; --line:#DAD7CE;
-    --accent:#2F6E5E; --urgent:#B4462F; --normal:#3B6FA0; --star:#A9781F;
+    --bg:#ECECEC; --card:#FFFFFF; --ink:#1B1B1D; --soft:#6A6A6E; --line:#E4E4E4;
+    --today:#E23B3B; --urgent:#B8860B; --normal:#2F6FED; --top5:#2F6FED;
+    --toread:#C2410C; --goals:#2E9E6B; --accent:#2F6FED; --danger:#E23B3B;
+    --r:8px; --r-sm:6px;
   }
   @media (prefers-color-scheme:dark){
-    :root{ --paper:#14171A; --raised:#1C2124; --ink:#E8E5DD; --soft:#9BA39F; --line:#2C3236;
-      --accent:#57B199; --urgent:#D97A64; --normal:#7FA9D2; --star:#D7A94A; }
+    :root{
+      --bg:#191919; --card:#242426; --ink:#ECECEC; --soft:#9A9A9E; --line:#343436;
+      --today:#F26D6D; --urgent:#D6AC45; --normal:#6C9BF5; --top5:#6C9BF5;
+      --toread:#E08A4D; --goals:#4FB98A; --accent:#6C9BF5; --danger:#F26D6D;
+    }
   }
-  *{box-sizing:border-box;} html,body{height:100%;}
-  body{margin:0;background:var(--paper);color:var(--ink);
-    font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;}
-  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
-    padding:14px 20px;border-bottom:1px solid var(--line);background:var(--raised);}
-  header h1{font-size:17px;margin:0;font-weight:680;letter-spacing:-.01em;}
-  header .sub{font-size:12.5px;color:var(--soft);}
-  header .path{font:12px ui-monospace,"SF Mono",Menlo,monospace;color:var(--soft);margin-left:auto;}
-  main{display:grid;grid-template-columns:minmax(240px,1fr) minmax(320px,1.6fr) minmax(280px,1fr);
-    gap:16px;padding:16px 20px;max-width:1400px;margin:0 auto;align-items:start;}
-  @media (max-width:940px){ main{grid-template-columns:1fr;} }
-  .col{display:flex;flex-direction:column;gap:16px;min-width:0;}
-  .card{background:var(--raised);border:1px solid var(--line);border-radius:14px;padding:14px 16px;}
-  .card h2{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--soft);
-    font-weight:700;margin:0 0 10px;display:flex;align-items:center;gap:8px;}
-  .card h2 .n{margin-left:auto;color:var(--soft);font-weight:600;}
-  ul.items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;}
-  .item{display:flex;gap:9px;align-items:flex-start;padding:5px 6px;border-radius:8px;}
-  .item:hover{background:color-mix(in srgb,var(--ink) 4%,transparent);}
-  .item .box{color:var(--soft);flex:0 0 auto;font-size:13px;margin-top:1px;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:13px/1.5 -apple-system,system-ui,"SF Pro Text","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;}
+  header{display:flex;align-items:center;gap:12px;padding:9px 16px;border-bottom:1px solid var(--line);
+    background:var(--card);position:sticky;top:0;z-index:5;}
+  header h1{font-size:14px;margin:0;font-weight:700;letter-spacing:-.01em;}
+  header .sub{font-size:11.5px;color:var(--soft);}
+  header .path{margin-left:auto;font:11px ui-monospace,"SF Mono",Menlo,monospace;color:var(--soft);
+    max-width:44ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  main{display:grid;grid-template-columns:minmax(230px,1fr) minmax(340px,1.7fr) minmax(300px,1.1fr);
+    gap:14px;padding:14px 16px;max-width:1500px;margin:0 auto;align-items:start;}
+  @media (max-width:960px){ main{grid-template-columns:1fr;} }
+  .col{display:flex;flex-direction:column;gap:14px;min-width:0;}
+
+  /* section cards with a colored left rail + tinted bg + count badge */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+    border-left:3px solid var(--c,var(--line));overflow:hidden;}
+  .card > h2{display:flex;align-items:center;gap:7px;margin:0;padding:9px 13px;font-size:12px;
+    font-weight:700;letter-spacing:.01em;border-bottom:1px solid var(--line);
+    background:color-mix(in srgb,var(--c,var(--ink)) 6%,transparent);}
+  .card > h2 .ic{color:var(--c,var(--soft));}
+  .badge{margin-left:auto;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;
+    color:var(--c,var(--soft));background:color-mix(in srgb,var(--c,var(--ink)) 15%,transparent);
+    padding:1px 8px;border-radius:999px;}
+  .c-today{--c:var(--today);} .c-urgent{--c:var(--urgent);} .c-normal{--c:var(--normal);}
+  .c-top5{--c:var(--top5);} .c-toread{--c:var(--toread);} .c-goals{--c:var(--goals);}
+  .body{padding:5px 7px;}
+
+  ul.items{list-style:none;margin:0;padding:0;}
+  .item{display:flex;gap:8px;align-items:flex-start;padding:5px 6px;border-radius:var(--r-sm);position:relative;}
+  .item:hover{background:color-mix(in srgb,var(--ink) 5%,transparent);}
+  .box{appearance:none;border:none;background:none;cursor:pointer;padding:0;margin-top:1px;
+    font-size:15px;line-height:1;color:var(--soft);flex:0 0 auto;}
+  .box:hover{color:var(--accent);}
   .item.done .t{color:var(--soft);text-decoration:line-through;}
-  .item .t{min-width:0;word-wrap:break-word;overflow-wrap:anywhere;}
-  .item.star{background:color-mix(in srgb,var(--star) 12%,transparent);}
-  .item.star .t{font-weight:620;}
-  .pill{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
-    color:#1B2023;background:var(--star);padding:2px 8px;border-radius:999px;flex:0 0 auto;
-    margin-top:1px;line-height:1.5;}
-  .dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;margin-top:6px;}
-  .d-u{background:var(--urgent);} .d-n{background:var(--normal);} .d-t{background:var(--accent);}
-  .tag{color:var(--accent);font-weight:600;}
-  .wl{color:var(--normal);}
-  .goals .sub{font-weight:700;margin:12px 0 3px;font-size:13.5px;}
-  .goals .sub:first-child{margin-top:0;}
-  .goals ul{margin:0 0 2px;padding-left:18px;}
-  .goals li{margin:2px 0;color:var(--ink);}
-  .goals a,.read a{color:var(--normal);text-underline-offset:2px;word-break:break-all;}
-  .read li{margin:5px 0;list-style:none;}
-  .age{display:inline-block;margin-left:8px;font-size:11px;font-weight:600;color:var(--soft);
-    background:color-mix(in srgb,var(--ink) 7%,transparent);padding:1px 6px;border-radius:6px;vertical-align:middle;}
-  .foot{font-size:12.5px;color:var(--soft);}
-  /* chat */
-  .chat{position:sticky;top:16px;display:flex;flex-direction:column;height:calc(100vh - 130px);min-height:340px;}
-  .chat .log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px;}
-  .msg{padding:9px 12px;border-radius:12px;max-width:92%;white-space:pre-wrap;}
-  .msg.you{align-self:flex-end;background:var(--accent);color:#fff;}
-  .msg.bot{align-self:flex-start;background:color-mix(in srgb,var(--ink) 6%,transparent);}
-  .chat form{display:flex;gap:8px;margin-top:10px;}
-  .chat input{flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
-    background:var(--paper);color:var(--ink);font:inherit;}
-  .chat button{padding:10px 14px;border:none;border-radius:10px;background:var(--accent);
-    color:#fff;font:inherit;font-weight:640;cursor:pointer;}
-  .empty{color:var(--soft);font-size:13px;padding:6px;}
+  .item .t{min-width:0;word-wrap:break-word;overflow-wrap:anywhere;flex:1;}
+  .item.today{background:color-mix(in srgb,var(--today) 9%,transparent);}
+  .item.today .t{font-weight:600;}
+  .pill{display:inline-flex;align-items:center;font-size:9.5px;font-weight:800;letter-spacing:.05em;
+    text-transform:uppercase;color:#fff;background:var(--today);padding:2px 6px;border-radius:5px;
+    flex:0 0 auto;margin-top:1px;line-height:1.4;}
+  .dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto;margin-top:6px;background:var(--d,var(--soft));}
+  .d-normal{--d:var(--normal);} .d-top5{--d:var(--top5);}
+  a{color:var(--accent);text-underline-offset:2px;}
+  .wl{color:var(--accent);opacity:.85;}
+  .tag{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:5px;margin-left:5px;
+    color:var(--tc,var(--soft));background:color-mix(in srgb,var(--tc,var(--ink)) 16%,transparent);
+    border:1px solid color-mix(in srgb,var(--tc,var(--ink)) 34%,transparent);vertical-align:middle;}
+  .age{display:inline-block;margin-left:6px;font-size:10px;font-weight:600;color:var(--soft);
+    background:color-mix(in srgb,var(--ink) 8%,transparent);padding:0 5px;border-radius:5px;vertical-align:middle;}
+  .rowact{display:none;gap:2px;flex:0 0 auto;align-items:center;}
+  .item:hover .rowact{display:flex;}
+  .rowact button{appearance:none;border:none;background:none;cursor:pointer;color:var(--soft);
+    font-size:12px;padding:1px 4px;border-radius:4px;line-height:1;}
+  .rowact button:hover{background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink);}
+  .rowact .t-on{color:var(--today);}
+  .empty{color:var(--soft);font-size:12px;padding:6px;}
+
+  /* quick add */
+  .quickadd{display:flex;gap:7px;align-items:center;background:var(--card);border:1px solid var(--line);
+    border-radius:var(--r);padding:7px 8px;}
+  .qa-prio{appearance:none;border:none;cursor:pointer;font-size:9.5px;font-weight:800;text-transform:uppercase;
+    letter-spacing:.05em;color:#fff;background:var(--qc,var(--urgent));padding:4px 9px;border-radius:6px;flex:0 0 auto;}
+  .quickadd input{flex:1;border:none;background:none;color:var(--ink);font:inherit;outline:none;padding:2px 0;}
+  .quickadd .add{appearance:none;border:none;background:var(--accent);color:#fff;font:inherit;font-weight:600;
+    padding:5px 12px;border-radius:6px;cursor:pointer;}
+
+  /* goals + toread */
+  .goals .sub{font-weight:700;margin:11px 0 3px;font-size:12.5px;}
+  .goals .sub:first-child{margin-top:2px;}
+  .goals ul{margin:0;padding-left:16px;} .goals li{margin:2px 0;}
+  .read li{list-style:none;margin:5px 6px;}
+  .foot{font-size:11.5px;color:var(--soft);padding:2px 4px;}
+
+  /* pending (agent draft) */
   .pending[hidden]{display:none;}
-  .pending{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-    background:color-mix(in srgb,var(--star) 16%,var(--raised));
-    border:1px solid color-mix(in srgb,var(--star) 42%,var(--line));border-radius:14px;padding:11px 14px;}
-  .pending .txt{font-size:13.5px;font-weight:700;color:var(--ink);}
-  .pending .ops{font-size:12.5px;color:var(--soft);width:100%;line-height:1.5;}
-  .pactions{margin-left:auto;display:flex;gap:8px;}
-  .pactions button{padding:7px 14px;border:none;border-radius:9px;background:var(--accent);
-    color:#fff;font:inherit;font-weight:640;cursor:pointer;}
+  .pending{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:color-mix(in srgb,var(--today) 12%,var(--card));
+    border:1px solid color-mix(in srgb,var(--today) 40%,var(--line));border-radius:var(--r);padding:9px 12px;}
+  .pending .txt{font-size:12.5px;font-weight:700;} .pending .ops{font-size:11.5px;color:var(--soft);width:100%;}
+  .pactions{margin-left:auto;display:flex;gap:7px;}
+  .pactions button{padding:6px 12px;border:none;border-radius:6px;background:var(--accent);color:#fff;font:inherit;font-weight:600;cursor:pointer;}
   .pactions button.ghost{background:transparent;color:var(--soft);border:1px solid var(--line);}
-  .msg.thinking{opacity:.65;font-style:italic;}
+
+  /* chat */
+  .chat{display:flex;flex-direction:column;height:calc(100vh - 108px);min-height:340px;position:sticky;top:94px;}
+  .chat .log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:9px;padding:4px;}
+  .msg{padding:8px 11px;border-radius:11px;max-width:92%;white-space:pre-wrap;font-size:12.5px;}
+  .msg.you{align-self:flex-end;background:var(--accent);color:#fff;}
+  .msg.bot{align-self:flex-start;background:color-mix(in srgb,var(--ink) 7%,transparent);}
+  .msg.thinking{opacity:.6;font-style:italic;}
+  .chat form{display:flex;gap:7px;padding:7px 4px 2px;}
+  .chat input{flex:1;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit;}
+  .chat button{padding:9px 13px;border:none;border-radius:8px;background:var(--accent);color:#fff;font:inherit;font-weight:600;cursor:pointer;}
 </style>
 </head>
 <body>
 <header>
   <h1>🪨 Big Rocks First</h1>
-  <span class="sub">chat with the assistant · changes stay a draft until you Apply</span>
+  <span class="sub">click to edit · saves instantly · ask the assistant for bigger changes</span>
   <span class="path" id="path"></span>
 </header>
 <main>
   <div class="col">
-    <div class="card goals"><h2>🎯 Goals</h2><div id="goals"></div></div>
-    <div class="card read"><h2>📚 To Read</h2><ul class="items" id="toread"></ul></div>
+    <div class="card c-goals"><h2><span class="ic">🎯</span> Goals</h2><div class="body goals" id="goals"></div></div>
+    <div class="card c-toread"><h2><span class="ic">📚</span> To Read <span class="badge" id="b-toread"></span></h2><ul class="body items read" id="toread"></ul></div>
   </div>
-  <div class="col">
+
+  <div class="col" id="mid">
+    <form class="quickadd" id="quickadd">
+      <button type="button" class="qa-prio" id="qa-prio">Urgent</button>
+      <input id="qa-input" placeholder="Add a todo…  (⏎ to add)" autocomplete="off" />
+      <button class="add">Add</button>
+    </form>
     <div class="pending" id="pending" hidden>
       <span class="txt" id="pendingtext"></span>
       <div class="pactions"><button id="apply">Apply to file</button><button id="discard" class="ghost">Discard</button></div>
       <div class="ops" id="pendingops"></div>
     </div>
-    <div class="card"><h2>🔴 Top 5 of the week <span class="n" id="n-top5"></span></h2><ul class="items" id="top5"></ul></div>
-    <div class="card"><h2>🔴 Urgent <span class="n" id="n-urgent"></span></h2><ul class="items" id="urgent"></ul></div>
-    <div class="card"><h2>🔵 Normal <span class="n" id="n-normal"></span></h2><ul class="items" id="normal"></ul></div>
+    <div class="card c-top5"><h2><span class="ic">🎯</span> Top 5 of the Week <span class="badge" id="b-top5"></span></h2><ul class="body items" id="top5"></ul></div>
+    <div class="card c-today"><h2><span class="ic">🔴</span> Urgent <span class="badge" id="b-urgent"></span></h2><ul class="body items" id="urgent"></ul></div>
+    <div class="card c-normal"><h2><span class="ic">🔵</span> Normal <span class="badge" id="b-normal"></span></h2><ul class="body items" id="normal"></ul></div>
     <div class="foot" id="foot"></div>
   </div>
+
   <div class="col">
-    <div class="card chat">
-      <h2>💬 Chat</h2>
-      <div class="log" id="log"><div class="empty">Ask me to triage, mark things Today, move to Goals, or tidy up — I'll propose changes you can Apply.</div></div>
+    <div class="chat">
+      <div class="log" id="log"><div class="empty">Ask me to triage, mark things Today, move to Goals, or tidy up stale links — I'll propose changes you can Apply.</div></div>
       <form id="chatform"><input id="chatin" placeholder="Message the assistant…" autocomplete="off" /><button>Send</button></form>
     </div>
   </div>
 </main>
 <script>
-const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
-function rich(title){
-  return esc(title)
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const TAGC = ["#2F6FED","#2E9E6B","#8B5CF6","#0EA5A4","#3BA55D","#B4632F","#6B8E23","#C2410C","#0891B2","#9333EA"];
+function tagColor(name){ let h=0; for(const ch of name) h=(h*31+ch.charCodeAt(0))>>>0; return TAGC[h%TAGC.length]; }
+function richTitle(it){
+  // strip #tags from the visible title (shown as pills), keep [[links]] + urls
+  let t = it.title.replace(/(^|\s)#[A-Za-z0-9_/-]+/g, "").replace(/\s{2,}/g," ").trim();
+  let html = esc(t)
     .replace(/\[\[([^\]]+)\]\]/g, '<span class="wl">[[$1]]</span>')
-    .replace(/(^|\s)#([A-Za-z0-9_/-]+)/g, '$1<span class="tag">#$2</span>');
+    .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noreferrer">$1</a>');
+  for (const tag of it.tags || []) {
+    const special = ["today","urgent","thisweek"].includes(tag.toLowerCase());
+    html += `<span class="tag" style="--tc:${special ? "var(--today)" : tagColor(tag)}">#${esc(tag)}</span>`;
+  }
+  if (it.age != null) html += `<span class="age">${it.age}d</span>`;
+  return html;
 }
-function itemLi(it, dotClass){
-  const cls = ["item", it.done ? "done" : "", it.today ? "star" : ""].join(" ").trim();
-  const box = it.done ? "☑" : "☐";
-  const star = it.today ? '<span class="pill">Today</span>' : (dotClass ? `<span class="dot ${dotClass}"></span>` : "");
-  const age = it.age != null ? `<span class="age">${it.age}d</span>` : "";
-  return `<li class="${cls}"><span class="box">${box}</span>${star}<span class="t">${rich(it.title)}${age}</span></li>`;
+function itemLi(it, section){
+  const cls = ["item", it.done ? "done" : "", it.today ? "today" : ""].join(" ").trim();
+  const mark = it.today ? '<span class="pill">Today</span>'
+    : (section === "normal" ? '<span class="dot d-normal"></span>' : section === "top5" ? '<span class="dot d-top5"></span>' : "");
+  const canToday = section === "urgent" || section === "normal";
+  const acts = `<span class="rowact">${canToday ? `<button data-act="toggleToday" class="${it.today?"t-on":""}" title="Toggle Today">★</button>` : ""}<button data-act="delete" title="Delete">✕</button></span>`;
+  return `<li class="${cls}" data-id="${it.id}"><button class="box" data-act="complete" title="Complete">${it.done?"●":"○"}</button>${mark}<span class="t">${richTitle(it)}</span>${acts}</li>`;
 }
-function fill(id, items, dotClass){
+function fill(id, items, section){
   const el = document.getElementById(id);
-  el.innerHTML = items.length ? items.map((it) => itemLi(it, dotClass)).join("") : '<li class="empty">Nothing here.</li>';
-  const n = document.getElementById("n-" + id); if (n) n.textContent = items.length;
+  el.innerHTML = items.length ? items.map((it) => itemLi(it, section)).join("") : '<li class="empty">Nothing here.</li>';
+  const b = document.getElementById("b-" + id); if (b) b.textContent = items.length;
 }
 function renderGoals(lines){
-  let html = "", open = false;
-  const close = () => { if (open) { html += "</ul>"; open = false; } };
+  let html = "", open = false; const close = () => { if (open){ html += "</ul>"; open = false; } };
   for (const raw of lines){
-    const line = raw.trim();
-    let m;
-    if ((m = line.match(/^\*\*(.+?)\*\*(.*)$/))) { close(); html += `<div class="sub">${rich(m[1])}${rich(m[2])}</div>`; }
-    else if ((m = line.match(/^-\s+(.*)$/))) { if (!open) { html += "<ul>"; open = true; } html += `<li>${rich(m[1])}</li>`; }
-    else if (line) { close(); html += `<p>${rich(line)}</p>`; }
+    const line = raw.trim(); let m;
+    if ((m = line.match(/^\*\*(.+?)\*\*(.*)$/))) { close(); html += `<div class="sub">${esc(m[1])}${esc(m[2])}</div>`; }
+    else if ((m = line.match(/^-\s+(.*)$/))) { if(!open){ html += "<ul>"; open = true; } html += `<li>${esc(m[1])}</li>`; }
+    else if (line) { close(); html += `<p>${esc(line)}</p>`; }
   }
-  close();
-  document.getElementById("goals").innerHTML = html || '<div class="empty">No goals.</div>';
+  close(); document.getElementById("goals").innerHTML = html || '<div class="empty">No goals.</div>';
 }
 function renderToRead(items){
   const el = document.getElementById("toread");
-  const out = items.map((it) => {
-    const t = it.text;
-    const link = /^https?:\/\//.test(t) ? `<a href="${esc(t)}" target="_blank" rel="noreferrer">${esc(t)}</a>` : rich(t);
+  el.innerHTML = items.length ? items.map((it) => {
+    const link = /^https?:\/\//.test(it.text) ? `<a href="${esc(it.text)}" target="_blank" rel="noreferrer">${esc(it.text)}</a>` : esc(it.text);
     const age = it.age != null ? `<span class="age">${it.age}d</span>` : "";
     return `<li>${link}${age}</li>`;
-  });
-  el.innerHTML = out.length ? out.join("") : '<li class="empty">Nothing to read.</li>';
+  }).join("") : '<li class="empty">Nothing to read.</li>';
+  document.getElementById("b-toread").textContent = items.length;
 }
 function render(m){
   document.getElementById("path").textContent = m.todoDocPath;
-  renderGoals(m.goals);
-  renderToRead(m.toread);
-  fill("top5", m.top5, "d-t");
-  fill("urgent", m.urgent, "d-u");
-  fill("normal", m.normal, "d-n");
+  renderGoals(m.goals); renderToRead(m.toread);
+  fill("top5", m.top5, "top5"); fill("urgent", m.urgent, "urgent"); fill("normal", m.normal, "normal");
   document.getElementById("foot").textContent = `${m.completed} completed · ${m.deleted} deleted (hidden)`;
   const pend = document.getElementById("pending");
   if (m.dirty){
     const n = m.ops.length;
-    document.getElementById("pendingtext").textContent = `${n} pending change${n === 1 ? "" : "s"}`;
+    document.getElementById("pendingtext").textContent = `${n} pending change${n===1?"":"s"} from the assistant`;
     document.getElementById("pendingops").textContent = m.ops.join(" · ");
     pend.hidden = false;
-  } else { pend.hidden = true; }
+  } else pend.hidden = true;
 }
 async function load(){ render(await (await fetch("/api/model")).json()); }
+async function act(action, extra){
+  const res = await (await fetch("/api/act", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ action, ...extra }) })).json();
+  if (res.model) render(res.model);
+}
 
+// direct manipulation via event delegation
+document.getElementById("mid").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-act]"); if (!btn) return;
+  const li = btn.closest("li[data-id]"); if (!li) return;
+  act(btn.dataset.act, { id: li.dataset.id });
+});
+
+// quick-add with a priority-cycle pill
+const PRIOS = [ {k:"urgent",label:"Urgent",c:"var(--urgent)"}, {k:"today",label:"Today",c:"var(--today)"}, {k:"normal",label:"Normal",c:"var(--normal)"} ];
+let prioIdx = 0;
+const prioBtn = document.getElementById("qa-prio");
+function setPrio(){ const p = PRIOS[prioIdx]; prioBtn.textContent = p.label; prioBtn.style.setProperty("--qc", p.c); }
+prioBtn.addEventListener("click", () => { prioIdx = (prioIdx+1) % PRIOS.length; setPrio(); });
+setPrio();
+document.getElementById("quickadd").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const input = document.getElementById("qa-input");
+  const title = input.value.trim(); if (!title) return;
+  const p = PRIOS[prioIdx];
+  input.value = "";
+  act("add", { title, today: p.k === "today", bucket: p.k === "normal" ? "normal" : "urgent" });
+});
+
+// chat (agent → draft)
 const log = document.getElementById("log");
 function addMsg(cls, text){
   if (log.querySelector(".empty")) log.innerHTML = "";
-  const div = document.createElement("div");
-  div.className = "msg " + cls; div.textContent = text;
-  log.appendChild(div); log.scrollTop = log.scrollHeight;
-  return div;
+  const div = document.createElement("div"); div.className = "msg " + cls; div.textContent = text;
+  log.appendChild(div); log.scrollTop = log.scrollHeight; return div;
 }
 document.getElementById("chatform").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -183,21 +254,14 @@ document.getElementById("chatform").addEventListener("submit", async (e) => {
   addMsg("you", text); input.value = ""; input.disabled = true;
   const pending = addMsg("bot thinking", "…");
   try {
-    const res = await (await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ message: text }) })).json();
-    pending.classList.remove("thinking");
-    pending.textContent = res.reply || res.error || "(no reply)";
+    const res = await (await fetch("/api/chat", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ message:text }) })).json();
+    pending.classList.remove("thinking"); pending.textContent = res.reply || res.error || "(no reply)";
     if (res.model) render(res.model);
-  } catch (err) { pending.classList.remove("thinking"); pending.textContent = "Error: " + err.message; }
+  } catch (err){ pending.classList.remove("thinking"); pending.textContent = "Error: " + err.message; }
   input.disabled = false; input.focus();
 });
-document.getElementById("apply").addEventListener("click", async () => {
-  const res = await (await fetch("/api/apply", { method: "POST" })).json();
-  render(res.model); addMsg("bot", "✓ Applied to your file.");
-});
-document.getElementById("discard").addEventListener("click", async () => {
-  const res = await (await fetch("/api/discard", { method: "POST" })).json();
-  render(res.model); addMsg("bot", "Discarded the pending changes.");
-});
+document.getElementById("apply").addEventListener("click", async () => { const r = await (await fetch("/api/apply",{method:"POST"})).json(); render(r.model); addMsg("bot","✓ Applied to your file."); });
+document.getElementById("discard").addEventListener("click", async () => { const r = await (await fetch("/api/discard",{method:"POST"})).json(); render(r.model); addMsg("bot","Discarded the pending changes."); });
 load();
 </script>
 </body>

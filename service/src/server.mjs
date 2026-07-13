@@ -8,6 +8,7 @@ import { Vault } from "./vault.mjs";
 import { assignIds, itemView } from "./model.mjs";
 import { runAgent } from "./agent.mjs";
 import { touch, ageDays } from "./ledger.mjs";
+import { applyAction } from "./ops.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 5178;
@@ -79,6 +80,19 @@ const server = createServer(async (req, res) => {
         return json(res, 200, { reply, model: modelView(), newOps: ops.slice(before) });
       } finally {
         busy = false;
+      }
+    }
+    if (req.method === "POST" && p === "/api/act") {
+      // Direct human actions autosave immediately (matches the native app's
+      // no-save-button feel). Note: if an agent draft is pending, this commits
+      // it too — a rare edge we accept for now.
+      const { action, ...a } = await readBody(req);
+      try {
+        const desc = applyAction(working, action, a);
+        if (desc) { vault.save(working, { op: "edit" }); reload(); }
+        return json(res, 200, { ok: true, model: modelView() });
+      } catch (e) {
+        return json(res, 400, { error: String(e?.message || e) });
       }
     }
     if (req.method === "POST" && p === "/api/apply") {
