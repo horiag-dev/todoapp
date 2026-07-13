@@ -130,8 +130,8 @@ function diffModels(base, draft) {
 }
 // Reject one change: mutate the draft so it no longer differs from base for that key.
 function rejectChangeOn(base, draft, key) {
-  if (key === "goals") { if (base.goals) draft.goals = clone(base.goals); return; }
-  if (key === "toread") { if (base.toread) draft.toread = clone(base.toread); return; }
+  if (key === "goals") { draft.goals = base.goals ? clone(base.goals) : undefined; return; }
+  if (key === "toread") { draft.toread = base.toread ? clone(base.toread) : undefined; return; }
   if (!key.startsWith("item:")) return;
   const id = key.slice(5);
   const bInfo = findById(base, id), dInfo = findById(draft, id);
@@ -167,6 +167,28 @@ function applyChangeToBase(base, draft, key) {
   }
   reflowUrgent(next);
   return next;
+}
+// Small change sets are applied directly; larger ones are held for review.
+const SMALL_CHANGE_LIMIT = 3;
+function goalsLinesChanged(base, draft) {
+  const a = base.goals?.rawLines ?? [], b = draft.goals?.rawLines ?? [];
+  const setA = new Set(a), setB = new Set(b);
+  let n = 0;
+  for (const l of a) if (l.trim() && !setB.has(l)) n++;
+  for (const l of b) if (l.trim() && !setA.has(l)) n++;
+  return n;
+}
+function isSmallChangeSet(base, draft, changes) {
+  if (changes.length > SMALL_CHANGE_LIMIT) return false;
+  if (changes.some((c) => c.kind === "goals") && goalsLinesChanged(base, draft) > 6) return false;
+  return true;
+}
+function flashInfo(changes) {
+  return {
+    items: changes.filter((c) => c.key.startsWith("item:")).map((c) => c.key.slice(5)),
+    goals: changes.some((c) => c.kind === "goals"),
+    toread: changes.some((c) => c.kind === "toread"),
+  };
 }
 const execFileAsync = promisify(execFile);
 
@@ -416,6 +438,7 @@ export function createBigRocksServer({
         if (!message?.trim()) return json(res, 400, { error: "Enter a message." });
         // Stream the agent's steps (SSE) when the client asks; otherwise plain JSON.
         const stream = (req.headers.accept || "").includes("text/event-stream");
+        const hadDraft = !!draft;
         const candidate = clone(draft ?? base);
         const candidateOps = [...draftOps];
         busy = true;
@@ -435,10 +458,23 @@ export function createBigRocksServer({
           sessionId = result.sessionId;
           chatMessages.push({ role: "you", text: message }, { role: "bot", text: result.reply });
           saveChat(vault.todoDocPath, { sessionId, messages: chatMessages });
-          draft = candidateOps.length ? candidate : draft;
-          draftOps = candidateOps;
-          if (draft && !draftBaseVersion) draftBaseVersion = baseVersion;
-          const payload = { reply: result.reply, model: modelView(), newOps: candidateOps.slice(before) };
+          // Small change sets apply straight to the file; large ones (or changes
+          // stacked on an existing draft) are held for review.
+          let flash = null, applied = false;
+          const changes = candidateOps.length ? diffModels(base, candidate) : [];
+          if (changes.length && !hadDraft && isSmallChangeSet(base, candidate, changes)) {
+            const saved = vault.save(candidate, { op: "agent", expectedVersion: baseVersion });
+            base = assignIds(candidate);
+            baseVersion = saved.version;
+            seen = touch(vault, base);
+            flash = flashInfo(changes);
+            applied = true;
+          } else if (changes.length) {
+            draft = candidate;
+            draftOps = candidateOps;
+            if (!draftBaseVersion) draftBaseVersion = baseVersion;
+          }
+          const payload = { reply: result.reply, model: modelView(), newOps: candidateOps.slice(before), applied, flash };
           if (stream) { sse("done", payload); return res.end(); }
           return json(res, 200, payload);
         } catch (err) {
@@ -519,6 +555,7 @@ export function createBigRocksServer({
           externalConflict = true;
           return json(res, 409, conflictBody("The file changed after this draft started. Reload and ask the assistant again."));
         }
+        const applied = flashInfo(diffModels(base, draft));
         const saved = vault.save(draft, { op: "agent", expectedVersion: draftBaseVersion });
         base = assignIds(draft);
         baseVersion = saved.version;
@@ -527,7 +564,7 @@ export function createBigRocksServer({
         draftBaseVersion = null;
         externalConflict = false;
         seen = touch(vault, base);
-        return json(res, 200, { ok: true, model: modelView() });
+        return json(res, 200, { ok: true, model: modelView(), flash: applied });
       }
 
       if (req.method === "POST" && p === "/api/approve-change") {
@@ -547,7 +584,8 @@ export function createBigRocksServer({
         draftBaseVersion = baseVersion;
         seen = touch(vault, base);
         if (!diffModels(base, draft).length) { draft = null; draftOps = []; draftBaseVersion = null; }
-        return json(res, 200, { ok: true, model: modelView() });
+        const flash = { items: key.startsWith("item:") ? [key.slice(5)] : [], goals: key === "goals", toread: key === "toread" };
+        return json(res, 200, { ok: true, model: modelView(), flash });
       }
 
       if (req.method === "POST" && p === "/api/reject-change") {

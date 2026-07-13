@@ -53,9 +53,12 @@ test("HTTP direct edits persist and external changes auto-reload", async () => {
 });
 
 test("assistant drafts block direct edits and conflict after an external write", async () => {
+  // A large change set (> 3) is held for review rather than auto-applied.
   const fakeAgent = async ({ model, ops }) => {
-    model.normal.push({ id: "fake", title: "Assistant change", checked: false, starred: false });
-    ops.push("added assistant change");
+    for (const t of ["Assistant change", "Two", "Three", "Four"]) {
+      model.normal.push({ id: "f-" + t, title: t, checked: false, starred: false });
+      ops.push("added " + t);
+    }
     return { reply: "Proposed.", sessionId: "test" };
   };
   const f = await fixture(fakeAgent);
@@ -140,8 +143,10 @@ test("undo reverts the last saved change and reports canUndo", async () => {
 });
 
 test("a goals-changing draft reports before/after in the model view", async () => {
+  // A big goals rewrite is "large", so it's held for review (before/after shown).
+  const newGoals = ["**Launch**", "- Ship v2", "- Ship v3", "- Plan", "**Ops**", "- Hire", "- Onboard", "- Review"];
   const goalsAgent = async ({ model, ops }) => {
-    model.goals = { headerLine: "## 🎯 Goals", rawLines: ["**Launch**", "- Ship v2"] };
+    model.goals = { headerLine: "## 🎯 Goals", rawLines: newGoals };
     ops.push("edited the Goals notepad");
     return { reply: "Reworked your goals.", sessionId: "test" };
   };
@@ -151,7 +156,7 @@ test("a goals-changing draft reports before/after in the model view", async () =
     assert.equal(result.response.status, 200);
     assert.equal(result.body.model.goalsChanged, true);
     assert.deepEqual(result.body.model.goalsBefore, []);
-    assert.deepEqual(result.body.model.goals, ["**Launch**", "- Ship v2"]);
+    assert.deepEqual(result.body.model.goals, newGoals);
     // Un-applied draft: the file on disk is untouched.
     assert.doesNotMatch(readFileSync(f.doc, "utf8"), /Ship v2/);
   } finally {
@@ -188,22 +193,41 @@ test("chat streams the agent's steps over SSE when requested", async () => {
   }
 });
 
-test("individual proposed changes can be rejected, keeping the rest", async () => {
-  const twoAdds = async ({ model, ops }) => {
-    model.normal.push({ id: "n1", title: "Alpha", checked: false, starred: false });
-    model.normal.push({ id: "n2", title: "Beta", checked: false, starred: false });
-    ops.push("added Alpha", "added Beta");
-    return { reply: "Added two.", sessionId: "s" };
+test("a small change set applies directly (no draft) and reports what to flash", async () => {
+  const oneAdd = async ({ model, ops }) => {
+    model.normal.push({ id: "s1", title: "Quick add", checked: false, starred: false });
+    ops.push("added Quick add");
+    return { reply: "Done.", sessionId: "s" };
   };
-  const f = await fixture(twoAdds);
+  const f = await fixture(oneAdd);
   try {
-    let r = await f.request("/api/chat", { message: "add two" });
-    assert.equal(r.body.model.changes.length, 2);
+    const r = await f.request("/api/chat", { message: "add one" });
+    assert.equal(r.body.applied, true);
+    assert.equal(r.body.model.dirty, false); // applied straight away, nothing pending
+    assert.ok(r.body.flash.items.length >= 1); // UI has something to flash
+    assert.match(readFileSync(f.doc, "utf8"), /Quick add/); // written to the file
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("individual proposed changes can be rejected, keeping the rest", async () => {
+  const fourAdds = async ({ model, ops }) => {
+    for (const t of ["Alpha", "Beta", "Gamma", "Delta"]) {
+      model.normal.push({ id: "n-" + t, title: t, checked: false, starred: false });
+      ops.push("added " + t);
+    }
+    return { reply: "Added four.", sessionId: "s" };
+  };
+  const f = await fixture(fourAdds);
+  try {
+    let r = await f.request("/api/chat", { message: "add four" });
+    assert.equal(r.body.model.changes.length, 4); // large set → held for review
     const beta = r.body.model.changes.find((c) => c.label.includes("Beta"));
     r = await f.request("/api/reject-change", { key: beta.key });
     assert.equal(r.response.status, 200);
-    assert.equal(r.body.model.changes.length, 1);
-    assert.match(r.body.model.changes[0].label, /Alpha/);
+    assert.equal(r.body.model.changes.length, 3);
     r = await f.request("/api/apply", {});
     assert.match(readFileSync(f.doc, "utf8"), /Alpha/);
     assert.doesNotMatch(readFileSync(f.doc, "utf8"), /Beta/);
@@ -214,24 +238,24 @@ test("individual proposed changes can be rejected, keeping the rest", async () =
 });
 
 test("approving one change applies just it and leaves the rest pending", async () => {
-  const twoAdds = async ({ model, ops }) => {
-    model.normal.push({ id: "a1", title: "Keep me", checked: false, starred: false });
-    model.normal.push({ id: "a2", title: "Later one", checked: false, starred: false });
-    ops.push("added two");
-    return { reply: "Added two.", sessionId: "s" };
+  const fourAdds = async ({ model, ops }) => {
+    for (const t of ["Keep me", "Later one", "Third", "Fourth"]) {
+      model.normal.push({ id: "a-" + t, title: t, checked: false, starred: false });
+      ops.push("added " + t);
+    }
+    return { reply: "Added four.", sessionId: "s" };
   };
-  const f = await fixture(twoAdds);
+  const f = await fixture(fourAdds);
   try {
-    let r = await f.request("/api/chat", { message: "add two" });
+    let r = await f.request("/api/chat", { message: "add four" });
     const keep = r.body.model.changes.find((c) => c.label.includes("Keep me"));
     r = await f.request("/api/approve-change", { key: keep.key });
     assert.equal(r.response.status, 200);
-    // Approved one is written to the file now; the other stays a pending change.
+    // Approved one is written to the file now; the others stay pending.
     assert.match(readFileSync(f.doc, "utf8"), /Keep me/);
     assert.doesNotMatch(readFileSync(f.doc, "utf8"), /Later one/);
     assert.equal(r.body.model.dirty, true);
-    assert.equal(r.body.model.changes.length, 1);
-    assert.match(r.body.model.changes[0].label, /Later one/);
+    assert.equal(r.body.model.changes.length, 3);
   } finally {
     await new Promise((resolve) => f.server.close(resolve));
     rmSync(f.dir, { recursive: true, force: true });
@@ -239,15 +263,17 @@ test("approving one change applies just it and leaves the rest pending", async (
 });
 
 test("rejecting the only change drops the draft", async () => {
-  const oneAdd = async ({ model, ops }) => {
-    model.normal.push({ id: "z1", title: "Solo", checked: false, starred: false });
-    ops.push("added Solo");
-    return { reply: "Added.", sessionId: "s" };
+  // A big goals rewrite is one change but "large", so it's held for review.
+  const goalsRewrite = async ({ model, ops }) => {
+    model.goals = { headerLine: "## 🎯 Goals", rawLines: ["**A**", "- one", "- two", "- three", "**B**", "- four", "- five", "- six", "- seven"] };
+    ops.push("rewrote goals");
+    return { reply: "Reorganized.", sessionId: "s" };
   };
-  const f = await fixture(oneAdd);
+  const f = await fixture(goalsRewrite);
   try {
-    let r = await f.request("/api/chat", { message: "add" });
+    let r = await f.request("/api/chat", { message: "reorg goals" });
     assert.equal(r.body.model.dirty, true);
+    assert.equal(r.body.model.changes.length, 1);
     r = await f.request("/api/reject-change", { key: r.body.model.changes[0].key });
     assert.equal(r.body.model.dirty, false);
     assert.equal(r.body.model.changes.length, 0);
