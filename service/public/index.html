@@ -27,9 +27,12 @@
   header .sub{font-size:11.5px;color:var(--soft);}
   header .path{margin-left:auto;font:11px ui-monospace,"SF Mono",Menlo,monospace;color:var(--soft);
     max-width:44ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  main{display:grid;grid-template-columns:minmax(220px,0.9fr) minmax(360px,1.7fr) minmax(300px,1.15fr);
-    gap:14px;padding:14px 16px;align-items:start;}
-  @media (max-width:960px){ main{grid-template-columns:1fr;} }
+  main{display:grid;grid-template-columns:var(--c1,300px) 12px minmax(340px,1fr) 12px var(--c2,360px);
+    gap:0;padding:14px 12px;align-items:start;}
+  .gutter{align-self:stretch;min-height:240px;cursor:col-resize;position:relative;}
+  .gutter::after{content:"";position:absolute;left:5px;top:0;bottom:0;width:2px;border-radius:2px;background:var(--line);}
+  .gutter:hover::after,.gutter.drag::after{background:var(--accent);}
+  @media (max-width:960px){ main{grid-template-columns:1fr;} .gutter{display:none;} }
   .col{display:flex;flex-direction:column;gap:14px;min-width:0;}
 
   /* section cards with a colored left rail + tinted bg + count badge */
@@ -76,6 +79,8 @@
   .rowact .t-on{color:var(--today);}
   input.edit{flex:1;font:inherit;border:1px solid var(--accent);border-radius:5px;padding:2px 6px;
     background:var(--card);color:var(--ink);outline:none;}
+  input.tagadd{font:inherit;font-size:11px;border:1px solid var(--accent);border-radius:5px;padding:0 5px;
+    margin-left:5px;width:82px;background:var(--card);color:var(--ink);outline:none;}
   .empty{color:var(--soft);font-size:12px;padding:6px;}
   h2.tog{cursor:pointer;user-select:none;}
   .chev{color:var(--soft);font-size:9px;transition:transform .12s;display:inline-block;}
@@ -143,6 +148,8 @@
     <div class="card c-toread"><h2><span class="ic">📚</span> To Read <span class="badge" id="b-toread"></span></h2><ul class="body items read" id="toread"></ul></div>
   </div>
 
+  <div class="gutter" id="gl"></div>
+
   <div class="col" id="mid">
     <form class="quickadd" id="quickadd">
       <button type="button" class="qa-prio" id="qa-prio">Urgent</button>
@@ -159,6 +166,8 @@
     <div class="card c-normal" id="card-normal"><h2 class="tog" data-collapse="card-normal"><span class="chev">▾</span><span class="ic">🔵</span> Normal <span class="badge" id="b-normal"></span></h2><ul class="body items" id="normal"></ul></div>
     <div class="foot" id="foot"></div>
   </div>
+
+  <div class="gutter" id="gr"></div>
 
   <div class="col">
     <div class="chat">
@@ -212,6 +221,7 @@ function rowActions(it, section){
     b.push(`<button data-act="toggleToday" class="${it.today?"t-on":""}" title="Toggle Today">★</button>`);
     const to = section === "urgent" ? "normal" : "urgent";
     b.push(`<button data-act="setPriority" data-bucket="${to}" title="Move to ${to==="normal"?"Normal":"Urgent"}">${to==="normal"?"→N":"→U"}</button>`);
+    b.push(`<button data-act="addTag" title="Add a tag">#+</button>`);
     b.push(`<button data-act="agentGoals" title="Move to Goals — asks the assistant to place it">🎯</button>`);
   }
   b.push(`<button data-act="delete" title="Delete">✕</button>`);
@@ -279,6 +289,7 @@ mid.addEventListener("click", (e) => {
       const title = li.dataset.title.replace(re, "").replace(/\s{2,}/g, " ").trim();
       return act("editTitle", { id: li.dataset.id, title });
     }
+    if (btn.dataset.act === "addTag") return startAddTag(li);
     const extra = { id: li.dataset.id };
     if (btn.dataset.dir) extra.dir = btn.dataset.dir;
     if (btn.dataset.bucket) extra.bucket = btn.dataset.bucket;
@@ -310,7 +321,47 @@ function startEdit(li){
   });
   input.addEventListener("blur", () => done(true));
 }
-document.getElementById("card-normal").classList.add("collapsed"); // Normal collapsed by default
+function startAddTag(li){
+  if (li.querySelector("input.tagadd")) return;
+  const input = document.createElement("input");
+  input.className = "tagadd"; input.placeholder = "tag…";
+  li.querySelector(".t").appendChild(input); input.focus();
+  let finished = false;
+  const done = async (save) => {
+    if (finished) return; finished = true;
+    const v = input.value.trim().replace(/^#+/, "");
+    input.remove();
+    if (save && v) await act("editTitle", { id: li.dataset.id, title: li.dataset.title + " #" + v });
+  };
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); done(true); }
+    else if (e.key === "Escape") done(false);
+  });
+  input.addEventListener("blur", () => done(true));
+}
+// resizable columns — drag the gutters; widths persist. (Normal is expanded by default.)
+function resizer(id, varName, def, min, max, invert){
+  const g = document.getElementById(id);
+  const saved = localStorage.getItem(varName);
+  if (saved) document.documentElement.style.setProperty(varName, saved);
+  g.addEventListener("mousedown", (e) => {
+    e.preventDefault(); g.classList.add("drag");
+    const x0 = e.clientX;
+    const w0 = parseInt(getComputedStyle(document.documentElement).getPropertyValue(varName)) || def;
+    const move = (ev) => {
+      const w = w0 + (invert ? (x0 - ev.clientX) : (ev.clientX - x0));
+      document.documentElement.style.setProperty(varName, Math.max(min, Math.min(max, w)) + "px");
+    };
+    const up = () => {
+      g.classList.remove("drag");
+      document.removeEventListener("mousemove", move); document.removeEventListener("mouseup", up);
+      localStorage.setItem(varName, getComputedStyle(document.documentElement).getPropertyValue(varName).trim());
+    };
+    document.addEventListener("mousemove", move); document.addEventListener("mouseup", up);
+  });
+}
+resizer("gl", "--c1", 300, 200, 620, false);
+resizer("gr", "--c2", 360, 260, 680, true);
 
 // quick-add with a priority-cycle pill
 const PRIOS = [ {k:"urgent",label:"Urgent",c:"var(--urgent)"}, {k:"today",label:"Today",c:"var(--today)"}, {k:"normal",label:"Normal",c:"var(--normal)"} ];
