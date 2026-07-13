@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import { homedir } from "node:os";
+import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { Vault, VaultConflictError } from "./vault.mjs";
@@ -69,6 +70,12 @@ const STATE_DIR = process.env.BIGROCKS_STATE_DIR || join(homedir(), ".config", "
 const LAST_FILE = join(STATE_DIR, "last-file");
 function rememberFile(p) { try { mkdirSync(STATE_DIR, { recursive: true }); writeFileSync(LAST_FILE, p, "utf8"); } catch {} }
 function recallFile() { try { const p = readFileSync(LAST_FILE, "utf8").trim(); return p && existsSync(p) ? p : null; } catch { return null; } }
+
+// Per-file chat transcript + session (so a reload/restart keeps the conversation).
+const CHATS_DIR = join(STATE_DIR, "chats");
+const chatFile = (docPath) => join(CHATS_DIR, createHash("sha256").update(docPath).digest("hex").slice(0, 16) + ".json");
+function loadChat(docPath) { try { return JSON.parse(readFileSync(chatFile(docPath), "utf8")); } catch { return { sessionId: undefined, messages: [] }; } }
+function saveChat(docPath, data) { try { mkdirSync(CHATS_DIR, { recursive: true }); writeFileSync(chatFile(docPath), JSON.stringify(data), "utf8"); } catch {} }
 const clone = (value) => structuredClone(value);
 const conflictBody = (message) => ({ error: message, code: "VAULT_CONFLICT", conflict: true });
 const execFileAsync = promisify(execFile);
@@ -109,6 +116,7 @@ export function createBigRocksServer({
   let draftBaseVersion = null;
   let externalConflict = false;
   let sessionId;
+  let chatMessages = [];
   let busy = false;
   let activeAbort = null;
 
@@ -123,7 +131,9 @@ export function createBigRocksServer({
     draftOps = [];
     draftBaseVersion = null;
     externalConflict = false;
-    sessionId = undefined;
+    const savedChat = loadChat(vault.todoDocPath);
+    sessionId = savedChat.sessionId;
+    chatMessages = savedChat.messages || [];
     rememberFile(vault.todoDocPath);
   }
 
@@ -300,6 +310,8 @@ export function createBigRocksServer({
           const before = candidateOps.length;
           const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort });
           sessionId = result.sessionId;
+          chatMessages.push({ role: "you", text: message }, { role: "bot", text: result.reply });
+          saveChat(vault.todoDocPath, { sessionId, messages: chatMessages });
           draft = candidateOps.length ? candidate : draft;
           draftOps = candidateOps;
           if (draft && !draftBaseVersion) draftBaseVersion = baseVersion;
@@ -311,6 +323,15 @@ export function createBigRocksServer({
         }
       }
 
+      if (req.method === "GET" && p === "/api/chat-history") {
+        return json(res, 200, { messages: chatMessages });
+      }
+      if (req.method === "POST" && p === "/api/chat-clear") {
+        chatMessages = [];
+        sessionId = undefined;
+        if (configured()) saveChat(vault.todoDocPath, { sessionId: undefined, messages: [] });
+        return json(res, 200, { ok: true });
+      }
       if (req.method === "POST" && p === "/api/cancel") {
         if (!activeAbort) return json(res, 400, { error: "The assistant is not currently working." });
         activeAbort.abort("Cancelled by user.");

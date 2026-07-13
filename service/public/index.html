@@ -147,18 +147,19 @@ function addMsg(cls,text){const d=document.createElement("div");d.className="msg
 let chatContext=null;
 function setChatContext(li){chatContext={id:li.dataset.id,title:li.dataset.title,bucket:li.dataset.section};$("#chat-context-title").textContent=chatContext.title;$("#chat-context").hidden=false;$("#chatin").placeholder="What should happen to this todo?";$("#chatin").focus()}
 function clearChatContext(){chatContext=null;$("#chat-context").hidden=true;$("#chatin").placeholder="Message the assistant…"}
+async function restoreChat(){try{const r=await api("/api/chat-history");if(!r.messages||!r.messages.length)return;const log=$("#log");log.innerHTML="";for(const m of r.messages){const d=document.createElement("div");d.className="msg "+(m.role==="you"?"you":"bot");if(m.role==="you")d.textContent=m.text;else d.innerHTML=mdRender(m.text);log.appendChild(d)}log.scrollTop=log.scrollHeight}catch{}}
 async function chat(message,visibleMessage=message){addMsg("you",visibleMessage);const p=addMsg("bot thinking","Working…");$("#chat-send").hidden=true;$("#chat-cancel").hidden=false;try{const r=await api("/api/chat",{method:"POST",body:JSON.stringify({message}),timeout:130000});p.className="msg bot";p.innerHTML=mdRender(r.reply||"Done.");render(r.model)}catch(e){p.className="msg bot danger";p.textContent=e.message;handleError(e)}finally{$("#chat-send").hidden=false;$("#chat-cancel").hidden=true}}
 $("#chat-context-clear").onclick=clearChatContext;
 $("#chatform").onsubmit=e=>{e.preventDefault();const i=$("#chatin"),v=i.value.trim();if(!v)return;i.value="";const message=chatContext?`Regarding the todo with id ${chatContext.id}, titled "${chatContext.title}", currently shown in ${chatContext.bucket}: ${v}`:v;chat(message,v)};
 $("#chat-cancel").onclick=async()=>{try{await api("/api/cancel",{method:"POST"});showNotice("Cancelling the assistant…",{info:true})}catch(e){handleError(e)}};
 $("#apply").onclick=async()=>{try{const r=await api("/api/apply",{method:"POST"});render(r.model);addMsg("bot","✓ Applied to your file.")}catch(e){handleError(e)}};$("#discard").onclick=async()=>{try{render((await api("/api/discard",{method:"POST"})).model);addMsg("bot","Draft discarded.")}catch(e){handleError(e)}};
 
-function rememberAndRender(r){localStorage.setItem("todoDocPath",r.model.todoDocPath);render(r.model);showNotice("Todo file connected.",{info:true})}
+function rememberAndRender(r){localStorage.setItem("todoDocPath",r.model.todoDocPath);render(r.model);restoreChat();showNotice("Todo file connected.",{info:true})}
 function showSetup(){if(current?.todoDocPath)$("#setup-path").value=current.todoDocPath;$("#setup").hidden=false}$("#choose").onclick=showSetup;$("#setup-cancel").onclick=()=>{if(current?.configured)$("#setup").hidden=true};
 $$('[data-pick]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{rememberAndRender(await api("/api/pick-file",{method:"POST",body:JSON.stringify({mode:b.dataset.pick}),timeout:120000}))}catch(e){if(e.body?.code!=="PICKER_CANCELLED")handleError(e)}finally{b.disabled=false}});
 $("#setup-manual").onclick=async()=>{try{rememberAndRender(await api("/api/config",{method:"POST",body:JSON.stringify({path:$("#setup-path").value,mode:"open"})}))}catch(e){handleError(e)}};
 function resizer(id,name,def,min,max,invert){const g=$("#"+id),saved=localStorage.getItem(name);if(saved)document.documentElement.style.setProperty(name,saved);g.onmousedown=e=>{e.preventDefault();const x=e.clientX,w=parseInt(getComputedStyle(document.documentElement).getPropertyValue(name))||def;const move=ev=>document.documentElement.style.setProperty(name,Math.max(min,Math.min(max,w+(invert?x-ev.clientX:ev.clientX-x)))+"px");const up=()=>{document.removeEventListener("mousemove",move);document.removeEventListener("mouseup",up);localStorage.setItem(name,getComputedStyle(document.documentElement).getPropertyValue(name).trim())};document.addEventListener("mousemove",move);document.addEventListener("mouseup",up)}}resizer("gl","--c1",300,210,620,false);resizer("gr","--c2",360,260,680,true);
-load();setInterval(()=>load(true),3000);
+load();restoreChat();setInterval(()=>load(true),3000);
 </script>
 </body>
 </html>
