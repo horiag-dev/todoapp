@@ -188,6 +188,50 @@ test("chat streams the agent's steps over SSE when requested", async () => {
   }
 });
 
+test("individual proposed changes can be rejected, keeping the rest", async () => {
+  const twoAdds = async ({ model, ops }) => {
+    model.normal.push({ id: "n1", title: "Alpha", checked: false, starred: false });
+    model.normal.push({ id: "n2", title: "Beta", checked: false, starred: false });
+    ops.push("added Alpha", "added Beta");
+    return { reply: "Added two.", sessionId: "s" };
+  };
+  const f = await fixture(twoAdds);
+  try {
+    let r = await f.request("/api/chat", { message: "add two" });
+    assert.equal(r.body.model.changes.length, 2);
+    const beta = r.body.model.changes.find((c) => c.label.includes("Beta"));
+    r = await f.request("/api/reject-change", { key: beta.key });
+    assert.equal(r.response.status, 200);
+    assert.equal(r.body.model.changes.length, 1);
+    assert.match(r.body.model.changes[0].label, /Alpha/);
+    r = await f.request("/api/apply", {});
+    assert.match(readFileSync(f.doc, "utf8"), /Alpha/);
+    assert.doesNotMatch(readFileSync(f.doc, "utf8"), /Beta/);
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("rejecting the only change drops the draft", async () => {
+  const oneAdd = async ({ model, ops }) => {
+    model.normal.push({ id: "z1", title: "Solo", checked: false, starred: false });
+    ops.push("added Solo");
+    return { reply: "Added.", sessionId: "s" };
+  };
+  const f = await fixture(oneAdd);
+  try {
+    let r = await f.request("/api/chat", { message: "add" });
+    assert.equal(r.body.model.dirty, true);
+    r = await f.request("/api/reject-change", { key: r.body.model.changes[0].key });
+    assert.equal(r.body.model.dirty, false);
+    assert.equal(r.body.model.changes.length, 0);
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
 test("documents attach to the vault, serve back, and remove to trash", async () => {
   const f = await fixture();
   try {

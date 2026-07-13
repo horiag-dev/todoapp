@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { Vault, VaultConflictError } from "./vault.mjs";
-import { assignIds, itemView } from "./model.mjs";
+import { assignIds, itemView, findById, reflowUrgent } from "./model.mjs";
 import { runAgent } from "./agent.mjs";
 import { touch, ageDays } from "./ledger.mjs";
 import { applyAction } from "./ops.mjs";
@@ -93,6 +93,60 @@ function loadChat(docPath) { try { return JSON.parse(readFileSync(chatFile(docPa
 function saveChat(docPath, data) { try { mkdirSync(CHATS_DIR, { recursive: true }); writeFileSync(chatFile(docPath), JSON.stringify(data), "utf8"); } catch {} }
 const clone = (value) => structuredClone(value);
 const conflictBody = (message) => ({ error: message, code: "VAULT_CONFLICT", conflict: true });
+
+// --- Draft as a set of individually-reviewable changes -----------------------
+const BUCKET_LABEL = { urgent: "Urgent", normal: "Normal", top5: "Top 5", completed: "Completed", deleted: "Deleted" };
+const CHANGE_BUCKETS = ["urgent", "normal", "top5", "completed", "deleted"];
+function indexItems(model) {
+  const map = new Map();
+  for (const b of CHANGE_BUCKETS) for (const it of model[b] ?? []) map.set(it.id, { item: it, bucket: b });
+  return map;
+}
+// A structured, per-item diff of the draft against base — one reversible change each.
+function diffModels(base, draft) {
+  const changes = [];
+  const B = indexItems(base), D = indexItems(draft);
+  for (const [id, d] of D) {
+    const b = B.get(id);
+    if (!b) { changes.push({ key: `item:${id}`, kind: "added", label: `Added “${d.item.title}” to ${BUCKET_LABEL[d.bucket]}` }); continue; }
+    if (b.bucket !== d.bucket) {
+      if (d.bucket === "completed") changes.push({ key: `item:${id}`, kind: "completed", label: `Completed “${d.item.title}”` });
+      else if (d.bucket === "deleted") changes.push({ key: `item:${id}`, kind: "deleted", label: `Deleted “${d.item.title}”` });
+      else changes.push({ key: `item:${id}`, kind: "moved", label: `Moved “${d.item.title}” → ${BUCKET_LABEL[d.bucket]}` });
+    } else if (b.item.title !== d.item.title) {
+      changes.push({ key: `item:${id}`, kind: "retitled", label: `“${b.item.title}” → “${d.item.title}”` });
+    } else if (!!b.item.starred !== !!d.item.starred) {
+      changes.push(d.item.starred
+        ? { key: `item:${id}`, kind: "today", label: `Marked “${d.item.title}” Today` }
+        : { key: `item:${id}`, kind: "untoday", label: `Cleared Today on “${d.item.title}”` });
+    }
+  }
+  for (const [id, b] of B) if (!D.has(id)) changes.push({ key: `item:${id}`, kind: "removed", label: `Removed “${b.item.title}”` });
+  if (JSON.stringify(base.goals?.rawLines ?? []) !== JSON.stringify(draft.goals?.rawLines ?? []))
+    changes.push({ key: "goals", kind: "goals", label: "Edited the Goals notepad" });
+  if (JSON.stringify(base.toread?.rawLines ?? []) !== JSON.stringify(draft.toread?.rawLines ?? []))
+    changes.push({ key: "toread", kind: "toread", label: "Edited To Read" });
+  return changes;
+}
+// Reject one change: mutate the draft so it no longer differs from base for that key.
+function rejectChangeOn(base, draft, key) {
+  if (key === "goals") { if (base.goals) draft.goals = clone(base.goals); return; }
+  if (key === "toread") { if (base.toread) draft.toread = clone(base.toread); return; }
+  if (!key.startsWith("item:")) return;
+  const id = key.slice(5);
+  const bInfo = findById(base, id), dInfo = findById(draft, id);
+  if (bInfo && dInfo) {
+    dInfo.item.title = bInfo.item.title;
+    dInfo.item.starred = bInfo.item.starred;
+    dInfo.item.checked = bInfo.item.checked;
+    if (dInfo.bucket !== bInfo.bucket) { dInfo.arr.splice(dInfo.idx, 1); draft[bInfo.bucket].push(dInfo.item); }
+  } else if (bInfo && !dInfo) {
+    draft[bInfo.bucket].push(clone(bInfo.item));
+  } else if (!bInfo && dInfo) {
+    dInfo.arr.splice(dInfo.idx, 1);
+  }
+  reflowUrgent(draft);
+}
 const execFileAsync = promisify(execFile);
 
 export async function pickFileMac(mode) {
@@ -216,6 +270,7 @@ export function createBigRocksServer({
       version: baseVersion,
       dirty: !!draft,
       ops: draftOps,
+      changes: draft ? diffModels(base, draft) : [],
       conflict: externalConflict,
       busy,
       canUndo: vault.hasHistory(),
@@ -450,6 +505,19 @@ export function createBigRocksServer({
         draftBaseVersion = null;
         externalConflict = false;
         seen = touch(vault, base);
+        return json(res, 200, { ok: true, model: modelView() });
+      }
+
+      if (req.method === "POST" && p === "/api/reject-change") {
+        requireConfigured();
+        if (!draft) return json(res, 400, { error: "There is no assistant draft." });
+        refreshFromDisk();
+        if (externalConflict) return json(res, 409, conflictBody("The file changed externally. Reload before editing the draft."));
+        const { key } = await readBody(req);
+        if (!key) return json(res, 400, { error: "Which change to reject?" });
+        rejectChangeOn(base, draft, key);
+        // Nothing left that differs from base → drop the draft entirely.
+        if (!diffModels(base, draft).length) { draft = null; draftOps = []; draftBaseVersion = null; }
         return json(res, 200, { ok: true, model: modelView() });
       }
 
