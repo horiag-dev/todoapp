@@ -192,6 +192,9 @@ export function createBigRocksServer({
     const tags = [...new Set(["urgent", "normal", "top5"].flatMap((bucket) =>
       model[bucket].flatMap((it) => itemView(it).tags),
     ))].sort((a, b) => a.localeCompare(b));
+    const baseGoals = base.goals?.rawLines ?? [];
+    const draftGoals = model.goals?.rawLines ?? [];
+    const goalsChanged = !!draft && JSON.stringify(baseGoals) !== JSON.stringify(draftGoals);
     return {
       configured: true,
       todoDocPath: vault.todoDocPath,
@@ -200,7 +203,10 @@ export function createBigRocksServer({
       ops: draftOps,
       conflict: externalConflict,
       busy,
-      goals: model.goals?.rawLines ?? [],
+      canUndo: vault.hasHistory(),
+      goalsChanged,
+      goalsBefore: goalsChanged ? baseGoals : null,
+      goals: draftGoals,
       toread: readLines(model.toread, /^\s*-\s+/).map((entry) => ({ ...entry, age: ageOf(entry.text) })),
       tags,
       top5: model.top5.map(view),
@@ -291,6 +297,20 @@ export function createBigRocksServer({
         externalConflict = false;
         reloadBase();
         sessionId = undefined;
+        return json(res, 200, { ok: true, model: modelView() });
+      }
+
+      if (req.method === "POST" && p === "/api/undo") {
+        requireConfigured();
+        if (busy) return json(res, 409, { error: "The assistant is working. Wait for it to finish.", code: "BUSY" });
+        // Undo reverts the last change written to disk; drop any un-applied draft first.
+        const result = vault.undo();
+        if (!result) return json(res, 400, { error: "Nothing to undo yet." });
+        draft = null;
+        draftOps = [];
+        draftBaseVersion = null;
+        externalConflict = false;
+        reloadBase();
         return json(res, 200, { ok: true, model: modelView() });
       }
 

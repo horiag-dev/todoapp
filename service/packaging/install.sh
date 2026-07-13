@@ -50,22 +50,32 @@ APP_LAUNCHER
 chmod 755 "$APP_BUNDLE/Contents/MacOS/Big Rocks First"
 
 if [ "${BIGROCKS_SKIP_CLAUDE_CHECK:-0}" != "1" ]; then
-  if ! command -v claude >/dev/null 2>&1; then
-    say "Claude Code is required to sign in with your work Claude subscription."
-    say "Installing the official Claude Code CLI with npm (no sudo)…"
-    npm install -g @anthropic-ai/claude-code || fail "Claude Code installation failed. Install it using Anthropic's official instructions, then rerun this installer."
-  fi
-
-  if ! claude auth status >/dev/null 2>&1; then
+  if [ -n "${ANTHROPIC_API_KEY:-}" ] || [ -n "${ANTHROPIC_AUTH_TOKEN:-}" ] || \
+     [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] || [ "${CLAUDE_CODE_USE_BEDROCK:-}" = "1" ] || \
+     [ "${CLAUDE_CODE_USE_VERTEX:-}" = "1" ] || [ "${CLAUDE_CODE_USE_FOUNDRY:-}" = "1" ]; then
+    # A sanctioned API/environment credential is present — the agent will use it.
+    # This is the right path on a managed/work Mac (a personal subscription login
+    # is often blocked and would get the agent killed), so we skip the login step.
     say ""
-    say "Sign in now with the Claude account provided by your employer."
-    say "Choose Claude Team/Enterprise/Pro/Max subscription login—not Console API billing."
-    claude auth login
-  fi
+    say "Detected Anthropic API/environment credentials — the agent will use those."
+    say "No personal Claude login needed. The launcher keeps this key on every start."
+  else
+    # No env credentials found — fall back to a personal Claude subscription login.
+    if ! command -v claude >/dev/null 2>&1; then
+      say "No API key found. Installing the Claude Code CLI for subscription login…"
+      npm install -g @anthropic-ai/claude-code || fail "Claude Code installation failed. Install it using Anthropic's official instructions, then rerun this installer."
+    fi
 
-  say ""
-  say "Claude authentication:"
-  claude auth status --text || true
+    if ! claude auth status >/dev/null 2>&1; then
+      say ""
+      say "Sign in with your Claude subscription (or set a work ANTHROPIC_API_KEY and rerun):"
+      claude auth login || true
+    fi
+
+    say ""
+    say "Claude authentication:"
+    claude auth status --text 2>/dev/null || true
+  fi
 fi
 
 say ""

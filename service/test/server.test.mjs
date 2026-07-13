@@ -109,6 +109,57 @@ test("unconfigured server can create and connect a blank Markdown file", async (
   }
 });
 
+test("undo reverts the last saved change and reports canUndo", async () => {
+  const f = await fixture();
+  try {
+    // A fresh file has no history yet, so there is nothing to undo.
+    let result = await f.request("/api/model");
+    assert.equal(result.body.canUndo, false);
+    result = await f.request("/api/undo", {});
+    assert.equal(result.response.status, 400);
+
+    // A direct edit snapshots the prior file, so undo becomes available.
+    result = await f.request("/api/act", { action: "add", title: "Via API", bucket: "normal" });
+    assert.equal(result.body.model.canUndo, true);
+    assert.match(readFileSync(f.doc, "utf8"), /Via API/);
+
+    // Undo restores the pre-edit file and pops that snapshot.
+    result = await f.request("/api/undo", {});
+    assert.equal(result.response.status, 200);
+    assert.doesNotMatch(readFileSync(f.doc, "utf8"), /Via API/);
+    assert.equal(result.body.model.urgent[0].title, "Existing");
+    assert.equal(result.body.model.canUndo, false);
+
+    // Nothing left to undo.
+    result = await f.request("/api/undo", {});
+    assert.equal(result.response.status, 400);
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("a goals-changing draft reports before/after in the model view", async () => {
+  const goalsAgent = async ({ model, ops }) => {
+    model.goals = { headerLine: "## 🎯 Goals", rawLines: ["**Launch**", "- Ship v2"] };
+    ops.push("edited the Goals notepad");
+    return { reply: "Reworked your goals.", sessionId: "test" };
+  };
+  const f = await fixture(goalsAgent);
+  try {
+    const result = await f.request("/api/chat", { message: "clean up my goals" });
+    assert.equal(result.response.status, 200);
+    assert.equal(result.body.model.goalsChanged, true);
+    assert.deepEqual(result.body.model.goalsBefore, []);
+    assert.deepEqual(result.body.model.goals, ["**Launch**", "- Ship v2"]);
+    // Un-applied draft: the file on disk is untouched.
+    assert.doesNotMatch(readFileSync(f.doc, "utf8"), /Ship v2/);
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
 test("native picker endpoint uses the chosen path and requested creation mode", async () => {
   const dir = mkdtempSync(join(tmpdir(), "bigrocks-picker-"));
   const doc = join(dir, "picked.md");

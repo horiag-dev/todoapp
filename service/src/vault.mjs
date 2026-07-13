@@ -4,6 +4,8 @@ import {
   mkdirSync,
   copyFileSync,
   appendFileSync,
+  readdirSync,
+  rmSync,
 } from "node:fs";
 import { createHash } from "node:crypto";
 import { join, dirname, basename } from "node:path";
@@ -83,5 +85,38 @@ export class Vault {
       this.logPath,
       JSON.stringify({ at: new Date().toISOString(), op, snapshot: basename(snap) }) + "\n",
     );
+  }
+
+  // Snapshots, newest last (timestamps are lexicographically chronological).
+  #snapshots() {
+    try {
+      return readdirSync(this.historyDir)
+        .filter((f) => f.endsWith(".md"))
+        .sort();
+    } catch {
+      return [];
+    }
+  }
+
+  hasHistory() {
+    return this.#snapshots().length > 0;
+  }
+
+  // Restore the newest snapshot and pop it, giving multi-step undo. We restore
+  // WITHOUT taking a new snapshot so repeated undo walks back through history
+  // rather than piling on new entries. Returns {content, version} or null.
+  undo() {
+    const snaps = this.#snapshots();
+    if (!snaps.length) return null;
+    const newest = snaps[snaps.length - 1];
+    const snapPath = join(this.historyDir, newest);
+    const content = readFileSync(snapPath, "utf8");
+    writeFileAtomic(this.todoDocPath, content);
+    rmSync(snapPath, { force: true });
+    appendFileSync(
+      this.logPath,
+      JSON.stringify({ at: new Date().toISOString(), op: "undo", restored: newest }) + "\n",
+    );
+    return { content, version: digest(content) };
   }
 }
