@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
@@ -63,6 +63,12 @@ const DEMO_FILE = `# Todo List
 `;
 
 const expandPath = (p) => resolve(String(p || "").replace(/^~(?=\/|$)/, homedir()));
+
+// Remember the last-opened file so a restart reconnects instead of dropping to onboarding.
+const STATE_DIR = process.env.BIGROCKS_STATE_DIR || join(homedir(), ".config", "big-rocks-first");
+const LAST_FILE = join(STATE_DIR, "last-file");
+function rememberFile(p) { try { mkdirSync(STATE_DIR, { recursive: true }); writeFileSync(LAST_FILE, p, "utf8"); } catch {} }
+function recallFile() { try { const p = readFileSync(LAST_FILE, "utf8").trim(); return p && existsSync(p) ? p : null; } catch { return null; } }
 const clone = (value) => structuredClone(value);
 const conflictBody = (message) => ({ error: message, code: "VAULT_CONFLICT", conflict: true });
 const execFileAsync = promisify(execFile);
@@ -118,6 +124,7 @@ export function createBigRocksServer({
     draftBaseVersion = null;
     externalConflict = false;
     sessionId = undefined;
+    rememberFile(vault.todoDocPath);
   }
 
   function configurePath(path, mode) {
@@ -367,7 +374,8 @@ export function createBigRocksServer({
     }
   });
 
-  if (initialTodoDocPath && existsSync(expandPath(initialTodoDocPath))) setVault(initialTodoDocPath);
+  const bootPath = initialTodoDocPath && existsSync(expandPath(initialTodoDocPath)) ? initialTodoDocPath : recallFile();
+  if (bootPath) { try { setVault(bootPath); } catch (e) { console.error("Could not reopen last file:", e.message); } }
   return server;
 }
 

@@ -10,6 +10,9 @@ PID_FILE="$STATE_DIR/service.pid"
 LOG_FILE="$LOG_DIR/service.log"
 
 mkdir -p "$STATE_DIR" "$LOG_DIR"
+# GUI/launchd launches inherit a minimal PATH; make sure Homebrew node and the
+# Claude CLI (~/.local/bin) are discoverable regardless of how we were started.
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 [ -f "$APP_DIR/src/server.mjs" ] || { echo "Big Rocks First is not installed at $APP_DIR" >&2; exit 1; }
 command -v node >/dev/null 2>&1 || { echo "Node.js is required." >&2; exit 1; }
 
