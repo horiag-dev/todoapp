@@ -161,19 +161,48 @@ test("drag ordering persists within Top 5, Urgent, and Normal", () => {
   assert.match(serialize(m), /### 🔵 Normal[\s\S]*N1[\s\S]*N3[\s\S]*N2/);
 });
 
-test("drag ordering cannot cross the Today boundary in Urgent", () => {
+test("dragging across Today, Urgent, and Normal changes destination state", () => {
   const m = model(`# Todo List
 
 ### 🔴 Urgent
 - [ ] ⭐ Today item
 - [ ] Plain item
+
+### 🔵 Normal
+- [ ] Normal item
 `);
-  assert.throws(() => applyAction(m, "reorderTo", {
-    bucket: "urgent",
+  applyAction(m, "reorderTo", {
+    bucket: "today",
     id: idOf(m, "urgent", "Plain item"),
     targetId: idOf(m, "urgent", "Today item"),
+    position: "after",
+  });
+  assert.deepEqual(m.urgent.map((i) => [i.title, i.starred]), [
+    ["Today item", true],
+    ["Plain item", true],
+  ]);
+
+  applyAction(m, "reorderTo", {
+    bucket: "normal",
+    id: idOf(m, "urgent", "Today item"),
+    targetId: idOf(m, "normal", "Normal item"),
     position: "before",
-  }), /Today items/);
+  });
+  assert.deepEqual(m.normal.map((i) => [i.title, i.starred]), [
+    ["Today item", false],
+    ["Normal item", false],
+  ]);
+
+  applyAction(m, "reorderTo", {
+    bucket: "urgent",
+    id: idOf(m, "normal", "Normal item"),
+    targetId: null,
+    position: "after",
+  });
+  assert.deepEqual(m.urgent.map((i) => [i.title, i.starred]), [
+    ["Plain item", true],
+    ["Normal item", false],
+  ]);
 });
 
 test("To Read direct operations preserve section syntax", () => {

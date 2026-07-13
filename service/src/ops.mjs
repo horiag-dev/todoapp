@@ -89,6 +89,7 @@ export function applyAction(model, action, a = {}) {
     case "setPriority": {
       const f = need(model, a.id);
       const to = a.bucket === "normal" ? "normal" : "urgent";
+      f.item.starred = false;
       if (f.bucket !== to) {
         move(model, f, to);
         if (to === "urgent") reflowUrgent(model);
@@ -135,25 +136,41 @@ export function applyAction(model, action, a = {}) {
       return `moved "${arr[j].title}" ${a.dir}`;
     }
     case "reorderTo": {
-      const bucket = ["top5", "urgent", "normal"].includes(a.bucket) ? a.bucket : null;
-      if (!bucket) throw new Error("items can only be reordered in Top 5, Urgent, or Normal");
-      const arr = model[bucket];
-      const from = arr.findIndex((i) => i.id === a.id);
-      const targetBeforeRemoval = arr.findIndex((i) => i.id === a.targetId);
-      if (from < 0 || targetBeforeRemoval < 0) throw new Error("reorder item not found");
-      if (from === targetBeforeRemoval) return null;
-      const item = arr[from];
-      const targetItem = arr[targetBeforeRemoval];
-      if (bucket === "urgent" && !!item.starred !== !!targetItem.starred) {
-        throw new Error("Today items can only be reordered with other Today items");
+      const destination = ["top5", "today", "urgent", "normal"].includes(a.bucket) ? a.bucket : null;
+      if (!destination) throw new Error("items can only be moved to Top 5, Today, Urgent, or Normal");
+      if (a.targetId === a.id) return null;
+      const source = need(model, a.id);
+      if (!["top5", "urgent", "normal"].includes(source.bucket)) throw new Error("this item cannot be reordered");
+      if ((source.bucket === "top5") !== (destination === "top5")) throw new Error("Top 5 items can only be reordered within Top 5");
+
+      const destinationBucket = ["today", "urgent"].includes(destination) ? "urgent" : destination;
+      let targetItem = null;
+      if (a.targetId) {
+        const target = need(model, a.targetId);
+        const targetDestination = target.bucket === "urgent" ? (target.item.starred ? "today" : "urgent") : target.bucket;
+        if (targetDestination !== destination) throw new Error("drop target is not in the destination list");
+        targetItem = target.item;
       }
-      const before = arr.map((i) => i.id).join("|");
-      arr.splice(from, 1);
-      const target = arr.findIndex((i) => i.id === a.targetId);
-      const insertAt = target + (a.position === "after" ? 1 : 0);
+
+      const item = source.item;
+      const wasBucket = source.bucket === "urgent" ? (item.starred ? "today" : "urgent") : source.bucket;
+      source.arr.splice(source.idx, 1);
+      item.starred = destination === "today";
+      const arr = model[destinationBucket];
+      let insertAt;
+      if (targetItem) {
+        const targetIndex = arr.indexOf(targetItem);
+        insertAt = targetIndex + (a.position === "after" ? 1 : 0);
+      } else if (destination === "today") {
+        const firstUrgent = arr.findIndex((i) => !i.starred);
+        insertAt = firstUrgent < 0 ? arr.length : firstUrgent;
+      } else {
+        insertAt = arr.length;
+      }
       arr.splice(insertAt, 0, item);
-      if (before === arr.map((i) => i.id).join("|")) return null;
-      return `reordered "${item.title}" in ${bucket}`;
+      return wasBucket === destination
+        ? `reordered "${item.title}" in ${destination}`
+        : `moved "${item.title}" from ${wasBucket} to ${destination}`;
     }
     case "clearTop5": {
       if (!model.top5.length) return null;
