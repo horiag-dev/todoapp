@@ -95,6 +95,14 @@ const server = createServer(async (req, res) => {
         return json(res, 400, { error: String(e?.message || e) });
       }
     }
+    if (req.method === "POST" && p === "/api/goals") {
+      const { content } = await readBody(req);
+      if (!working.goals) working.goals = { headerLine: "## 🎯 Goals", rawLines: [] };
+      working.goals.rawLines = String(content ?? "").replace(/\r/g, "").split("\n");
+      vault.save(working, { op: "edit" });
+      reload();
+      return json(res, 200, { ok: true, model: modelView() });
+    }
     if (req.method === "POST" && p === "/api/apply") {
       vault.save(working, { op: "agent" });
       reload();

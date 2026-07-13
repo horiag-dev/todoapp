@@ -27,8 +27,8 @@
   header .sub{font-size:11.5px;color:var(--soft);}
   header .path{margin-left:auto;font:11px ui-monospace,"SF Mono",Menlo,monospace;color:var(--soft);
     max-width:44ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  main{display:grid;grid-template-columns:minmax(230px,1fr) minmax(340px,1.7fr) minmax(300px,1.1fr);
-    gap:14px;padding:14px 16px;max-width:1500px;margin:0 auto;align-items:start;}
+  main{display:grid;grid-template-columns:minmax(220px,0.9fr) minmax(360px,1.7fr) minmax(300px,1.15fr);
+    gap:14px;padding:14px 16px;align-items:start;}
   @media (max-width:960px){ main{grid-template-columns:1fr;} }
   .col{display:flex;flex-direction:column;gap:14px;min-width:0;}
 
@@ -108,15 +108,27 @@
   .pactions button.ghost{background:transparent;color:var(--soft);border:1px solid var(--line);}
 
   /* chat */
-  .chat{display:flex;flex-direction:column;height:calc(100vh - 108px);min-height:340px;position:sticky;top:94px;}
-  .chat .log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:9px;padding:4px;}
-  .msg{padding:8px 11px;border-radius:11px;max-width:92%;white-space:pre-wrap;font-size:12.5px;}
-  .msg.you{align-self:flex-end;background:var(--accent);color:#fff;}
+  .chat{display:flex;flex-direction:column;position:sticky;top:14px;height:calc(100vh - 96px);
+    background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;}
+  .chat .log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:9px;padding:11px;}
+  .msg{padding:8px 11px;border-radius:11px;max-width:92%;font-size:12.5px;line-height:1.45;}
+  .msg.you{align-self:flex-end;background:var(--accent);color:#fff;white-space:pre-wrap;}
   .msg.bot{align-self:flex-start;background:color-mix(in srgb,var(--ink) 7%,transparent);}
   .msg.thinking{opacity:.6;font-style:italic;}
-  .chat form{display:flex;gap:7px;padding:7px 4px 2px;}
-  .chat input{flex:1;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit;}
+  .msg.bot p{margin:.25em 0;} .msg.bot p:first-child{margin-top:0;} .msg.bot p:last-child{margin-bottom:0;}
+  .msg.bot ul{margin:.3em 0;padding-left:1.15em;} .msg.bot li{margin:1px 0;}
+  .msg.bot code{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11.5px;
+    background:color-mix(in srgb,var(--ink) 10%,transparent);padding:1px 4px;border-radius:4px;}
+  .msg.bot strong{font-weight:700;} .msg.bot a{color:inherit;text-decoration:underline;}
+  .chat form{display:flex;gap:7px;padding:9px;border-top:1px solid var(--line);}
+  .chat input{flex:1;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;}
   .chat button{padding:9px 13px;border:none;border-radius:8px;background:var(--accent);color:#fff;font:inherit;font-weight:600;cursor:pointer;}
+  .edit-goals{margin-left:auto;font-size:11px;padding:2px 9px;border:1px solid var(--line);border-radius:6px;
+    background:transparent;color:var(--accent);cursor:pointer;font-weight:600;}
+  .goals-ta{width:100%;min-height:320px;border:1px solid var(--line);border-radius:6px;padding:9px;
+    font:12px/1.5 ui-monospace,"SF Mono",Menlo,monospace;background:var(--bg);color:var(--ink);resize:vertical;}
+  button.tag{appearance:none;font-family:inherit;cursor:pointer;}
+  button.tag:hover{text-decoration:line-through;}
 </style>
 </head>
 <body>
@@ -127,7 +139,7 @@
 </header>
 <main>
   <div class="col">
-    <div class="card c-goals"><h2><span class="ic">🎯</span> Goals</h2><div class="body goals" id="goals"></div></div>
+    <div class="card c-goals"><h2><span class="ic">🎯</span> Goals <button class="edit-goals" id="edit-goals">Edit</button></h2><div class="body goals" id="goals"></div></div>
     <div class="card c-toread"><h2><span class="ic">📚</span> To Read <span class="badge" id="b-toread"></span></h2><ul class="body items read" id="toread"></ul></div>
   </div>
 
@@ -159,6 +171,24 @@
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 const TAGC = ["#2F6FED","#2E9E6B","#8B5CF6","#0EA5A4","#3BA55D","#B4632F","#6B8E23","#C2410C","#0891B2","#9333EA"];
 function tagColor(name){ let h=0; for(const ch of name) h=(h*31+ch.charCodeAt(0))>>>0; return TAGC[h%TAGC.length]; }
+let current = null; // last rendered model (for the Goals editor)
+// small, safe markdown for chat bubbles (escape first, then limited inline + lists)
+function md(s){
+  const inline = (t) => t
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noreferrer">$1</a>');
+  const out = []; let list = [];
+  const flush = () => { if (list.length){ out.push("<ul>" + list.join("") + "</ul>"); list = []; } };
+  for (const ln of esc(s).split("\n")){
+    const m = ln.match(/^\s*[-*]\s+(.*)$/);
+    if (m) list.push("<li>" + inline(m[1]) + "</li>");
+    else { flush(); if (ln.trim()) out.push("<p>" + inline(ln) + "</p>"); }
+  }
+  flush();
+  return out.join("");
+}
 function richTitle(it){
   // strip #tags from the visible title (shown as pills), keep [[links]] + urls
   let t = it.title.replace(/(^|\s)#[A-Za-z0-9_/-]+/g, "").replace(/\s{2,}/g," ").trim();
@@ -167,7 +197,7 @@ function richTitle(it){
     .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noreferrer">$1</a>');
   for (const tag of it.tags || []) {
     const special = ["today","urgent","thisweek"].includes(tag.toLowerCase());
-    html += `<span class="tag" style="--tc:${special ? "var(--today)" : tagColor(tag)}">#${esc(tag)}</span>`;
+    html += `<button class="tag" data-act="removeTag" data-tag="${esc(tag)}" title="Remove tag (double-click the title to add tags)" style="--tc:${special ? "var(--today)" : tagColor(tag)}">#${esc(tag)}</button>`;
   }
   if (it.age != null) html += `<span class="age">${it.age}d</span>`;
   return html;
@@ -189,8 +219,7 @@ function rowActions(it, section){
 }
 function itemLi(it, section){
   const cls = ["item", it.done ? "done" : "", it.today ? "today" : ""].join(" ").trim();
-  const mark = it.today ? '<span class="pill">Today</span>'
-    : (section === "normal" ? '<span class="dot d-normal"></span>' : section === "top5" ? '<span class="dot d-top5"></span>' : "");
+  const mark = it.today ? '<span class="pill">Today</span>' : "";
   return `<li class="${cls}" data-id="${it.id}" data-title="${esc(it.title)}"><button class="box" data-act="complete" title="Complete">${it.done?"●":"○"}</button>${mark}<span class="t">${richTitle(it)}</span>${rowActions(it, section)}</li>`;
 }
 function fill(id, items, section){
@@ -218,8 +247,10 @@ function renderToRead(items){
   document.getElementById("b-toread").textContent = items.length;
 }
 function render(m){
+  current = m;
   document.getElementById("path").textContent = m.todoDocPath;
-  renderGoals(m.goals); renderToRead(m.toread);
+  if (!document.getElementById("edit-goals").dataset.editing) renderGoals(m.goals);
+  renderToRead(m.toread);
   fill("top5", m.top5, "top5"); fill("urgent", m.urgent, "urgent"); fill("normal", m.normal, "normal");
   document.getElementById("foot").textContent = `${m.completed} completed · ${m.deleted} deleted (hidden)`;
   const pend = document.getElementById("pending");
@@ -243,6 +274,11 @@ mid.addEventListener("click", (e) => {
   if (btn) {
     const li = btn.closest("li[data-id]"); if (!li) return;
     if (btn.dataset.act === "agentGoals") return agentMove(li.dataset.id, li.dataset.title);
+    if (btn.dataset.act === "removeTag") {
+      const re = new RegExp("\\s*#" + btn.dataset.tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![\\w/-])", "g");
+      const title = li.dataset.title.replace(re, "").replace(/\s{2,}/g, " ").trim();
+      return act("editTitle", { id: li.dataset.id, title });
+    }
     const extra = { id: li.dataset.id };
     if (btn.dataset.dir) extra.dir = btn.dataset.dir;
     if (btn.dataset.bucket) extra.bucket = btn.dataset.bucket;
@@ -296,7 +332,9 @@ document.getElementById("quickadd").addEventListener("submit", (e) => {
 const log = document.getElementById("log");
 function addMsg(cls, text){
   if (log.querySelector(".empty")) log.innerHTML = "";
-  const div = document.createElement("div"); div.className = "msg " + cls; div.textContent = text;
+  const div = document.createElement("div"); div.className = "msg " + cls;
+  if (cls.split(" ").includes("bot") && !cls.includes("thinking")) div.innerHTML = md(text);
+  else div.textContent = text;
   log.appendChild(div); log.scrollTop = log.scrollHeight; return div;
 }
 // "Move to Goals" invokes the agent loop (judgment: which subsection, rephrase as a goal),
@@ -307,7 +345,7 @@ async function agentMove(id, title){
   try {
     const res = await (await fetch("/api/chat", { method:"POST", headers:{"content-type":"application/json"},
       body: JSON.stringify({ message: `Move the item "${title}" (id: ${id}) into Goals. Pick the best-fitting **subsection** already in the Goals notepad, and rephrase it as a long-term goal rather than a task if appropriate. Then say briefly where you placed it.` }) })).json();
-    p.classList.remove("thinking"); p.textContent = res.reply || res.error || "(done)";
+    p.classList.remove("thinking"); p.innerHTML = md(res.reply || res.error || "(done)");
     if (res.model) render(res.model);
   } catch (err) { p.classList.remove("thinking"); p.textContent = "Error: " + err.message; }
 }
@@ -319,13 +357,28 @@ document.getElementById("chatform").addEventListener("submit", async (e) => {
   const pending = addMsg("bot thinking", "…");
   try {
     const res = await (await fetch("/api/chat", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ message:text }) })).json();
-    pending.classList.remove("thinking"); pending.textContent = res.reply || res.error || "(no reply)";
+    pending.classList.remove("thinking"); pending.innerHTML = md(res.reply || res.error || "(no reply)");
     if (res.model) render(res.model);
   } catch (err){ pending.classList.remove("thinking"); pending.textContent = "Error: " + err.message; }
   input.disabled = false; input.focus();
 });
 document.getElementById("apply").addEventListener("click", async () => { const r = await (await fetch("/api/apply",{method:"POST"})).json(); render(r.model); addMsg("bot","✓ Applied to your file."); });
 document.getElementById("discard").addEventListener("click", async () => { const r = await (await fetch("/api/discard",{method:"POST"})).json(); render(r.model); addMsg("bot","Discarded the pending changes."); });
+
+// Goals direct edit (Edit → textarea of the raw markdown → Save autosaves)
+document.getElementById("edit-goals").addEventListener("click", async () => {
+  const btn = document.getElementById("edit-goals");
+  if (btn.dataset.editing) {
+    const val = document.getElementById("goals-ta").value;
+    delete btn.dataset.editing; btn.textContent = "Edit";
+    const r = await (await fetch("/api/goals", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ content: val }) })).json();
+    render(r.model);
+  } else {
+    btn.dataset.editing = "1"; btn.textContent = "Save";
+    document.getElementById("goals").innerHTML = '<textarea class="goals-ta" id="goals-ta"></textarea>';
+    const ta = document.getElementById("goals-ta"); ta.value = (current?.goals || []).join("\n"); ta.focus();
+  }
+});
 load();
 </script>
 </body>

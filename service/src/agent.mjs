@@ -10,7 +10,7 @@ const ok = (text) => ({ content: [{ type: "text", text }] });
 const SYSTEM = `You are the assistant inside "Big Rocks First", a todo app backed by a single markdown file the user owns.
 
 The model is categorical, never temporal — there are NO due dates, calendars, or recurring tasks. Never invent or ask for dates.
-- Goals: a long-term notepad. Move a task here when it's really a goal/theme, not an action.
+- Goals: a long-term notepad. Move a task here (move_to_goals) when it's really a goal/theme, not an action. You can also read and rewrite the whole notepad (read_goals → write_goals) to reorganize, tidy, or add/remove goal lines under **Subsection** headers.
 - Urgent: the active working list. An item can be marked "Today" (very urgent) — Today items float to the top.
 - Normal: the pile of everything else.
 - Top 5: the handful of priorities for the week.
@@ -46,6 +46,12 @@ function buildServer(ctx) {
       return ok(JSON.stringify(cap.map((it) => ({ ...itemView(it), age_days: ageDays(seen, it.title) }))));
     }),
     tool("read_goals", "Read the Goals notepad (raw markdown).", {}, async () => ok(model.goals?.rawLines?.join("\n") ?? "")),
+    tool("write_goals", "Rewrite the Goals notepad with new markdown content. ALWAYS read_goals first and preserve everything you are not intentionally changing — this replaces the whole notepad. Use **Subsection** bold headers and `- ` bullets, like the existing content.", { content: z.string() }, async ({ content }) => {
+      if (!model.goals) model.goals = { headerLine: "## 🎯 Goals", rawLines: [] };
+      model.goals.rawLines = content.replace(/\r/g, "").split("\n");
+      ops.push("edited the Goals notepad");
+      return ok("Goals updated.");
+    }),
     tool("search", "Search item titles across Urgent, Normal, and Top 5.", { query: z.string() }, async ({ query }) => {
       const q = query.toLowerCase();
       const hits = ["urgent", "normal", "top5"].flatMap((b) =>
