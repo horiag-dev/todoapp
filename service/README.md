@@ -54,6 +54,22 @@ before starting the service.
 The real-file test/validation defaults to `~/Downloads/new_worktodo 14.md`
 (override with `REAL_TODO_FILE`).
 
+### Deliver
+
+Ships as a **plain Node service** — no app bundle, no installer (nothing for
+Gatekeeper to flag, and it inherits your shell's environment, e.g. a
+work-sanctioned `ANTHROPIC_API_KEY`).
+
+```sh
+sh scripts/build-service-package.sh    # → dist/big-rocks-first-service-<version>.tar.gz (+ .sha256)
+```
+
+To run a delivered package: extract it and `sh run.sh` from a Terminal, then open
+`http://127.0.0.1:5178`. `run.sh` installs locked deps on first run (Node 18+),
+then `node src/server.mjs`. Set `PORT=5179 sh run.sh` to change the port. For a
+Dock icon, use Chrome's "Save and Share → Create Shortcut" (a web manifest + PNG
+icons are served).
+
 ## Safety model
 
 - The server binds to loopback only.
