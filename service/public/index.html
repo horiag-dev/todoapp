@@ -5,432 +5,137 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Big Rocks First</title>
 <style>
-  :root{
-    --bg:#ECECEC; --card:#FFFFFF; --ink:#1B1B1D; --soft:#6A6A6E; --line:#E4E4E4;
-    --today:#E23B3B; --urgent:#B8860B; --normal:#2F6FED; --top5:#2F6FED;
-    --toread:#C2410C; --goals:#2E9E6B; --accent:#2F6FED; --danger:#E23B3B;
-    --r:8px; --r-sm:6px;
-  }
-  @media (prefers-color-scheme:dark){
-    :root{
-      --bg:#191919; --card:#242426; --ink:#ECECEC; --soft:#9A9A9E; --line:#343436;
-      --today:#F26D6D; --urgent:#D6AC45; --normal:#6C9BF5; --top5:#6C9BF5;
-      --toread:#E08A4D; --goals:#4FB98A; --accent:#6C9BF5; --danger:#F26D6D;
-    }
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--ink);
-    font:13px/1.5 -apple-system,system-ui,"SF Pro Text","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;}
-  header{display:flex;align-items:center;gap:12px;padding:9px 16px;border-bottom:1px solid var(--line);
-    background:var(--card);position:sticky;top:0;z-index:5;}
-  header h1{font-size:14px;margin:0;font-weight:700;letter-spacing:-.01em;}
-  header .sub{font-size:11.5px;color:var(--soft);}
-  header .path{margin-left:auto;font:11px ui-monospace,"SF Mono",Menlo,monospace;color:var(--soft);
-    max-width:44ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  main{display:grid;grid-template-columns:var(--c1,300px) 12px minmax(340px,1fr) 12px var(--c2,360px);
-    gap:0;padding:14px 12px;align-items:start;}
-  .gutter{align-self:stretch;min-height:240px;cursor:col-resize;position:relative;}
-  .gutter::after{content:"";position:absolute;left:5px;top:0;bottom:0;width:2px;border-radius:2px;background:var(--line);}
-  .gutter:hover::after,.gutter.drag::after{background:var(--accent);}
-  @media (max-width:960px){ main{grid-template-columns:1fr;} .gutter{display:none;} }
-  .col{display:flex;flex-direction:column;gap:14px;min-width:0;}
-
-  /* section cards with a colored left rail + tinted bg + count badge */
-  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
-    border-left:3px solid var(--c,var(--line));overflow:hidden;}
-  .card > h2{display:flex;align-items:center;gap:7px;margin:0;padding:9px 13px;font-size:12px;
-    font-weight:700;letter-spacing:.01em;border-bottom:1px solid var(--line);
-    background:color-mix(in srgb,var(--c,var(--ink)) 6%,transparent);}
-  .card > h2 .ic{color:var(--c,var(--soft));}
-  .badge{margin-left:auto;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;
-    color:var(--c,var(--soft));background:color-mix(in srgb,var(--c,var(--ink)) 15%,transparent);
-    padding:1px 8px;border-radius:999px;}
-  .c-today{--c:var(--today);} .c-urgent{--c:var(--urgent);} .c-normal{--c:var(--normal);}
-  .c-top5{--c:var(--top5);} .c-toread{--c:var(--toread);} .c-goals{--c:var(--goals);}
-  .body{padding:5px 7px;}
-
-  ul.items{list-style:none;margin:0;padding:0;}
-  .item{display:flex;gap:8px;align-items:flex-start;padding:5px 6px;border-radius:var(--r-sm);position:relative;}
-  .item:hover{background:color-mix(in srgb,var(--ink) 5%,transparent);}
-  .box{appearance:none;border:none;background:none;cursor:pointer;padding:0;margin-top:1px;
-    font-size:15px;line-height:1;color:var(--soft);flex:0 0 auto;}
-  .box:hover{color:var(--accent);}
-  .item.done .t{color:var(--soft);text-decoration:line-through;}
-  .item .t{min-width:0;word-wrap:break-word;overflow-wrap:anywhere;flex:1;}
-  .item.today{background:color-mix(in srgb,var(--today) 9%,transparent);}
-  .item.today .t{font-weight:600;}
-  .pill{display:inline-flex;align-items:center;font-size:9.5px;font-weight:800;letter-spacing:.05em;
-    text-transform:uppercase;color:#fff;background:var(--today);padding:2px 6px;border-radius:5px;
-    flex:0 0 auto;margin-top:1px;line-height:1.4;}
-  .dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto;margin-top:6px;background:var(--d,var(--soft));}
-  .d-normal{--d:var(--normal);} .d-top5{--d:var(--top5);}
-  a{color:var(--accent);text-underline-offset:2px;}
-  .wl{color:var(--accent);opacity:.85;}
-  .tag{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:5px;margin-left:5px;
-    color:var(--tc,var(--soft));background:color-mix(in srgb,var(--tc,var(--ink)) 16%,transparent);
-    border:1px solid color-mix(in srgb,var(--tc,var(--ink)) 34%,transparent);vertical-align:middle;}
-  .age{display:inline-block;margin-left:6px;font-size:10px;font-weight:600;color:var(--soft);
-    background:color-mix(in srgb,var(--ink) 8%,transparent);padding:0 5px;border-radius:5px;vertical-align:middle;}
-  .rowact{display:none;gap:2px;flex:0 0 auto;align-items:center;}
-  .item:hover .rowact{display:flex;}
-  .rowact button{appearance:none;border:none;background:none;cursor:pointer;color:var(--soft);
-    font-size:12px;padding:1px 4px;border-radius:4px;line-height:1;}
-  .rowact button:hover{background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink);}
-  .rowact .t-on{color:var(--today);}
-  input.edit{flex:1;font:inherit;border:1px solid var(--accent);border-radius:5px;padding:2px 6px;
-    background:var(--card);color:var(--ink);outline:none;}
-  input.tagadd{font:inherit;font-size:11px;border:1px solid var(--accent);border-radius:5px;padding:0 5px;
-    margin-left:5px;width:82px;background:var(--card);color:var(--ink);outline:none;}
-  .empty{color:var(--soft);font-size:12px;padding:6px;}
-  h2.tog{cursor:pointer;user-select:none;}
-  .chev{color:var(--soft);font-size:9px;transition:transform .12s;display:inline-block;}
-  .card.collapsed .body{display:none;}
-  .card.collapsed .chev{transform:rotate(-90deg);}
-
-  /* quick add */
-  .quickadd{display:flex;gap:7px;align-items:center;background:var(--card);border:1px solid var(--line);
-    border-radius:var(--r);padding:7px 8px;}
-  .qa-prio{appearance:none;border:none;cursor:pointer;font-size:9.5px;font-weight:800;text-transform:uppercase;
-    letter-spacing:.05em;color:#fff;background:var(--qc,var(--urgent));padding:4px 9px;border-radius:6px;flex:0 0 auto;}
-  .quickadd input{flex:1;border:none;background:none;color:var(--ink);font:inherit;outline:none;padding:2px 0;}
-  .quickadd .add{appearance:none;border:none;background:var(--accent);color:#fff;font:inherit;font-weight:600;
-    padding:5px 12px;border-radius:6px;cursor:pointer;}
-
-  /* goals + toread */
-  .goals .sub{font-weight:700;margin:11px 0 3px;font-size:12.5px;}
-  .goals .sub:first-child{margin-top:2px;}
-  .goals ul{margin:0;padding-left:16px;} .goals li{margin:2px 0;}
-  .read li{list-style:none;margin:5px 6px;}
-  .foot{font-size:11.5px;color:var(--soft);padding:2px 4px;}
-
-  /* pending (agent draft) */
-  .pending[hidden]{display:none;}
-  .pending{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:color-mix(in srgb,var(--today) 12%,var(--card));
-    border:1px solid color-mix(in srgb,var(--today) 40%,var(--line));border-radius:var(--r);padding:9px 12px;}
-  .pending .txt{font-size:12.5px;font-weight:700;} .pending .ops{font-size:11.5px;color:var(--soft);width:100%;}
-  .pactions{margin-left:auto;display:flex;gap:7px;}
-  .pactions button{padding:6px 12px;border:none;border-radius:6px;background:var(--accent);color:#fff;font:inherit;font-weight:600;cursor:pointer;}
-  .pactions button.ghost{background:transparent;color:var(--soft);border:1px solid var(--line);}
-
-  /* chat */
-  .chat{display:flex;flex-direction:column;position:sticky;top:14px;height:calc(100vh - 96px);
-    background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;}
-  .chat .log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:9px;padding:11px;}
-  .msg{padding:8px 11px;border-radius:11px;max-width:92%;font-size:12.5px;line-height:1.45;}
-  .msg.you{align-self:flex-end;background:var(--accent);color:#fff;white-space:pre-wrap;}
-  .msg.bot{align-self:flex-start;background:color-mix(in srgb,var(--ink) 7%,transparent);}
-  .msg.thinking{opacity:.6;font-style:italic;}
-  .msg.bot p{margin:.25em 0;} .msg.bot p:first-child{margin-top:0;} .msg.bot p:last-child{margin-bottom:0;}
-  .msg.bot ul{margin:.3em 0;padding-left:1.15em;} .msg.bot li{margin:1px 0;}
-  .msg.bot code{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11.5px;
-    background:color-mix(in srgb,var(--ink) 10%,transparent);padding:1px 4px;border-radius:4px;}
-  .msg.bot strong{font-weight:700;} .msg.bot a{color:inherit;text-decoration:underline;}
-  .chat form{display:flex;gap:7px;padding:9px;border-top:1px solid var(--line);}
-  .chat input{flex:1;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;}
-  .chat button{padding:9px 13px;border:none;border-radius:8px;background:var(--accent);color:#fff;font:inherit;font-weight:600;cursor:pointer;}
-  .edit-goals{margin-left:auto;font-size:11px;padding:2px 9px;border:1px solid var(--line);border-radius:6px;
-    background:transparent;color:var(--accent);cursor:pointer;font-weight:600;}
-  .goals-ta{width:100%;min-height:320px;border:1px solid var(--line);border-radius:6px;padding:9px;
-    font:12px/1.5 ui-monospace,"SF Mono",Menlo,monospace;background:var(--bg);color:var(--ink);resize:vertical;}
-  button.tag{appearance:none;font-family:inherit;cursor:pointer;}
-  button.tag:hover{text-decoration:line-through;}
+  :root{--bg:#fff;--card:#fff;--ink:#28282b;--soft:#74777c;--line:#e8e9eb;--today:#f23838;--urgent:#e9b900;--normal:#1884f5;--read:#f28434;--goals:#1785f5;--accent:#1684f8;--danger:#df3535;--r:10px}
+  @media(prefers-color-scheme:dark){:root{--bg:#191919;--card:#242426;--ink:#ececec;--soft:#9a9a9e;--line:#3a3a3c;--today:#f26d6d;--urgent:#d6ac45;--normal:#6c9bf5;--read:#e08a4d;--goals:#4fb98a;--accent:#6c9bf5;--danger:#ef6666}}
+  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.5 -apple-system,system-ui,"SF Pro Text","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+  button,input,textarea{font:inherit}button{cursor:pointer}header{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #f0f0f1;background:var(--card);position:sticky;top:0;z-index:10}header h1{font-size:14px;margin:0}.sub,.path{color:var(--soft);font-size:11.5px}.path{margin-left:auto;max-width:38ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,monospace}
+  .iconbtn,.mini{border:1px solid var(--line);background:transparent;color:var(--soft);border-radius:6px;padding:3px 8px}.mini{font-size:11px}.danger{color:var(--danger)!important}
+  .toolbar{display:flex;align-items:center;gap:7px;padding:0 2px;background:transparent;border:0}.toolbar-label{font-size:11px;color:var(--soft);font-weight:600}.search{width:150px;padding:5px 9px;border:1px solid var(--line);border-radius:7px;background:#fafafa;color:var(--ink);outline:none}.search:focus{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 12%,transparent)}.tags{display:flex;gap:5px;overflow:auto;flex:1}.tagfilter{border:1px solid color-mix(in srgb,var(--tc,var(--soft)) 40%,var(--line));border-radius:6px;background:color-mix(in srgb,var(--tc,var(--soft)) 10%,#fff);color:color-mix(in srgb,var(--tc,var(--soft)) 75%,#222);font-size:10px;font-weight:600;padding:2px 8px;white-space:nowrap}.tagfilter.on{background:var(--tc,var(--accent));border-color:var(--tc,var(--accent));color:#fff}
+  .notice{margin:10px 14px 0;padding:8px 11px;border-radius:7px;background:color-mix(in srgb,var(--danger) 12%,var(--card));border:1px solid color-mix(in srgb,var(--danger) 45%,var(--line));display:flex;gap:8px;align-items:center}.notice[hidden]{display:none}.notice span{flex:1}.notice.info{background:color-mix(in srgb,var(--accent) 10%,var(--card));border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+  main{display:grid;grid-template-columns:var(--c1,340px) 14px minmax(430px,1fr) 14px var(--c2,350px);padding:16px 18px;gap:0;align-items:start}.col{display:flex;flex-direction:column;gap:14px;min-width:0}.gutter{align-self:stretch;min-height:240px;cursor:col-resize;position:relative}.gutter:after{content:"";position:absolute;left:6px;inset-block:0;width:1px;background:var(--line)}.gutter:hover:after{width:2px;background:var(--accent)}
+  @media(max-width:960px){main{grid-template-columns:1fr;gap:12px}.gutter{display:none}.chat{height:460px!important;position:static!important}}
+  .card{--c:var(--line);background:var(--card);border:1px solid color-mix(in srgb,var(--c) 28%,var(--line));border-left:4px solid var(--c);border-radius:var(--r);overflow:hidden}.goals-card{--c:var(--goals);border:0;background:transparent}.read-card{--c:var(--read)}.top-card{--c:var(--normal);background:#f6faff}.normal-card{--c:var(--normal);background:#f8fbff}.urgent-card{--c:var(--urgent);background:#fffbed}.life-card{--c:var(--soft);background:#fafafa}
+  .card>h2{display:flex;align-items:center;gap:7px;margin:0;padding:11px 13px;font-size:13px;border-bottom:1px solid color-mix(in srgb,var(--c) 34%,var(--line));background:color-mix(in srgb,var(--c) 5%,transparent)}.goals-card>h2{padding:10px 5px;border-bottom:1px solid var(--line);background:transparent}.badge{font-size:10px;color:#fff;background:var(--c);padding:1px 7px;border-radius:99px}.hacts{margin-left:auto;display:flex;gap:5px}.body{padding:7px 9px}.collapsed .body{display:none}.toggle{cursor:pointer}.chev{font-size:9px;color:var(--soft)}.collapsed .chev{transform:rotate(-90deg)}
+  ul.items{list-style:none;margin:0;padding:0}.item{display:flex;gap:7px;align-items:flex-start;padding:6px 7px;border-radius:6px;position:relative}.item:hover{background:#fff9}.item.today{background:#fff0f0;box-shadow:inset 3px 0 0 var(--today);padding-left:10px}.item .t{flex:1;min-width:0;overflow-wrap:anywhere}.pill{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;height:17px;margin-top:0;padding:0 6px;border:0;border-radius:5px;background:var(--today);color:#fff;font-size:9.5px;font-weight:800;line-height:17px;letter-spacing:.04em;text-transform:uppercase;-webkit-font-smoothing:antialiased}.draghandle{width:10px;height:15px;cursor:grab;opacity:0;user-select:none;flex:0 0 10px;position:relative}.draghandle:before{content:"";position:absolute;inset:2px 0 1px 0;background:radial-gradient(circle,#aeb2b7 1px,transparent 1.5px) 0 0/5px 5px}.item:hover .draghandle{opacity:1}.draghandle:active{cursor:grabbing}.item.dragging{opacity:.35}.item.drop-before:before,.item.drop-after:after{content:"";position:absolute;left:7px;right:7px;height:2px;background:var(--accent);border-radius:2px}.item.drop-before:before{top:-1px}.item.drop-after:after{bottom:-1px}.box{border:1.5px solid #92969b;background:#fff;color:transparent;padding:0;margin-top:1px;width:15px;height:15px;border-radius:50%;font-size:0;line-height:1}.box:hover{border-color:var(--accent)}.rowact{display:none;gap:2px}.item:hover .rowact{display:flex}.rowact button{border:0;background:none;color:var(--soft);padding:1px 4px;font-size:11px}.rowact button:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 9%,transparent);border-radius:4px}.tag{display:inline-block;border:1px solid color-mix(in srgb,var(--tc,var(--soft)) 35%,transparent);background:color-mix(in srgb,var(--tc,var(--soft)) 12%,#fff);color:color-mix(in srgb,var(--tc,var(--soft)) 70%,#222);border-radius:6px;font-size:10px;font-weight:600;padding:0 6px;margin-left:4px}.age{font-size:10px;color:var(--soft);margin-left:5px}.empty{color:var(--soft);font-size:11.5px;padding:6px}.readline{display:flex;gap:6px;align-items:flex-start;margin:4px 2px}.readline .text{flex:1;overflow-wrap:anywhere}.readline a{color:var(--accent)}
+  .inlineform,.quickadd{display:flex;gap:7px;padding:8px;background:var(--card);border:1.5px solid #69b5ff;border-radius:var(--r);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 4%,transparent)}.inlineform{border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none}.inlineform input,.quickadd input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);outline:none}.inlineform button,.quickadd .add,.primary{border:0;background:var(--accent);color:#fff;border-radius:6px;padding:5px 10px;font-weight:600}.qa-prio{border:0;border-radius:6px;background:var(--qc,var(--urgent));color:#fff;font-size:10px;font-weight:800;padding:5px 10px}.goals{padding:10px 0!important}.goal-group{--gc:#1684f8;border:1px solid color-mix(in srgb,var(--gc) 18%,var(--line));border-radius:9px;padding:10px 12px;margin-bottom:11px;background:#fff}.goal-group h3{font-size:13px;margin:0 0 7px;padding-left:9px;border-left:4px solid var(--gc)}.goal-group ul{margin:0;padding-left:18px}.goal-group li{margin:4px 0}.goal-group li::marker{color:color-mix(in srgb,var(--gc) 55%,#fff)}.goals-ta{width:100%;min-height:260px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px;font:12px/1.5 ui-monospace,monospace;resize:vertical}
+  .pending{padding:9px 11px;border:1px solid color-mix(in srgb,var(--today) 40%,var(--line));background:color-mix(in srgb,var(--today) 10%,var(--card));border-radius:var(--r)}.pending[hidden]{display:none}.pendingtop{display:flex;align-items:center;gap:8px}.pendingtop strong{flex:1}.ops{font-size:11px;color:var(--soft);margin-top:5px}.foot{color:var(--soft);font-size:11px}
+  .chat{display:flex;flex-direction:column;position:sticky;top:98px;height:calc(100vh - 115px);background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}.log{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:10px}.msg{padding:8px 10px;border-radius:10px;max-width:92%;font-size:12.5px}.you{align-self:flex-end;background:var(--accent);color:#fff}.bot{align-self:flex-start;background:color-mix(in srgb,var(--ink) 7%,transparent)}.thinking{opacity:.6;font-style:italic}.chat form{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line)}.chat input{flex:1;min-width:0;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:8px}.chat button{border:0;border-radius:7px;background:var(--accent);color:#fff;padding:8px 11px}
+  .modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:#0008}.modal[hidden]{display:none}.dialog{width:min(520px,calc(100vw - 28px));background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;box-shadow:0 20px 70px #0006}.dialog h2{margin:0 0 5px}.dialog p{color:var(--soft)}.dialog input{width:100%;padding:9px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink)}.dialog .actions{display:flex;justify-content:flex-end;gap:7px;margin-top:12px}.dialog button{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:7px;padding:7px 11px}.dialog button.primary{border:0;color:#fff}
+  .picker-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:16px 0}.picker-actions button{padding:12px 8px}.picker-actions button:first-child{background:var(--accent);border-color:var(--accent);color:#fff}.or{display:flex;align-items:center;gap:8px;font-size:11px}.or:before,.or:after{content:"";height:1px;background:var(--line);flex:1}
+  input.edit,input.tagadd{background:var(--card);color:var(--ink);border:1px solid var(--accent);border-radius:5px;padding:2px 5px;outline:none}input.edit{flex:1}input.tagadd{width:75px;margin-left:4px}
 </style>
 </head>
 <body>
-<header>
-  <h1>🪨 Big Rocks First</h1>
-  <span class="sub">click to edit · saves instantly · ask the assistant for bigger changes</span>
-  <span class="path" id="path"></span>
-</header>
+<header><h1>🪨 Big Rocks First</h1><span class="sub">Markdown-owned · assistant changes require approval</span><span class="path" id="path"></span><button class="iconbtn" id="choose">File…</button></header>
+<div class="notice" id="notice" hidden><span id="notice-text"></span><button class="mini" id="notice-action" hidden></button><button class="mini" id="notice-close">×</button></div>
 <main>
   <div class="col">
-    <div class="card c-goals"><h2><span class="ic">🎯</span> Goals <button class="edit-goals" id="edit-goals">Edit</button></h2><div class="body goals" id="goals"></div></div>
-    <div class="card c-toread"><h2><span class="ic">📚</span> To Read <span class="badge" id="b-toread"></span></h2><ul class="body items read" id="toread"></ul></div>
+    <section class="card goals-card"><h2>◎ Goals <span class="hacts"><button class="mini" id="edit-goals">✎ Edit</button></span></h2><div class="body goals" id="goals"></div></section>
+    <section class="card read-card"><h2>📚 To Read <span class="badge" id="b-read"></span></h2><div class="body" id="toread"></div><form class="inlineform" data-add="addToRead"><input placeholder="Add a link or reference…"><button>Add</button></form></section>
   </div>
-
   <div class="gutter" id="gl"></div>
-
   <div class="col" id="mid">
-    <form class="quickadd" id="quickadd">
-      <button type="button" class="qa-prio" id="qa-prio">Urgent</button>
-      <input id="qa-input" placeholder="Add a todo…  (⏎ to add)" autocomplete="off" />
-      <button class="add">Add</button>
-    </form>
-    <div class="pending" id="pending" hidden>
-      <span class="txt" id="pendingtext"></span>
-      <div class="pactions"><button id="apply">Apply to file</button><button id="discard" class="ghost">Discard</button></div>
-      <div class="ops" id="pendingops"></div>
-    </div>
-    <div class="card c-top5"><h2><span class="ic">🎯</span> Top 5 of the Week <span class="badge" id="b-top5"></span></h2><ul class="body items" id="top5"></ul></div>
-    <div class="card c-today"><h2><span class="ic">🔴</span> Urgent <span class="badge" id="b-urgent"></span></h2><ul class="body items" id="urgent"></ul></div>
-    <div class="card c-normal" id="card-normal"><h2 class="tog" data-collapse="card-normal"><span class="chev">▾</span><span class="ic">🔵</span> Normal <span class="badge" id="b-normal"></span></h2><ul class="body items" id="normal"></ul></div>
+    <form class="quickadd" id="quickadd"><button type="button" class="qa-prio" id="qa-prio">Urgent</button><input id="qa-input" placeholder="Add a todo…"><button class="add">Add</button></form>
+    <div class="toolbar"><input class="search" id="search" placeholder="Search…"/><span class="toolbar-label">Tags:</span><div class="tags" id="tags"></div><button class="mini" id="clear-filter" hidden>Clear</button></div>
+    <div class="pending" id="pending" hidden><div class="pendingtop"><strong id="pendingtext"></strong><button class="mini primary" id="apply">Apply</button><button class="mini" id="discard">Discard</button></div><div class="ops" id="pendingops"></div></div>
+    <section class="card top-card"><h2>🎯 Top 5 <span class="badge" id="b-top5"></span><span class="hacts"><button class="mini" data-prompt="addTop5">Add</button><button class="mini danger" data-confirm="clearTop5">Clear</button></span></h2><ul class="body items" id="top5"></ul></section>
+    <section class="card urgent-card"><h2>🔴 Urgent <span class="badge" id="b-urgent"></span></h2><ul class="body items" id="urgent"></ul></section>
+    <section class="card normal-card"><h2>🔵 Normal <span class="badge" id="b-normal"></span></h2><ul class="body items" id="normal"></ul></section>
+    <section class="card life-card collapsed" id="completed-card"><h2 class="toggle" data-toggle="completed-card"><span class="chev">▾</span>✅ Completed <span class="badge" id="b-completed"></span><span class="hacts"><button class="mini" data-confirm="archiveCompleted">Move to Deleted</button></span></h2><ul class="body items" id="completed"></ul></section>
+    <section class="card life-card collapsed" id="deleted-card"><h2 class="toggle" data-toggle="deleted-card"><span class="chev">▾</span>🗑️ Deleted <span class="badge" id="b-deleted"></span></h2><ul class="body items" id="deleted"></ul></section>
     <div class="foot" id="foot"></div>
   </div>
-
   <div class="gutter" id="gr"></div>
-
-  <div class="col">
-    <div class="chat">
-      <div class="log" id="log"><div class="empty">Ask me to triage, mark things Today, move to Goals, or tidy up stale links — I'll propose changes you can Apply.</div></div>
-      <form id="chatform"><input id="chatin" placeholder="Message the assistant…" autocomplete="off" /><button>Send</button></form>
-    </div>
-  </div>
+  <div class="col"><div class="chat"><div class="log" id="log"><div class="empty">Ask the assistant to triage, reorganize, tag, or clean up. Changes stay in a draft until you apply them.</div></div><form id="chatform"><input id="chatin" placeholder="Message the assistant…"><button id="chat-send">Send</button><button type="button" id="chat-cancel" class="danger" hidden>Cancel</button></form></div></div>
 </main>
+<div class="modal" id="setup" hidden><div class="dialog"><h2>Choose your Markdown file</h2><p>Navigate to an existing todo document, or choose where to save a new one. The file remains the source of truth.</p><div class="picker-actions"><button data-pick="open">Open existing…</button><button data-pick="blank">Create blank…</button><button data-pick="demo">Create demo…</button></div><p class="or">or enter an exact path</p><input id="setup-path" placeholder="~/Documents/todos.md"><div class="actions"><button id="setup-cancel">Cancel</button><button class="primary" id="setup-manual">Open path</button></div></div></div>
 <script>
-const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
-const TAGC = ["#2F6FED","#2E9E6B","#8B5CF6","#0EA5A4","#3BA55D","#B4632F","#6B8E23","#C2410C","#0891B2","#9333EA"];
-function tagColor(name){ let h=0; for(const ch of name) h=(h*31+ch.charCodeAt(0))>>>0; return TAGC[h%TAGC.length]; }
-let current = null; // last rendered model (for the Goals editor)
-// small, safe markdown for chat bubbles (escape first, then limited inline + lists)
-function md(s){
-  const inline = (t) => t
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
-    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noreferrer">$1</a>');
-  const out = []; let list = [];
-  const flush = () => { if (list.length){ out.push("<ul>" + list.join("") + "</ul>"); list = []; } };
-  for (const ln of esc(s).split("\n")){
-    const m = ln.match(/^\s*[-*]\s+(.*)$/);
-    if (m) list.push("<li>" + inline(m[1]) + "</li>");
-    else { flush(); if (ln.trim()) out.push("<p>" + inline(ln) + "</p>"); }
-  }
-  flush();
-  return out.join("");
-}
-function richTitle(it){
-  // strip #tags from the visible title (shown as pills), keep [[links]] + urls
-  let t = it.title.replace(/(^|\s)#[A-Za-z0-9_/-]+/g, "").replace(/\s{2,}/g," ").trim();
-  let html = esc(t)
-    .replace(/\[\[([^\]]+)\]\]/g, '<span class="wl">[[$1]]</span>')
-    .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noreferrer">$1</a>');
-  for (const tag of it.tags || []) {
-    const special = ["today","urgent","thisweek"].includes(tag.toLowerCase());
-    html += `<button class="tag" data-act="removeTag" data-tag="${esc(tag)}" title="Remove tag (double-click the title to add tags)" style="--tc:${special ? "var(--today)" : tagColor(tag)}">#${esc(tag)}</button>`;
-  }
-  if (it.age != null) html += `<span class="age">${it.age}d</span>`;
-  return html;
-}
-function rowActions(it, section){
-  const b = [];
-  if (section === "urgent"){
-    b.push(`<button data-act="reorder" data-dir="up" title="Move up">↑</button>`);
-    b.push(`<button data-act="reorder" data-dir="down" title="Move down">↓</button>`);
-  }
-  if (section === "urgent" || section === "normal"){
-    b.push(`<button data-act="toggleToday" class="${it.today?"t-on":""}" title="Toggle Today">★</button>`);
-    const to = section === "urgent" ? "normal" : "urgent";
-    b.push(`<button data-act="setPriority" data-bucket="${to}" title="Move to ${to==="normal"?"Normal":"Urgent"}">${to==="normal"?"→N":"→U"}</button>`);
-    b.push(`<button data-act="addTag" title="Add a tag">#+</button>`);
-    b.push(`<button data-act="agentGoals" title="Move to Goals — asks the assistant to place it">🎯</button>`);
-  }
-  b.push(`<button data-act="delete" title="Delete">✕</button>`);
-  return `<span class="rowact">${b.join("")}</span>`;
-}
-function itemLi(it, section){
-  const cls = ["item", it.done ? "done" : "", it.today ? "today" : ""].join(" ").trim();
-  const mark = it.today ? '<span class="pill">Today</span>' : "";
-  return `<li class="${cls}" data-id="${it.id}" data-title="${esc(it.title)}"><button class="box" data-act="complete" title="Complete">${it.done?"●":"○"}</button>${mark}<span class="t">${richTitle(it)}</span>${rowActions(it, section)}</li>`;
-}
-function fill(id, items, section){
-  const el = document.getElementById(id);
-  el.innerHTML = items.length ? items.map((it) => itemLi(it, section)).join("") : '<li class="empty">Nothing here.</li>';
-  const b = document.getElementById("b-" + id); if (b) b.textContent = items.length;
-}
-function renderGoals(lines){
-  let html = "", open = false; const close = () => { if (open){ html += "</ul>"; open = false; } };
-  for (const raw of lines){
-    const line = raw.trim(); let m;
-    if ((m = line.match(/^\*\*(.+?)\*\*(.*)$/))) { close(); html += `<div class="sub">${esc(m[1])}${esc(m[2])}</div>`; }
-    else if ((m = line.match(/^-\s+(.*)$/))) { if(!open){ html += "<ul>"; open = true; } html += `<li>${esc(m[1])}</li>`; }
-    else if (line) { close(); html += `<p>${esc(line)}</p>`; }
-  }
-  close(); document.getElementById("goals").innerHTML = html || '<div class="empty">No goals.</div>';
-}
-function renderToRead(items){
-  const el = document.getElementById("toread");
-  el.innerHTML = items.length ? items.map((it) => {
-    const link = /^https?:\/\//.test(it.text) ? `<a href="${esc(it.text)}" target="_blank" rel="noreferrer">${esc(it.text)}</a>` : esc(it.text);
-    const age = it.age != null ? `<span class="age">${it.age}d</span>` : "";
-    return `<li>${link}${age}</li>`;
-  }).join("") : '<li class="empty">Nothing to read.</li>';
-  document.getElementById("b-toread").textContent = items.length;
-}
-function render(m){
-  current = m;
-  document.getElementById("path").textContent = m.todoDocPath;
-  if (!document.getElementById("edit-goals").dataset.editing) renderGoals(m.goals);
-  renderToRead(m.toread);
-  fill("top5", m.top5, "top5"); fill("urgent", m.urgent, "urgent"); fill("normal", m.normal, "normal");
-  document.getElementById("foot").textContent = `${m.completed} completed · ${m.deleted} deleted (hidden)`;
-  const pend = document.getElementById("pending");
-  if (m.dirty){
-    const n = m.ops.length;
-    document.getElementById("pendingtext").textContent = `${n} pending change${n===1?"":"s"} from the assistant`;
-    document.getElementById("pendingops").textContent = m.ops.join(" · ");
-    pend.hidden = false;
-  } else pend.hidden = true;
-}
-async function load(){ render(await (await fetch("/api/model")).json()); }
-async function act(action, extra){
-  const res = await (await fetch("/api/act", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ action, ...extra }) })).json();
-  if (res.model) render(res.model);
-}
+const $=(s)=>document.querySelector(s), $$=(s)=>[...document.querySelectorAll(s)];
+const esc=(s)=>String(s??"").replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const TAGC=["#2F6FED","#2E9E6B","#8B5CF6","#0EA5A4","#C2410C","#0891B2","#9333EA"];
+const tagColor=(n)=>{let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))>>>0;return TAGC[h%TAGC.length]};
+let current=null, selectedTag="", query="", noticeTimer, attemptedStoredPath=false;
 
-// direct manipulation via event delegation
-const mid = document.getElementById("mid");
-mid.addEventListener("click", (e) => {
-  const btn = e.target.closest("button[data-act]");
-  if (btn) {
-    const li = btn.closest("li[data-id]"); if (!li) return;
-    if (btn.dataset.act === "agentGoals") return agentMove(li.dataset.id, li.dataset.title);
-    if (btn.dataset.act === "removeTag") {
-      const re = new RegExp("\\s*#" + btn.dataset.tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![\\w/-])", "g");
-      const title = li.dataset.title.replace(re, "").replace(/\s{2,}/g, " ").trim();
-      return act("editTitle", { id: li.dataset.id, title });
-    }
-    if (btn.dataset.act === "addTag") return startAddTag(li);
-    const extra = { id: li.dataset.id };
-    if (btn.dataset.dir) extra.dir = btn.dataset.dir;
-    if (btn.dataset.bucket) extra.bucket = btn.dataset.bucket;
-    return act(btn.dataset.act, extra);
+async function api(path,options={}){
+  const controller=new AbortController(); const timeout=setTimeout(()=>controller.abort(),options.timeout||30000);
+  try{
+    const res=await fetch(path,{...options,signal:controller.signal,headers:{"content-type":"application/json",...(options.headers||{})}});
+    const body=await res.json();
+    if(!res.ok){const e=new Error(body.error||`Request failed (${res.status})`);e.body=body;e.status=res.status;throw e}
+    return body;
+  }catch(e){if(e.name==="AbortError")throw new Error("The request timed out. Please try again.");throw e}finally{clearTimeout(timeout)}
+}
+function showNotice(message,{action,label,info=false,sticky=false}={}){
+  clearTimeout(noticeTimer);$("#notice-text").textContent=message;$("#notice").hidden=false;$("#notice").classList.toggle("info",info);
+  const b=$("#notice-action");b.hidden=!action;b.textContent=label||"Action";b.onclick=action||null;
+  if(!sticky)noticeTimer=setTimeout(()=>$("#notice").hidden=true,6000);
+}
+$("#notice-close").onclick=()=>$("#notice").hidden=true;
+function handleError(e){
+  if(e.body?.conflict)showNotice(e.message,{sticky:true,label:"Reload file",action:reloadFile});
+  else showNotice(e.message||String(e),{sticky:true});
+}
+async function reloadFile(){try{render((await api("/api/reload",{method:"POST"})).model);showNotice("Reloaded the latest version from disk.",{info:true})}catch(e){handleError(e)}}
+
+function rich(it){
+  let visible=it.title;
+  for(const tag of it.tags||[]){
+    const safe=tag.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+    visible=visible.replace(new RegExp(`(^|\\s)#${safe}(?![\\w/-])`,"g"),"$1");
   }
-  const tog = e.target.closest("h2.tog");
-  if (tog) document.getElementById(tog.dataset.collapse).classList.toggle("collapsed");
-});
-mid.addEventListener("dblclick", (e) => {
-  const li = e.target.closest("li[data-id]"); const t = e.target.closest(".t");
-  if (li && t) startEdit(li);
-});
-function startEdit(li){
-  if (li.querySelector("input.edit")) return;
-  const id = li.dataset.id, raw = li.dataset.title;
-  const input = document.createElement("input");
-  input.className = "edit"; input.value = raw;
-  li.querySelector(".t").replaceWith(input); input.focus(); input.select();
-  let finished = false;
-  const done = async (save) => {
-    if (finished) return; finished = true;
-    const val = input.value.trim();
-    if (save && val && val !== raw) await act("editTitle", { id, title: val });
-    else await load();
-  };
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") { e.preventDefault(); done(true); }
-    else if (e.key === "Escape") done(false);
-  });
-  input.addEventListener("blur", () => done(true));
+  visible=visible.replace(/\s{2,}/g," ").trim();
+  let t=esc(visible).replace(/\[\[([^\]]+)\]\]/g,'<span style="color:var(--accent)">[[$1]]</span>').replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noreferrer">$1</a>');
+  for(const tag of it.tags||[])t+=`<button class="tag" data-act="removeTag" data-tag="${esc(tag)}" style="--tc:${tagColor(tag)}">#${esc(tag)}</button>`;
+  if(it.age!=null)t+=`<span class="age">${it.age}d</span>`;return t;
 }
-function startAddTag(li){
-  if (li.querySelector("input.tagadd")) return;
-  const input = document.createElement("input");
-  input.className = "tagadd"; input.placeholder = "tag…";
-  li.querySelector(".t").appendChild(input); input.focus();
-  let finished = false;
-  const done = async (save) => {
-    if (finished) return; finished = true;
-    const v = input.value.trim().replace(/^#+/, "");
-    input.remove();
-    if (save && v) await act("editTitle", { id: li.dataset.id, title: li.dataset.title + " #" + v });
-  };
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") { e.preventDefault(); done(true); }
-    else if (e.key === "Escape") done(false);
-  });
-  input.addEventListener("blur", () => done(true));
+function matches(it){const text=(it.title+" "+(it.tags||[]).join(" ")).toLowerCase();return(!query||text.includes(query))&&(!selectedTag||(it.tags||[]).some(t=>t.toLowerCase()===selectedTag))}
+function actions(it,section){const b=[];
+  if(["urgent","normal"].includes(section)){const to=section==="urgent"?"normal":"urgent";b.push(`<button data-act="toggleToday" class="${it.today?"t-on":""}" title="Toggle Today">★</button><button data-act="setPriority" data-bucket="${to}">→${to[0].toUpperCase()}</button><button data-act="addTag">#+</button><button data-act="moveToRead" title="Move to To Read">📚</button><button data-act="agentGoals">🎯</button>`)}
+  if(section==="deleted")b.push('<button data-act="restore">Restore</button><button class="danger" data-act="permanentDelete">Delete forever</button>');
+  else if(section==="completed")b.push('<button data-act="delete">Move to Deleted</button>');
+  else b.push('<button class="danger" data-act="delete">✕</button>');return b.join("")
 }
-// resizable columns — drag the gutters; widths persist. (Normal is expanded by default.)
-function resizer(id, varName, def, min, max, invert){
-  const g = document.getElementById(id);
-  const saved = localStorage.getItem(varName);
-  if (saved) document.documentElement.style.setProperty(varName, saved);
-  g.addEventListener("mousedown", (e) => {
-    e.preventDefault(); g.classList.add("drag");
-    const x0 = e.clientX;
-    const w0 = parseInt(getComputedStyle(document.documentElement).getPropertyValue(varName)) || def;
-    const move = (ev) => {
-      const w = w0 + (invert ? (x0 - ev.clientX) : (ev.clientX - x0));
-      document.documentElement.style.setProperty(varName, Math.max(min, Math.min(max, w)) + "px");
-    };
-    const up = () => {
-      g.classList.remove("drag");
-      document.removeEventListener("mousemove", move); document.removeEventListener("mouseup", up);
-      localStorage.setItem(varName, getComputedStyle(document.documentElement).getPropertyValue(varName).trim());
-    };
-    document.addEventListener("mousemove", move); document.addEventListener("mouseup", up);
-  });
-}
-resizer("gl", "--c1", 300, 200, 620, false);
-resizer("gr", "--c2", 360, 260, 680, true);
+function fill(id,items,section){const shown=items.filter(matches),canDrag=["top5","urgent","normal"].includes(section);$("#"+id).innerHTML=shown.length?shown.map(it=>`<li class="item ${it.today?"today":""}" data-id="${esc(it.id)}" data-title="${esc(it.title)}" data-section="${section}">${canDrag?'<span class="draghandle" draggable="true" title="Drag to reorder" aria-label="Drag to reorder"></span>':""}<button class="box" data-act="complete" ${["completed","deleted"].includes(section)?"disabled":""}>${section==="completed"?"●":"○"}</button>${it.today?'<span class="pill">Today</span>':""}<span class="t">${rich(it)}</span><span class="rowact">${actions(it,section)}</span></li>`).join(""):'<li class="empty">Nothing here.</li>';$("#b-"+id).textContent=items.length}
+function renderGoals(lines){const colors=["#1684f8","#32b76a","#16b9c4","#f23d64","#8d61dd","#ef9b22"];const groups=[];let group={title:"Goals",lines:[]};for(const raw of lines){const l=raw.trim(),m=l.match(/^\*\*(.+?)\*\*(.*)$/);if(m){if(group.lines.length)groups.push(group);group={title:(m[1]+m[2]).trim(),lines:[]}}else if(l)group.lines.push(l.replace(/^[-*]\s+/,""))}if(group.lines.length)groups.push(group);$("#goals").innerHTML=groups.length?groups.map((g,i)=>`<section class="goal-group" style="--gc:${colors[i%colors.length]}"><h3>${esc(g.title)}</h3><ul>${g.lines.map(l=>`<li>${esc(l)}</li>`).join("")}</ul></section>`).join(""):'<div class="empty">No goals.</div>'}
+function renderLines(id,items,kind){$("#"+id).innerHTML=items.length?items.map(x=>`<div class="readline"><span class="text">${kind==="read"?esc(x.text).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank">$1</a>'):esc(x.text)}${x.age!=null?` <span class="age">${x.age}d</span>`:""}</span><button class="mini danger" data-line-act="${kind==="read"?"removeFromRead":"removeBigThing"}" data-index="${x.index}">×</button></div>`).join(""):'<div class="empty">Nothing here.</div>'}
+function renderTags(tags){$("#tags").innerHTML=tags.map(t=>`<button class="tagfilter ${selectedTag===t.toLowerCase()?"on":""}" data-filter="${esc(t.toLowerCase())}" style="--tc:${tagColor(t)}" title="Click to filter · double-click to rename">#${esc(t)}</button>`).join("");$("#clear-filter").hidden=!selectedTag&&!query}
+function render(m){current=m;if(!m.configured){$("#setup").hidden=false;return}$("#setup").hidden=true;$("#path").textContent=m.todoDocPath;renderTags(m.tags||[]);renderGoals(m.goals||[]);renderLines("toread",m.toread||[],"read");$("#b-read").textContent=m.toread.length;for(const id of["top5","urgent","normal","completed","deleted"])fill(id,m[id]||[],id);$("#foot").textContent=`${m.completed.length} completed · ${m.deleted.length} deleted`;$("#pending").hidden=!m.dirty;if(m.dirty){$("#pendingtext").textContent=`${m.ops.length} assistant change${m.ops.length===1?"":"s"} pending`;$("#pendingops").textContent=m.ops.join(" · ")}if(m.conflict)showNotice("The Markdown file changed while an assistant draft was pending.",{sticky:true,label:"Discard draft and reload",action:reloadFile})}
+async function load(silent=false){try{const m=await api("/api/model");if(!m.configured&&!attemptedStoredPath){attemptedStoredPath=true;const path=localStorage.getItem("todoDocPath");if(path){try{return render((await api("/api/config",{method:"POST",body:JSON.stringify({path,mode:"open"})})).model)}catch{localStorage.removeItem("todoDocPath")}}}render(m)}catch(e){if(!silent)handleError(e)}}
+async function act(action,extra={}){try{const r=await api("/api/act",{method:"POST",body:JSON.stringify({action,...extra})});render(r.model)}catch(e){handleError(e)}}
 
-// quick-add with a priority-cycle pill
-const PRIOS = [ {k:"urgent",label:"Urgent",c:"var(--urgent)"}, {k:"today",label:"Today",c:"var(--today)"}, {k:"normal",label:"Normal",c:"var(--normal)"} ];
-let prioIdx = 0;
-const prioBtn = document.getElementById("qa-prio");
-function setPrio(){ const p = PRIOS[prioIdx]; prioBtn.textContent = p.label; prioBtn.style.setProperty("--qc", p.c); }
-prioBtn.addEventListener("click", () => { prioIdx = (prioIdx+1) % PRIOS.length; setPrio(); });
-setPrio();
-document.getElementById("quickadd").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const input = document.getElementById("qa-input");
-  const title = input.value.trim(); if (!title) return;
-  const p = PRIOS[prioIdx];
-  input.value = "";
-  act("add", { title, today: p.k === "today", bucket: p.k === "normal" ? "normal" : "urgent" });
-});
+$("#search").oninput=e=>{query=e.target.value.trim().toLowerCase();if(current)render(current)};
+$("#tags").onclick=e=>{const b=e.target.closest("[data-filter]");if(b){selectedTag=selectedTag===b.dataset.filter?"":b.dataset.filter;render(current)}};
+$("#tags").ondblclick=e=>{const b=e.target.closest("[data-filter]");if(!b)return;const to=prompt(`Rename #${b.dataset.filter} to:`,b.dataset.filter);if(to&&to.replace(/^#/,"")!==b.dataset.filter)act("renameTag",{from:b.dataset.filter,to:to.replace(/^#/,"")})};
+$("#clear-filter").onclick=()=>{selectedTag="";query="";$("#search").value="";render(current)};
+$("#mid").onclick=e=>{const tog=e.target.closest("[data-toggle]");if(tog){$("#"+tog.dataset.toggle).classList.toggle("collapsed");return}const promptBtn=e.target.closest("[data-prompt]");if(promptBtn){const title=prompt("Add to Top 5:");if(title)act(promptBtn.dataset.prompt,{title});return}const confirmBtn=e.target.closest("[data-confirm]");if(confirmBtn){if(confirm("Are you sure?"))act(confirmBtn.dataset.confirm);return}const btn=e.target.closest("button[data-act]");if(!btn)return;const li=btn.closest("li[data-id]");if(!li)return;const action=btn.dataset.act;if(action==="agentGoals")return agentMove(li);if(action==="addTag")return startAddTag(li);if(action==="removeTag"){const re=new RegExp("\\s*#"+btn.dataset.tag.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(?![\\w/-])","g");return act("editTitle",{id:li.dataset.id,title:li.dataset.title.replace(re,"").replace(/\s{2,}/g," ").trim()})}if(action==="permanentDelete"&&!confirm("Permanently delete this item? This cannot be undone."))return;act(action,{id:li.dataset.id,dir:btn.dataset.dir,bucket:btn.dataset.bucket})};
+let dragging=null;
+function clearDropMarkers(){$$(".drop-before,.drop-after").forEach(el=>el.classList.remove("drop-before","drop-after"))}
+$("#mid").addEventListener("dragstart",e=>{const handle=e.target.closest(".draghandle");if(!handle)return;const li=handle.closest("li[data-id]");dragging={id:li.dataset.id,bucket:li.dataset.section,today:li.classList.contains("today")};li.classList.add("dragging");e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",li.dataset.id)});
+$("#mid").addEventListener("dragover",e=>{if(!dragging)return;const li=e.target.closest("li[data-id]");if(!li||li.dataset.id===dragging.id||li.dataset.section!==dragging.bucket)return;if(dragging.bucket==="urgent"&&li.classList.contains("today")!==dragging.today)return;e.preventDefault();clearDropMarkers();const rect=li.getBoundingClientRect();li.classList.add(e.clientY<rect.top+rect.height/2?"drop-before":"drop-after");e.dataTransfer.dropEffect="move"});
+$("#mid").addEventListener("drop",e=>{if(!dragging)return;const li=e.target.closest("li[data-id]");if(!li||li.dataset.id===dragging.id||li.dataset.section!==dragging.bucket)return;e.preventDefault();const rect=li.getBoundingClientRect(),position=e.clientY<rect.top+rect.height/2?"before":"after";const move=dragging;clearDropMarkers();dragging=null;act("reorderTo",{id:move.id,bucket:move.bucket,targetId:li.dataset.id,position})});
+$("#mid").addEventListener("dragend",()=>{clearDropMarkers();$(".item.dragging")?.classList.remove("dragging");dragging=null});
+$("#mid").ondblclick=e=>{const li=e.target.closest("li[data-id]");if(li&&e.target.closest(".t"))startEdit(li)};
+function startEdit(li){if(li.querySelector("input.edit"))return;const raw=li.dataset.title,input=document.createElement("input");input.className="edit";input.value=raw;li.querySelector(".t").replaceWith(input);input.focus();input.select();let done=false;const finish=save=>{if(done)return;done=true;const v=input.value.trim();if(save&&v&&v!==raw)act("editTitle",{id:li.dataset.id,title:v});else load()};input.onkeydown=e=>{if(e.key==="Enter")finish(true);if(e.key==="Escape")finish(false)};input.onblur=()=>finish(true)}
+function startAddTag(li){if(li.querySelector("input.tagadd"))return;const input=document.createElement("input");input.className="tagadd";input.placeholder="tag…";li.querySelector(".t").appendChild(input);input.focus();let done=false;const finish=save=>{if(done)return;done=true;const v=input.value.trim().replace(/^#+/,"");input.remove();if(save&&v)act("editTitle",{id:li.dataset.id,title:li.dataset.title+" #"+v})};input.onkeydown=e=>{if(e.key==="Enter")finish(true);if(e.key==="Escape")finish(false)};input.onblur=()=>finish(true)}
 
-// chat (agent → draft)
-const log = document.getElementById("log");
-function addMsg(cls, text){
-  if (log.querySelector(".empty")) log.innerHTML = "";
-  const div = document.createElement("div"); div.className = "msg " + cls;
-  if (cls.split(" ").includes("bot") && !cls.includes("thinking")) div.innerHTML = md(text);
-  else div.textContent = text;
-  log.appendChild(div); log.scrollTop = log.scrollHeight; return div;
-}
-// "Move to Goals" invokes the agent loop (judgment: which subsection, rephrase as a goal),
-// producing a reviewable draft — not a mechanical append.
-async function agentMove(id, title){
-  addMsg("you", `Move "${title}" to Goals`);
-  const p = addMsg("bot thinking", "…");
-  try {
-    const res = await (await fetch("/api/chat", { method:"POST", headers:{"content-type":"application/json"},
-      body: JSON.stringify({ message: `Move the item "${title}" (id: ${id}) into Goals. Pick the best-fitting **subsection** already in the Goals notepad, and rephrase it as a long-term goal rather than a task if appropriate. Then say briefly where you placed it.` }) })).json();
-    p.classList.remove("thinking"); p.innerHTML = md(res.reply || res.error || "(done)");
-    if (res.model) render(res.model);
-  } catch (err) { p.classList.remove("thinking"); p.textContent = "Error: " + err.message; }
-}
-document.getElementById("chatform").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const input = document.getElementById("chatin");
-  const text = input.value.trim(); if (!text) return;
-  addMsg("you", text); input.value = ""; input.disabled = true;
-  const pending = addMsg("bot thinking", "…");
-  try {
-    const res = await (await fetch("/api/chat", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ message:text }) })).json();
-    pending.classList.remove("thinking"); pending.innerHTML = md(res.reply || res.error || "(no reply)");
-    if (res.model) render(res.model);
-  } catch (err){ pending.classList.remove("thinking"); pending.textContent = "Error: " + err.message; }
-  input.disabled = false; input.focus();
-});
-document.getElementById("apply").addEventListener("click", async () => { const r = await (await fetch("/api/apply",{method:"POST"})).json(); render(r.model); addMsg("bot","✓ Applied to your file."); });
-document.getElementById("discard").addEventListener("click", async () => { const r = await (await fetch("/api/discard",{method:"POST"})).json(); render(r.model); addMsg("bot","Discarded the pending changes."); });
+const PRIOS=[{k:"urgent",l:"Urgent",c:"var(--urgent)"},{k:"today",l:"Today",c:"var(--today)"},{k:"normal",l:"Normal",c:"var(--normal)"}];let pi=0;function prio(){const p=PRIOS[pi];$("#qa-prio").textContent=p.l;$("#qa-prio").style.setProperty("--qc",p.c)}$("#qa-prio").onclick=()=>{pi=(pi+1)%PRIOS.length;prio()};prio();
+$("#quickadd").onsubmit=e=>{e.preventDefault();const input=$("#qa-input"),title=input.value.trim();if(!title)return;const p=PRIOS[pi];input.value="";act("add",{title,today:p.k==="today",bucket:p.k==="normal"?"normal":"urgent"})};
+$$('[data-add]').forEach(f=>f.onsubmit=e=>{e.preventDefault();const input=f.querySelector("input"),text=input.value.trim();if(text){input.value="";act(f.dataset.add,{text})}});
+document.body.addEventListener("click",e=>{const b=e.target.closest("[data-line-act]");if(b)act(b.dataset.lineAct,{index:Number(b.dataset.index)})});
 
-// Goals direct edit (Edit → textarea of the raw markdown → Save autosaves)
-document.getElementById("edit-goals").addEventListener("click", async () => {
-  const btn = document.getElementById("edit-goals");
-  if (btn.dataset.editing) {
-    const val = document.getElementById("goals-ta").value;
-    delete btn.dataset.editing; btn.textContent = "Edit";
-    const r = await (await fetch("/api/goals", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ content: val }) })).json();
-    render(r.model);
-  } else {
-    btn.dataset.editing = "1"; btn.textContent = "Save";
-    document.getElementById("goals").innerHTML = '<textarea class="goals-ta" id="goals-ta"></textarea>';
-    const ta = document.getElementById("goals-ta"); ta.value = (current?.goals || []).join("\n"); ta.focus();
-  }
-});
-load();
+$("#edit-goals").onclick=async()=>{const b=$("#edit-goals");if(b.dataset.editing){try{const r=await api("/api/goals",{method:"POST",body:JSON.stringify({content:$("#goals-ta").value})});b.dataset.editing="";b.textContent="✎ Edit";render(r.model)}catch(e){handleError(e)}}else{b.dataset.editing="1";b.textContent="Save";$("#goals").innerHTML='<textarea class="goals-ta" id="goals-ta"></textarea>';$("#goals-ta").value=(current.goals||[]).join("\n");$("#goals-ta").focus()}};
+function addMsg(cls,text){const d=document.createElement("div");d.className="msg "+cls;d.textContent=text;$("#log").appendChild(d);$("#log").scrollTop=$("#log").scrollHeight;return d}
+async function chat(message){addMsg("you",message);const p=addMsg("bot thinking","Working…");$("#chat-send").hidden=true;$("#chat-cancel").hidden=false;try{const r=await api("/api/chat",{method:"POST",body:JSON.stringify({message}),timeout:130000});p.className="msg bot";p.textContent=r.reply||"Done.";render(r.model)}catch(e){p.className="msg bot danger";p.textContent=e.message;handleError(e)}finally{$("#chat-send").hidden=false;$("#chat-cancel").hidden=true}}
+$("#chatform").onsubmit=e=>{e.preventDefault();const i=$("#chatin"),v=i.value.trim();if(v){i.value="";chat(v)}};function agentMove(li){chat(`Move the todo "${li.dataset.title}" (${li.dataset.id}) into the most appropriate Goals subsection. Preserve the goal structure.`)}
+$("#chat-cancel").onclick=async()=>{try{await api("/api/cancel",{method:"POST"});showNotice("Cancelling the assistant…",{info:true})}catch(e){handleError(e)}};
+$("#apply").onclick=async()=>{try{const r=await api("/api/apply",{method:"POST"});render(r.model);addMsg("bot","✓ Applied to your file.")}catch(e){handleError(e)}};$("#discard").onclick=async()=>{try{render((await api("/api/discard",{method:"POST"})).model);addMsg("bot","Draft discarded.")}catch(e){handleError(e)}};
+
+function rememberAndRender(r){localStorage.setItem("todoDocPath",r.model.todoDocPath);render(r.model);showNotice("Todo file connected.",{info:true})}
+function showSetup(){if(current?.todoDocPath)$("#setup-path").value=current.todoDocPath;$("#setup").hidden=false}$("#choose").onclick=showSetup;$("#setup-cancel").onclick=()=>{if(current?.configured)$("#setup").hidden=true};
+$$('[data-pick]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{rememberAndRender(await api("/api/pick-file",{method:"POST",body:JSON.stringify({mode:b.dataset.pick}),timeout:120000}))}catch(e){if(e.body?.code!=="PICKER_CANCELLED")handleError(e)}finally{b.disabled=false}});
+$("#setup-manual").onclick=async()=>{try{rememberAndRender(await api("/api/config",{method:"POST",body:JSON.stringify({path:$("#setup-path").value,mode:"open"})}))}catch(e){handleError(e)}};
+function resizer(id,name,def,min,max,invert){const g=$("#"+id),saved=localStorage.getItem(name);if(saved)document.documentElement.style.setProperty(name,saved);g.onmousedown=e=>{e.preventDefault();const x=e.clientX,w=parseInt(getComputedStyle(document.documentElement).getPropertyValue(name))||def;const move=ev=>document.documentElement.style.setProperty(name,Math.max(min,Math.min(max,w+(invert?x-ev.clientX:ev.clientX-x)))+"px");const up=()=>{document.removeEventListener("mousemove",move);document.removeEventListener("mouseup",up);localStorage.setItem(name,getComputedStyle(document.documentElement).getPropertyValue(name).trim())};document.addEventListener("mousemove",move);document.addEventListener("mouseup",up)}}resizer("gl","--c1",300,210,620,false);resizer("gr","--c2",360,260,680,true);
+load();setInterval(()=>load(true),3000);
 </script>
 </body>
 </html>

@@ -8,11 +8,12 @@ architecture.
 editable in any editor at any time. The agent (later phases) authenticates via
 the `claude` CLI subscription login.
 
-## Status — Phase 0 (this commit): parser / writer / migration, no agent
+## Status
 
-The deterministic, non-agent core that safely reads and rewrites the vault file.
-Everything the agent will do later is proposed against an in-memory model and
-persisted through this layer.
+The service includes the deterministic Markdown core, a local web UI, and a
+Claude Agent SDK assistant. Human edits save immediately. Assistant changes are
+isolated in a reviewable draft and require Apply; external file changes are
+detected with content versions so stale drafts cannot overwrite the vault.
 
 - **Model** — Goals (notepad) · Urgent (with a `⭐` star = "very urgent") · Normal ·
   Top 5. Order within Urgent is line position. New captures will default to Urgent.
@@ -39,16 +40,24 @@ src/fsAtomic.mjs   atomic write helper
 
 ```sh
 cd service
-npm test                                        # unit + round-trip + real-file (if present)
+npm start                                       # then open http://127.0.0.1:5178
+npm test                                        # unit + API + round-trip tests
 npm run validate -- "/path/to/todo.md"          # migration report + checks against a real file
 node scripts/migrate-file.mjs <src.md> <vaultDir>  # migrate a copy end-to-end (never touches src)
 ```
 
+On first launch, use the native macOS file panel to open an existing Markdown
+file or choose where to create a blank/demo file. Exact path entry remains
+available as a fallback. You may instead set `TODO_FILE=/path/to/todo.md`
+before starting the service.
+
 The real-file test/validation defaults to `~/Downloads/new_worktodo 14.md`
 (override with `REAL_TODO_FILE`).
 
-## Next
+## Safety model
 
-- **Phase 1** — the `@anthropic-ai/claude-agent-sdk` `query()` loop with gated
-  read tools + `add_todo`/`complete`, SSE background job, minimal chat UI; register
-  the dormant tier-2 vault-read capability (disabled) as the seam for the note assistant.
+- The server binds to loopback only.
+- Unknown sections, frontmatter, wikilinks, and tags are preserved.
+- Every write snapshots the previous file under `.bigrocks/history/`.
+- Direct edits are blocked while an assistant draft is pending.
+- Apply uses optimistic concurrency and fails if the file changed externally.

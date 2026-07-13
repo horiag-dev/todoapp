@@ -150,7 +150,7 @@ const TOOL_NAMES = [
   "clear_today", "move_to_goals", "add_to_top5", "complete", "edit_title", "delete",
 ].map((n) => `mcp__todo__${n}`);
 
-export async function runAgent({ model, ops, seen, message, sessionId }) {
+export async function runAgent({ model, ops, seen, message, sessionId, abortController }) {
   const server = buildServer({ model, ops, seen });
   const prompt = `Current board:\n${snapshot(model)}\n\nUser: ${message}`;
 
@@ -163,6 +163,7 @@ export async function runAgent({ model, ops, seen, message, sessionId }) {
       settingSources: [],
       mcpServers: { todo: server },
       maxTurns: 24,
+      ...(abortController ? { abortController } : {}),
       ...(sessionId ? { resume: sessionId } : {}),
       canUseTool: async (name) =>
         name.startsWith("mcp__todo__")

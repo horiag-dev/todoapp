@@ -20,6 +20,7 @@ export function classify(name) {
   const n = name.toLowerCase();
   if (n.includes("top 5")) return "top5";
   if (n.includes("goal")) return "goals";
+  if (n.includes("big things")) return "bigthings";
   if (n.includes("to read")) return "toread";
   if (n.includes("today")) return "today";
   if (n.includes("this week")) return "thisweek";

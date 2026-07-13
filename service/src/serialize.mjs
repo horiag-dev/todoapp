@@ -40,6 +40,9 @@ export function serialize(model) {
 
   blocks.push(block(HEADERS.top5, model.top5.map(renderItem)));
 
+  const bigthings = rawBlock(model.bigthings);
+  if (bigthings) blocks.push(bigthings);
+
   const toread = rawBlock(model.toread);
   if (toread) blocks.push(toread);
 

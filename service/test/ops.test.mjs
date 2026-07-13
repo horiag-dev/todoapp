@@ -112,3 +112,83 @@ test("serialize reflects mutations (Today = ⭐ on disk)", () => {
   applyAction(m, "add", { title: "New task #proj", today: true });
   assert.match(serialize(m), /- \[ \] ⭐ New task #proj/);
 });
+
+test("restore and permanent delete manage the recoverable lifecycle", () => {
+  const m = model(BASE);
+  const id = idOf(m, "normal", "Read the docs");
+  applyAction(m, "delete", { id });
+  const deletedId = m.deleted[0].id;
+  applyAction(m, "restore", { id: deletedId });
+  assert.equal(m.normal.at(-1).title, "Read the docs");
+  assert.equal(m.normal.at(-1).checked, false);
+  applyAction(m, "delete", { id: m.normal.at(-1).id });
+  applyAction(m, "permanentDelete", { id: m.deleted[0].id });
+  assert.equal(m.deleted.length, 0);
+});
+
+test("Top 5 can be added, reordered, and cleared", () => {
+  const m = model(BASE);
+  applyAction(m, "addTop5", { title: "First" });
+  applyAction(m, "addTop5", { title: "Second" });
+  applyAction(m, "reorderTop5", { id: m.top5[1].id, dir: "up" });
+  assert.deepEqual(m.top5.map((i) => i.title), ["Second", "First"]);
+  applyAction(m, "clearTop5");
+  assert.equal(m.top5.length, 0);
+});
+
+test("drag ordering persists within Top 5, Urgent, and Normal", () => {
+  const m = model(`# Todo List
+
+### 🔴 Top 5 of the week
+- [ ] T1
+- [ ] T2
+
+### 🔴 Urgent
+- [ ] U1
+- [ ] U2
+
+### 🔵 Normal
+- [ ] N1
+- [ ] N2
+- [ ] N3
+`);
+  applyAction(m, "reorderTo", { bucket: "top5", id: idOf(m, "top5", "T2"), targetId: idOf(m, "top5", "T1"), position: "before" });
+  applyAction(m, "reorderTo", { bucket: "urgent", id: idOf(m, "urgent", "U1"), targetId: idOf(m, "urgent", "U2"), position: "after" });
+  applyAction(m, "reorderTo", { bucket: "normal", id: idOf(m, "normal", "N3"), targetId: idOf(m, "normal", "N1"), position: "after" });
+  assert.deepEqual(m.top5.map((i) => i.title), ["T2", "T1"]);
+  assert.deepEqual(m.urgent.map((i) => i.title), ["U2", "U1"]);
+  assert.deepEqual(m.normal.map((i) => i.title), ["N1", "N3", "N2"]);
+  assert.match(serialize(m), /### 🔵 Normal[\s\S]*N1[\s\S]*N3[\s\S]*N2/);
+});
+
+test("drag ordering cannot cross the Today boundary in Urgent", () => {
+  const m = model(`# Todo List
+
+### 🔴 Urgent
+- [ ] ⭐ Today item
+- [ ] Plain item
+`);
+  assert.throws(() => applyAction(m, "reorderTo", {
+    bucket: "urgent",
+    id: idOf(m, "urgent", "Plain item"),
+    targetId: idOf(m, "urgent", "Today item"),
+    position: "before",
+  }), /Today items/);
+});
+
+test("To Read direct operations preserve section syntax", () => {
+  const m = model(BASE);
+  applyAction(m, "addToRead", { text: "https://example.com" });
+  assert.deepEqual(m.toread.rawLines, ["- https://example.com"]);
+  applyAction(m, "removeFromRead", { index: 0 });
+  assert.deepEqual(m.toread.rawLines, []);
+});
+
+test("renameTag changes matching tags across active and Top 5 items", () => {
+  const m = model(BASE);
+  applyAction(m, "addTop5", { title: "Plan #old" });
+  applyAction(m, "add", { title: "Build #old", bucket: "normal" });
+  applyAction(m, "renameTag", { from: "old", to: "new" });
+  assert.equal(m.top5[0].title, "Plan #new");
+  assert.equal(m.normal.at(-1).title, "Build #new");
+});

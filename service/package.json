@@ -3,9 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Big Rocks First — local agent service over a markdown/Obsidian vault. Phase 0: parser / writer / migration core (no agent).",
+  "description": "Big Rocks First — a local, agent-assisted service over a markdown/Obsidian todo file.",
   "scripts": {
-    "test": "node --test test/",
+    "start": "node src/server.mjs",
+    "test": "node --test test/*.test.mjs",
     "validate": "node scripts/validate-real-file.mjs"
   },
   "dependencies": {

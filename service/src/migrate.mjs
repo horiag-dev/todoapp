@@ -64,6 +64,7 @@ export function migrate(parsed) {
   const { preamble, sections } = parsed;
 
   const goals = firstRaw(sections, "goals");
+  const bigthings = firstRaw(sections, "bigthings");
   const toread = firstRaw(sections, "toread");
 
   const top5 = itemsOf(sections, "top5");
@@ -88,5 +89,5 @@ export function migrate(parsed) {
     rawLines: s.rawLines ?? [],
   }));
 
-  return { preamble, goals, top5, toread, urgent, normal, completed, deleted, unknown };
+  return { preamble, goals, top5, bigthings, toread, urgent, normal, completed, deleted, unknown };
 }
