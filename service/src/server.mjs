@@ -388,6 +388,13 @@ export function createBigRocksServer({
         res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
         return res.end(await readFile(join(here, "..", "public", "index.html")));
       }
+      if (req.method === "GET" && (p === "/icon-192.png" || p === "/icon-512.png" || p === "/manifest.webmanifest")) {
+        try {
+          const buf = await readFile(join(here, "..", "public", p.slice(1)));
+          res.writeHead(200, { "content-type": p.endsWith(".png") ? "image/png" : "application/manifest+json" });
+          return res.end(buf);
+        } catch { return json(res, 404, { error: "not found" }); }
+      }
       if (req.method === "GET" && p === "/api/model") return json(res, 200, modelView());
 
       if (req.method === "POST" && p === "/api/config") {
