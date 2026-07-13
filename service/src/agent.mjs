@@ -3,6 +3,7 @@ import { z } from "zod";
 import { findById, reflowUrgent, newItem, itemView } from "./model.mjs";
 import { tagsOf } from "./parse.mjs";
 import { ageDays } from "./ledger.mjs";
+import { insertGoal } from "./ops.mjs";
 
 const ok = (text) => ({ content: [{ type: "text", text }] });
 
@@ -19,22 +20,6 @@ You work on a DRAFT. Make the changes the user asks for using the tools; the use
 Reference items by their id. Default new captures to Urgent. Use tags (#like_this) to organize the Normal pile when asked.
 
 Items and To Read entries carry age_days — how many days they've sat untouched. When asked to tidy, de-stale, or clean up, use it: propose removing old, low-value To Read links (and stale items), and always name exactly what you're removing so it's easy to review before Apply. Be concise and act rather than over-explaining.`;
-
-function insertGoal(model, title, subsection) {
-  if (!model.goals) model.goals = { headerLine: "## 🎯 Goals", rawLines: [] };
-  const line = `- ${title}`;
-  const lines = model.goals.rawLines;
-  if (subsection) {
-    const i = lines.findIndex((l) => l.trim().toLowerCase() === `**${subsection.toLowerCase()}**`);
-    if (i !== -1) {
-      let j = i + 1;
-      while (j < lines.length && !/^\*\*.+\*\*$/.test(lines[j].trim())) j++;
-      lines.splice(j, 0, line);
-      return;
-    }
-  }
-  lines.push(line);
-}
 
 function buildServer(ctx) {
   const { model, ops, seen } = ctx;

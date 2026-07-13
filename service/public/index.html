@@ -74,7 +74,13 @@
     font-size:12px;padding:1px 4px;border-radius:4px;line-height:1;}
   .rowact button:hover{background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink);}
   .rowact .t-on{color:var(--today);}
+  input.edit{flex:1;font:inherit;border:1px solid var(--accent);border-radius:5px;padding:2px 6px;
+    background:var(--card);color:var(--ink);outline:none;}
   .empty{color:var(--soft);font-size:12px;padding:6px;}
+  h2.tog{cursor:pointer;user-select:none;}
+  .chev{color:var(--soft);font-size:9px;transition:transform .12s;display:inline-block;}
+  .card.collapsed .body{display:none;}
+  .card.collapsed .chev{transform:rotate(-90deg);}
 
   /* quick add */
   .quickadd{display:flex;gap:7px;align-items:center;background:var(--card);border:1px solid var(--line);
@@ -138,7 +144,7 @@
     </div>
     <div class="card c-top5"><h2><span class="ic">🎯</span> Top 5 of the Week <span class="badge" id="b-top5"></span></h2><ul class="body items" id="top5"></ul></div>
     <div class="card c-today"><h2><span class="ic">🔴</span> Urgent <span class="badge" id="b-urgent"></span></h2><ul class="body items" id="urgent"></ul></div>
-    <div class="card c-normal"><h2><span class="ic">🔵</span> Normal <span class="badge" id="b-normal"></span></h2><ul class="body items" id="normal"></ul></div>
+    <div class="card c-normal" id="card-normal"><h2 class="tog" data-collapse="card-normal"><span class="chev">▾</span><span class="ic">🔵</span> Normal <span class="badge" id="b-normal"></span></h2><ul class="body items" id="normal"></ul></div>
     <div class="foot" id="foot"></div>
   </div>
 
@@ -166,13 +172,26 @@ function richTitle(it){
   if (it.age != null) html += `<span class="age">${it.age}d</span>`;
   return html;
 }
+function rowActions(it, section){
+  const b = [];
+  if (section === "urgent"){
+    b.push(`<button data-act="reorder" data-dir="up" title="Move up">↑</button>`);
+    b.push(`<button data-act="reorder" data-dir="down" title="Move down">↓</button>`);
+  }
+  if (section === "urgent" || section === "normal"){
+    b.push(`<button data-act="toggleToday" class="${it.today?"t-on":""}" title="Toggle Today">★</button>`);
+    const to = section === "urgent" ? "normal" : "urgent";
+    b.push(`<button data-act="setPriority" data-bucket="${to}" title="Move to ${to==="normal"?"Normal":"Urgent"}">${to==="normal"?"→N":"→U"}</button>`);
+    b.push(`<button data-act="agentGoals" title="Move to Goals — asks the assistant to place it">🎯</button>`);
+  }
+  b.push(`<button data-act="delete" title="Delete">✕</button>`);
+  return `<span class="rowact">${b.join("")}</span>`;
+}
 function itemLi(it, section){
   const cls = ["item", it.done ? "done" : "", it.today ? "today" : ""].join(" ").trim();
   const mark = it.today ? '<span class="pill">Today</span>'
     : (section === "normal" ? '<span class="dot d-normal"></span>' : section === "top5" ? '<span class="dot d-top5"></span>' : "");
-  const canToday = section === "urgent" || section === "normal";
-  const acts = `<span class="rowact">${canToday ? `<button data-act="toggleToday" class="${it.today?"t-on":""}" title="Toggle Today">★</button>` : ""}<button data-act="delete" title="Delete">✕</button></span>`;
-  return `<li class="${cls}" data-id="${it.id}"><button class="box" data-act="complete" title="Complete">${it.done?"●":"○"}</button>${mark}<span class="t">${richTitle(it)}</span>${acts}</li>`;
+  return `<li class="${cls}" data-id="${it.id}" data-title="${esc(it.title)}"><button class="box" data-act="complete" title="Complete">${it.done?"●":"○"}</button>${mark}<span class="t">${richTitle(it)}</span>${rowActions(it, section)}</li>`;
 }
 function fill(id, items, section){
   const el = document.getElementById(id);
@@ -218,11 +237,44 @@ async function act(action, extra){
 }
 
 // direct manipulation via event delegation
-document.getElementById("mid").addEventListener("click", (e) => {
-  const btn = e.target.closest("button[data-act]"); if (!btn) return;
-  const li = btn.closest("li[data-id]"); if (!li) return;
-  act(btn.dataset.act, { id: li.dataset.id });
+const mid = document.getElementById("mid");
+mid.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-act]");
+  if (btn) {
+    const li = btn.closest("li[data-id]"); if (!li) return;
+    if (btn.dataset.act === "agentGoals") return agentMove(li.dataset.id, li.dataset.title);
+    const extra = { id: li.dataset.id };
+    if (btn.dataset.dir) extra.dir = btn.dataset.dir;
+    if (btn.dataset.bucket) extra.bucket = btn.dataset.bucket;
+    return act(btn.dataset.act, extra);
+  }
+  const tog = e.target.closest("h2.tog");
+  if (tog) document.getElementById(tog.dataset.collapse).classList.toggle("collapsed");
 });
+mid.addEventListener("dblclick", (e) => {
+  const li = e.target.closest("li[data-id]"); const t = e.target.closest(".t");
+  if (li && t) startEdit(li);
+});
+function startEdit(li){
+  if (li.querySelector("input.edit")) return;
+  const id = li.dataset.id, raw = li.dataset.title;
+  const input = document.createElement("input");
+  input.className = "edit"; input.value = raw;
+  li.querySelector(".t").replaceWith(input); input.focus(); input.select();
+  let finished = false;
+  const done = async (save) => {
+    if (finished) return; finished = true;
+    const val = input.value.trim();
+    if (save && val && val !== raw) await act("editTitle", { id, title: val });
+    else await load();
+  };
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); done(true); }
+    else if (e.key === "Escape") done(false);
+  });
+  input.addEventListener("blur", () => done(true));
+}
+document.getElementById("card-normal").classList.add("collapsed"); // Normal collapsed by default
 
 // quick-add with a priority-cycle pill
 const PRIOS = [ {k:"urgent",label:"Urgent",c:"var(--urgent)"}, {k:"today",label:"Today",c:"var(--today)"}, {k:"normal",label:"Normal",c:"var(--normal)"} ];
@@ -246,6 +298,18 @@ function addMsg(cls, text){
   if (log.querySelector(".empty")) log.innerHTML = "";
   const div = document.createElement("div"); div.className = "msg " + cls; div.textContent = text;
   log.appendChild(div); log.scrollTop = log.scrollHeight; return div;
+}
+// "Move to Goals" invokes the agent loop (judgment: which subsection, rephrase as a goal),
+// producing a reviewable draft — not a mechanical append.
+async function agentMove(id, title){
+  addMsg("you", `Move "${title}" to Goals`);
+  const p = addMsg("bot thinking", "…");
+  try {
+    const res = await (await fetch("/api/chat", { method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({ message: `Move the item "${title}" (id: ${id}) into Goals. Pick the best-fitting **subsection** already in the Goals notepad, and rephrase it as a long-term goal rather than a task if appropriate. Then say briefly where you placed it.` }) })).json();
+    p.classList.remove("thinking"); p.textContent = res.reply || res.error || "(done)";
+    if (res.model) render(res.model);
+  } catch (err) { p.classList.remove("thinking"); p.textContent = "Error: " + err.message; }
 }
 document.getElementById("chatform").addEventListener("submit", async (e) => {
   e.preventDefault();

@@ -13,6 +13,24 @@ const move = (model, f, to) => {
   model[to].push(f.item);
 };
 
+// Append a bullet to the Goals notepad — under a **subsection** header if given
+// and found, else at the end. Shared by direct moves and the agent tool.
+export function insertGoal(model, title, subsection) {
+  if (!model.goals) model.goals = { headerLine: "## 🎯 Goals", rawLines: [] };
+  const lines = model.goals.rawLines;
+  const line = `- ${title}`;
+  if (subsection) {
+    const i = lines.findIndex((l) => l.trim().toLowerCase() === `**${subsection.toLowerCase()}**`);
+    if (i !== -1) {
+      let j = i + 1;
+      while (j < lines.length && !/^\*\*.+\*\*$/.test(lines[j].trim())) j++;
+      lines.splice(j, 0, line);
+      return;
+    }
+  }
+  lines.push(line);
+}
+
 // Returns a human-readable op description, or null if the action was a no-op.
 export function applyAction(model, action, a = {}) {
   switch (action) {
@@ -56,6 +74,20 @@ export function applyAction(model, action, a = {}) {
         if (to === "urgent") reflowUrgent(model);
       }
       return `moved "${f.item.title}" to ${to}`;
+    }
+    case "editTitle": {
+      const f = need(model, a.id);
+      const t = (a.title || "").trim();
+      if (!t || t === f.item.title) return null;
+      const old = f.item.title;
+      f.item.title = t;
+      return `renamed "${old}" → "${t}"`;
+    }
+    case "moveToGoals": {
+      const f = need(model, a.id);
+      insertGoal(model, f.item.title, a.subsection);
+      f.arr.splice(f.idx, 1);
+      return `moved "${f.item.title}" to Goals`;
     }
     case "reorder": {
       const arr = model.urgent;

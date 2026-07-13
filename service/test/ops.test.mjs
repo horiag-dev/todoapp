@@ -83,6 +83,30 @@ test("reorder: swaps within the same Today group, never across it", () => {
   assert.deepEqual(m.urgent.map((i) => i.title), before);
 });
 
+test("editTitle: renames an item", () => {
+  const m = model(BASE);
+  applyAction(m, "editTitle", { id: idOf(m, "urgent", "Review the PR"), title: "Review the PR carefully" });
+  assert.ok(m.urgent.find((i) => i.title === "Review the PR carefully"));
+});
+
+test("moveToGoals: appends a bullet under a subsection and removes from the bucket", () => {
+  const m = model(`# Todo List
+
+## 🎯 Goals
+
+**Work**
+- existing
+
+### 🔴 Urgent
+
+- [ ] think about the charter
+`);
+  const id = m.urgent[0].id;
+  applyAction(m, "moveToGoals", { id, subsection: "Work" });
+  assert.ok(!m.urgent.find((i) => i.id === id));
+  assert.ok(m.goals.rawLines.includes("- think about the charter"));
+});
+
 test("serialize reflects mutations (Today = ⭐ on disk)", () => {
   const m = model(BASE);
   applyAction(m, "add", { title: "New task #proj", today: true });
