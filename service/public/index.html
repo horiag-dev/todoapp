@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Big Rocks First</title>
+<style>
+  :root{
+    --paper:#EFEDE7; --raised:#F7F6F1; --ink:#1B2023; --soft:#585f5b; --line:#DAD7CE;
+    --accent:#2F6E5E; --urgent:#B4462F; --normal:#3B6FA0; --star:#A9781F;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --paper:#14171A; --raised:#1C2124; --ink:#E8E5DD; --soft:#9BA39F; --line:#2C3236;
+      --accent:#57B199; --urgent:#D97A64; --normal:#7FA9D2; --star:#D7A94A; }
+  }
+  *{box-sizing:border-box;} html,body{height:100%;}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;}
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+    padding:14px 20px;border-bottom:1px solid var(--line);background:var(--raised);}
+  header h1{font-size:17px;margin:0;font-weight:680;letter-spacing:-.01em;}
+  header .sub{font-size:12.5px;color:var(--soft);}
+  header .path{font:12px ui-monospace,"SF Mono",Menlo,monospace;color:var(--soft);margin-left:auto;}
+  main{display:grid;grid-template-columns:minmax(240px,1fr) minmax(320px,1.6fr) minmax(280px,1fr);
+    gap:16px;padding:16px 20px;max-width:1400px;margin:0 auto;align-items:start;}
+  @media (max-width:940px){ main{grid-template-columns:1fr;} }
+  .col{display:flex;flex-direction:column;gap:16px;min-width:0;}
+  .card{background:var(--raised);border:1px solid var(--line);border-radius:14px;padding:14px 16px;}
+  .card h2{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--soft);
+    font-weight:700;margin:0 0 10px;display:flex;align-items:center;gap:8px;}
+  .card h2 .n{margin-left:auto;color:var(--soft);font-weight:600;}
+  ul.items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;}
+  .item{display:flex;gap:9px;align-items:flex-start;padding:5px 6px;border-radius:8px;}
+  .item:hover{background:color-mix(in srgb,var(--ink) 4%,transparent);}
+  .item .box{color:var(--soft);flex:0 0 auto;font-size:13px;margin-top:1px;}
+  .item.done .t{color:var(--soft);text-decoration:line-through;}
+  .item .t{min-width:0;word-wrap:break-word;overflow-wrap:anywhere;}
+  .item.star{background:color-mix(in srgb,var(--star) 12%,transparent);}
+  .item.star .t{font-weight:620;}
+  .pill{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+    color:#1B2023;background:var(--star);padding:2px 8px;border-radius:999px;flex:0 0 auto;
+    margin-top:1px;line-height:1.5;}
+  .dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;margin-top:6px;}
+  .d-u{background:var(--urgent);} .d-n{background:var(--normal);} .d-t{background:var(--accent);}
+  .tag{color:var(--accent);font-weight:600;}
+  .wl{color:var(--normal);}
+  .goals .sub{font-weight:700;margin:12px 0 3px;font-size:13.5px;}
+  .goals .sub:first-child{margin-top:0;}
+  .goals ul{margin:0 0 2px;padding-left:18px;}
+  .goals li{margin:2px 0;color:var(--ink);}
+  .goals a,.read a{color:var(--normal);text-underline-offset:2px;word-break:break-all;}
+  .read li{margin:5px 0;list-style:none;}
+  .age{display:inline-block;margin-left:8px;font-size:11px;font-weight:600;color:var(--soft);
+    background:color-mix(in srgb,var(--ink) 7%,transparent);padding:1px 6px;border-radius:6px;vertical-align:middle;}
+  .foot{font-size:12.5px;color:var(--soft);}
+  /* chat */
+  .chat{position:sticky;top:16px;display:flex;flex-direction:column;height:calc(100vh - 130px);min-height:340px;}
+  .chat .log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px;}
+  .msg{padding:9px 12px;border-radius:12px;max-width:92%;white-space:pre-wrap;}
+  .msg.you{align-self:flex-end;background:var(--accent);color:#fff;}
+  .msg.bot{align-self:flex-start;background:color-mix(in srgb,var(--ink) 6%,transparent);}
+  .chat form{display:flex;gap:8px;margin-top:10px;}
+  .chat input{flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
+    background:var(--paper);color:var(--ink);font:inherit;}
+  .chat button{padding:10px 14px;border:none;border-radius:10px;background:var(--accent);
+    color:#fff;font:inherit;font-weight:640;cursor:pointer;}
+  .empty{color:var(--soft);font-size:13px;padding:6px;}
+  .pending[hidden]{display:none;}
+  .pending{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:color-mix(in srgb,var(--star) 16%,var(--raised));
+    border:1px solid color-mix(in srgb,var(--star) 42%,var(--line));border-radius:14px;padding:11px 14px;}
+  .pending .txt{font-size:13.5px;font-weight:700;color:var(--ink);}
+  .pending .ops{font-size:12.5px;color:var(--soft);width:100%;line-height:1.5;}
+  .pactions{margin-left:auto;display:flex;gap:8px;}
+  .pactions button{padding:7px 14px;border:none;border-radius:9px;background:var(--accent);
+    color:#fff;font:inherit;font-weight:640;cursor:pointer;}
+  .pactions button.ghost{background:transparent;color:var(--soft);border:1px solid var(--line);}
+  .msg.thinking{opacity:.65;font-style:italic;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🪨 Big Rocks First</h1>
+  <span class="sub">chat with the assistant · changes stay a draft until you Apply</span>
+  <span class="path" id="path"></span>
+</header>
+<main>
+  <div class="col">
+    <div class="card goals"><h2>🎯 Goals</h2><div id="goals"></div></div>
+    <div class="card read"><h2>📚 To Read</h2><ul class="items" id="toread"></ul></div>
+  </div>
+  <div class="col">
+    <div class="pending" id="pending" hidden>
+      <span class="txt" id="pendingtext"></span>
+      <div class="pactions"><button id="apply">Apply to file</button><button id="discard" class="ghost">Discard</button></div>
+      <div class="ops" id="pendingops"></div>
+    </div>
+    <div class="card"><h2>🔴 Top 5 of the week <span class="n" id="n-top5"></span></h2><ul class="items" id="top5"></ul></div>
+    <div class="card"><h2>🔴 Urgent <span class="n" id="n-urgent"></span></h2><ul class="items" id="urgent"></ul></div>
+    <div class="card"><h2>🔵 Normal <span class="n" id="n-normal"></span></h2><ul class="items" id="normal"></ul></div>
+    <div class="foot" id="foot"></div>
+  </div>
+  <div class="col">
+    <div class="card chat">
+      <h2>💬 Chat</h2>
+      <div class="log" id="log"><div class="empty">Ask me to triage, mark things Today, move to Goals, or tidy up — I'll propose changes you can Apply.</div></div>
+      <form id="chatform"><input id="chatin" placeholder="Message the assistant…" autocomplete="off" /><button>Send</button></form>
+    </div>
+  </div>
+</main>
+<script>
+const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+function rich(title){
+  return esc(title)
+    .replace(/\[\[([^\]]+)\]\]/g, '<span class="wl">[[$1]]</span>')
+    .replace(/(^|\s)#([A-Za-z0-9_/-]+)/g, '$1<span class="tag">#$2</span>');
+}
+function itemLi(it, dotClass){
+  const cls = ["item", it.done ? "done" : "", it.today ? "star" : ""].join(" ").trim();
+  const box = it.done ? "☑" : "☐";
+  const star = it.today ? '<span class="pill">Today</span>' : (dotClass ? `<span class="dot ${dotClass}"></span>` : "");
+  const age = it.age != null ? `<span class="age">${it.age}d</span>` : "";
+  return `<li class="${cls}"><span class="box">${box}</span>${star}<span class="t">${rich(it.title)}${age}</span></li>`;
+}
+function fill(id, items, dotClass){
+  const el = document.getElementById(id);
+  el.innerHTML = items.length ? items.map((it) => itemLi(it, dotClass)).join("") : '<li class="empty">Nothing here.</li>';
+  const n = document.getElementById("n-" + id); if (n) n.textContent = items.length;
+}
+function renderGoals(lines){
+  let html = "", open = false;
+  const close = () => { if (open) { html += "</ul>"; open = false; } };
+  for (const raw of lines){
+    const line = raw.trim();
+    let m;
+    if ((m = line.match(/^\*\*(.+?)\*\*(.*)$/))) { close(); html += `<div class="sub">${rich(m[1])}${rich(m[2])}</div>`; }
+    else if ((m = line.match(/^-\s+(.*)$/))) { if (!open) { html += "<ul>"; open = true; } html += `<li>${rich(m[1])}</li>`; }
+    else if (line) { close(); html += `<p>${rich(line)}</p>`; }
+  }
+  close();
+  document.getElementById("goals").innerHTML = html || '<div class="empty">No goals.</div>';
+}
+function renderToRead(items){
+  const el = document.getElementById("toread");
+  const out = items.map((it) => {
+    const t = it.text;
+    const link = /^https?:\/\//.test(t) ? `<a href="${esc(t)}" target="_blank" rel="noreferrer">${esc(t)}</a>` : rich(t);
+    const age = it.age != null ? `<span class="age">${it.age}d</span>` : "";
+    return `<li>${link}${age}</li>`;
+  });
+  el.innerHTML = out.length ? out.join("") : '<li class="empty">Nothing to read.</li>';
+}
+function render(m){
+  document.getElementById("path").textContent = m.todoDocPath;
+  renderGoals(m.goals);
+  renderToRead(m.toread);
+  fill("top5", m.top5, "d-t");
+  fill("urgent", m.urgent, "d-u");
+  fill("normal", m.normal, "d-n");
+  document.getElementById("foot").textContent = `${m.completed} completed · ${m.deleted} deleted (hidden)`;
+  const pend = document.getElementById("pending");
+  if (m.dirty){
+    const n = m.ops.length;
+    document.getElementById("pendingtext").textContent = `${n} pending change${n === 1 ? "" : "s"}`;
+    document.getElementById("pendingops").textContent = m.ops.join(" · ");
+    pend.hidden = false;
+  } else { pend.hidden = true; }
+}
+async function load(){ render(await (await fetch("/api/model")).json()); }
+
+const log = document.getElementById("log");
+function addMsg(cls, text){
+  if (log.querySelector(".empty")) log.innerHTML = "";
+  const div = document.createElement("div");
+  div.className = "msg " + cls; div.textContent = text;
+  log.appendChild(div); log.scrollTop = log.scrollHeight;
+  return div;
+}
+document.getElementById("chatform").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const input = document.getElementById("chatin");
+  const text = input.value.trim(); if (!text) return;
+  addMsg("you", text); input.value = ""; input.disabled = true;
+  const pending = addMsg("bot thinking", "…");
+  try {
+    const res = await (await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ message: text }) })).json();
+    pending.classList.remove("thinking");
+    pending.textContent = res.reply || res.error || "(no reply)";
+    if (res.model) render(res.model);
+  } catch (err) { pending.classList.remove("thinking"); pending.textContent = "Error: " + err.message; }
+  input.disabled = false; input.focus();
+});
+document.getElementById("apply").addEventListener("click", async () => {
+  const res = await (await fetch("/api/apply", { method: "POST" })).json();
+  render(res.model); addMsg("bot", "✓ Applied to your file.");
+});
+document.getElementById("discard").addEventListener("click", async () => {
+  const res = await (await fetch("/api/discard", { method: "POST" })).json();
+  render(res.model); addMsg("bot", "Discarded the pending changes.");
+});
+load();
+</script>
+</body>
+</html>

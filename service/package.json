@@ -1,0 +1,15 @@
+{
+  "name": "bigrocks-service",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Big Rocks First — local agent service over a markdown/Obsidian vault. Phase 0: parser / writer / migration core (no agent).",
+  "scripts": {
+    "test": "node --test test/",
+    "validate": "node scripts/validate-real-file.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.207",
+    "zod": "^4.4.3"
+  }
+}
