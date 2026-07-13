@@ -147,6 +147,27 @@ function rejectChangeOn(base, draft, key) {
   }
   reflowUrgent(draft);
 }
+// Approve one change: return a clone of base with just that change incorporated.
+function applyChangeToBase(base, draft, key) {
+  const next = clone(base);
+  if (key === "goals") { next.goals = draft.goals ? clone(draft.goals) : draft.goals; return next; }
+  if (key === "toread") { next.toread = draft.toread ? clone(draft.toread) : draft.toread; return next; }
+  if (!key.startsWith("item:")) return next;
+  const id = key.slice(5);
+  const dInfo = findById(draft, id), nInfo = findById(next, id);
+  if (dInfo && nInfo) {
+    nInfo.item.title = dInfo.item.title;
+    nInfo.item.starred = dInfo.item.starred;
+    nInfo.item.checked = dInfo.item.checked;
+    if (nInfo.bucket !== dInfo.bucket) { nInfo.arr.splice(nInfo.idx, 1); next[dInfo.bucket].push(nInfo.item); }
+  } else if (dInfo && !nInfo) {
+    next[dInfo.bucket].push(clone(dInfo.item));
+  } else if (!dInfo && nInfo) {
+    nInfo.arr.splice(nInfo.idx, 1);
+  }
+  reflowUrgent(next);
+  return next;
+}
 const execFileAsync = promisify(execFile);
 
 export async function pickFileMac(mode) {
@@ -266,6 +287,7 @@ export function createBigRocksServer({
     const goalsChanged = !!draft && JSON.stringify(baseGoals) !== JSON.stringify(draftGoals);
     return {
       configured: true,
+      appVersion: APP_VERSION,
       todoDocPath: vault.todoDocPath,
       version: baseVersion,
       dirty: !!draft,
@@ -505,6 +527,26 @@ export function createBigRocksServer({
         draftBaseVersion = null;
         externalConflict = false;
         seen = touch(vault, base);
+        return json(res, 200, { ok: true, model: modelView() });
+      }
+
+      if (req.method === "POST" && p === "/api/approve-change") {
+        requireConfigured();
+        if (!draft) return json(res, 400, { error: "There is no assistant draft." });
+        refreshFromDisk();
+        if (externalConflict || vault.version() !== draftBaseVersion) {
+          externalConflict = true;
+          return json(res, 409, conflictBody("The file changed after this draft started. Reload and ask again."));
+        }
+        const { key } = await readBody(req);
+        if (!key) return json(res, 400, { error: "Which change to approve?" });
+        const next = applyChangeToBase(base, draft, key);
+        const saved = vault.save(next, { op: "agent", expectedVersion: baseVersion });
+        base = assignIds(next);
+        baseVersion = saved.version;
+        draftBaseVersion = baseVersion;
+        seen = touch(vault, base);
+        if (!diffModels(base, draft).length) { draft = null; draftOps = []; draftBaseVersion = null; }
         return json(res, 200, { ok: true, model: modelView() });
       }
 

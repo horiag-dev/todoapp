@@ -213,6 +213,31 @@ test("individual proposed changes can be rejected, keeping the rest", async () =
   }
 });
 
+test("approving one change applies just it and leaves the rest pending", async () => {
+  const twoAdds = async ({ model, ops }) => {
+    model.normal.push({ id: "a1", title: "Keep me", checked: false, starred: false });
+    model.normal.push({ id: "a2", title: "Later one", checked: false, starred: false });
+    ops.push("added two");
+    return { reply: "Added two.", sessionId: "s" };
+  };
+  const f = await fixture(twoAdds);
+  try {
+    let r = await f.request("/api/chat", { message: "add two" });
+    const keep = r.body.model.changes.find((c) => c.label.includes("Keep me"));
+    r = await f.request("/api/approve-change", { key: keep.key });
+    assert.equal(r.response.status, 200);
+    // Approved one is written to the file now; the other stays a pending change.
+    assert.match(readFileSync(f.doc, "utf8"), /Keep me/);
+    assert.doesNotMatch(readFileSync(f.doc, "utf8"), /Later one/);
+    assert.equal(r.body.model.dirty, true);
+    assert.equal(r.body.model.changes.length, 1);
+    assert.match(r.body.model.changes[0].label, /Later one/);
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
 test("rejecting the only change drops the draft", async () => {
   const oneAdd = async ({ model, ops }) => {
     model.normal.push({ id: "z1", title: "Solo", checked: false, starred: false });
