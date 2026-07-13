@@ -75,6 +75,12 @@ export function applyAction(model, action, a = {}) {
       model.completed = [];
       return `moved ${count} completed item${count === 1 ? "" : "s"} to deleted`;
     }
+    case "clearDeleted": {
+      if (!model.deleted.length) return null;
+      const count = model.deleted.length;
+      model.deleted = [];
+      return `emptied trash (${count} item${count === 1 ? "" : "s"})`;
+    }
     case "toggleToday": {
       const f = need(model, a.id);
       if (f.item.starred) {

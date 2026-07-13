@@ -3,7 +3,7 @@ set -eu
 
 SERVICE_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 REPO_DIR=$(CDPATH= cd -- "$SERVICE_DIR/.." && pwd)
-VERSION=${1:-2026.07.12}
+VERSION=${1:-$(node -p "require('$SERVICE_DIR/package.json').version" 2>/dev/null || echo 0.0.0)}
 NAME="big-rocks-first-macos-$VERSION"
 OUT_DIR=${BIGROCKS_PACKAGE_OUT:-"$REPO_DIR/dist"}
 STAGE=$(mktemp -d "${TMPDIR:-/tmp}/big-rocks-package.XXXXXX")

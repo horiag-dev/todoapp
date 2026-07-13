@@ -14,6 +14,7 @@ The model is categorical, never temporal — there are NO due dates, calendars, 
 - Urgent: the active working list. An item can be marked "Today" (very urgent) — Today items float to the top.
 - Normal: the pile of everything else.
 - Top 5: the handful of priorities for the week.
+- Documents: files the user has attached, kept in the vault. Use list_documents to see them and read_document to read one when the user refers to a file, or asks you to summarize, use, or pull from it.
 
 You work on a DRAFT. Make the changes the user asks for using the tools; the user reviews the pending changes and clicks Apply, so you don't need to ask permission for ordinary edits — just do them, then give a ONE-LINE summary of what you changed. For clearly destructive or bulk actions (deleting several items, clearing a whole section), state plainly what you're about to do and do it, but keep it easy to undo by describing it.
 
@@ -22,7 +23,7 @@ Reference items by their id. Default new captures to Urgent. Use tags (#like_thi
 Items and To Read entries carry age_days — how many days they've sat untouched. When asked to tidy, de-stale, or clean up, use it: propose removing old, low-value To Read links (and stale items), and always name exactly what you're removing so it's easy to review before Apply. Be concise and act rather than over-explaining.`;
 
 function buildServer(ctx) {
-  const { model, ops, seen } = ctx;
+  const { model, ops, seen, docs } = ctx;
   const need = (id) => {
     const f = findById(model, id);
     if (!f) throw new Error(`No item with id ${id}`);
@@ -59,7 +60,7 @@ function buildServer(ctx) {
       );
       return ok(JSON.stringify(hits));
     }),
-    tool("add_todo", "Add a new todo.", { title: z.string(), bucket: z.enum(["urgent", "normal"]).optional(), today: z.boolean().optional() }, async ({ title, bucket = "urgent", today = false }) => {
+    tool("add_todo", "Add a new todo. First check the board/list_items: if an item with essentially the same meaning already exists, don't duplicate it — tell the user about the existing one (or refine it) instead of adding.", { title: z.string(), bucket: z.enum(["urgent", "normal"]).optional(), today: z.boolean().optional() }, async ({ title, bucket = "urgent", today = false }) => {
       const b = today ? "urgent" : bucket;
       const it = newItem(title, { starred: today });
       model[b].push(it);
@@ -126,22 +127,36 @@ function buildServer(ctx) {
       ops.push(`deleted "${f.item.title}"`);
       return ok("Deleted.");
     }),
+    tool("list_documents", "List the documents the user has attached (files in the vault's attachments folder).", {}, async () => {
+      const list = docs?.list?.() ?? [];
+      return ok(list.length ? JSON.stringify(list.map((d) => ({ name: d.name, size: d.size }))) : "No documents are attached.");
+    }),
+    tool("read_document", "Read the text contents of an attached document by exact name. Works for text files (markdown, txt, csv, json, code, etc.). Binary files like PDFs or images cannot be read as text yet.", { name: z.string() }, async ({ name }) => {
+      const buf = docs?.read?.(name);
+      if (!buf) return ok(`No document named "${name}". Use list_documents to see what's attached.`);
+      if (buf.subarray(0, 8000).includes(0)) return ok(`"${name}" looks like a binary file (PDF, image, or Office doc); I can't read it as text yet.`);
+      const LIMIT = 40000;
+      const text = buf.toString("utf8");
+      return ok(text.length > LIMIT ? `${text.slice(0, LIMIT)}\n\n…[truncated; ${buf.length} bytes total]` : text);
+    }),
   ];
 
   return createSdkMcpServer({ name: "todo", version: "0.1.0", tools });
 }
 
-function snapshot(model) {
+function snapshot(model, docs) {
   const u = model.urgent.map((it) => `  ${it.id}${it.starred ? " ·Today" : ""} — ${it.title}`).join("\n");
   const tags = [...new Set(model.normal.flatMap((it) => tagsOf(it.title)))];
   const subs = (model.goals?.rawLines ?? []).filter((l) => /^\*\*.+\*\*$/.test(l.trim())).map((l) => l.trim());
   const top5 = model.top5.map((it) => `  ${it.id} — ${it.title}`).join("\n");
+  const documents = docs?.list?.() ?? [];
   return [
     `Urgent (${model.urgent.length}):`, u || "  (none)",
     `Normal: ${model.normal.length} items. Tags in use: ${tags.length ? tags.map((t) => "#" + t).join(" ") : "(none)"}`,
     `Top 5 (${model.top5.length}):`, top5 || "  (none)",
     `Goals subsections: ${subs.join(", ") || "(none)"}`,
     `To Read: ${model.toread?.rawLines?.length ?? 0} lines · Completed: ${model.completed.length} · Deleted: ${model.deleted.length}`,
+    `Documents: ${documents.length ? documents.map((d) => d.name).join(", ") : "(none)"}`,
   ].join("\n");
 }
 
@@ -150,9 +165,26 @@ const TOOL_NAMES = [
   "clear_today", "move_to_goals", "add_to_top5", "complete", "edit_title", "delete",
 ].map((n) => `mcp__todo__${n}`);
 
-export async function runAgent({ model, ops, seen, message, sessionId, abortController }) {
-  const server = buildServer({ model, ops, seen });
-  const prompt = `Current board:\n${snapshot(model)}\n\nUser: ${message}`;
+// Friendly labels so the chat can narrate what the agent is doing, live.
+const TOOL_LABELS = {
+  list_items: "Reviewing your list", read_goals: "Reading your goals",
+  write_goals: "Rewriting your goals", search: "Searching your todos",
+  add_todo: "Adding a todo", set_priority: "Changing a priority",
+  set_today: "Marking something Today", clear_today: "Clearing Today",
+  move_to_goals: "Moving to Goals", add_to_top5: "Updating Top 5",
+  add_to_read: "Adding to To Read", remove_from_read: "Pruning To Read",
+  complete: "Completing an item", edit_title: "Editing an item", delete: "Deleting an item",
+  list_documents: "Checking your documents", read_document: "Reading a document",
+};
+const toolLabel = (name) => {
+  const bare = String(name || "").replace(/^mcp__todo__/, "");
+  return TOOL_LABELS[bare] || bare.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+};
+
+export async function runAgent({ model, ops, seen, message, sessionId, abortController, onEvent, docs }) {
+  const emit = (event) => { try { onEvent?.(event); } catch {} };
+  const server = buildServer({ model, ops, seen, docs });
+  const prompt = `Current board:\n${snapshot(model, docs)}\n\nUser: ${message}`;
 
   let reply = "";
   let session = sessionId;
@@ -175,7 +207,14 @@ export async function runAgent({ model, ops, seen, message, sessionId, abortCont
   for await (const msg of q) {
     if (msg.session_id) session = msg.session_id;
     if (msg.type === "assistant") {
-      reply += (msg.message?.content ?? []).filter((b) => b.type === "text").map((b) => b.text).join("");
+      let msgText = "";
+      for (const b of msg.message?.content ?? []) {
+        if (b.type === "text" && b.text) { msgText += b.text; emit({ kind: "text", text: b.text }); }
+        else if (b.type === "thinking" && b.thinking) emit({ kind: "thinking", text: b.thinking });
+        else if (b.type === "tool_use") emit({ kind: "tool", label: toolLabel(b.name) });
+      }
+      // Separate narration emitted across turns (text · tool · text) with a blank line.
+      if (msgText.trim()) reply += (reply ? "\n\n" : "") + msgText;
     } else if (msg.type === "result" && msg.result && !reply) {
       reply = msg.result;
     }

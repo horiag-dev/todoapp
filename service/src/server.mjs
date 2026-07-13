@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, resolve, extname } from "node:path";
 import { homedir } from "node:os";
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
@@ -14,6 +14,10 @@ import { touch, ageDays } from "./ledger.mjs";
 import { applyAction } from "./ops.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
+const APP_VERSION = (() => {
+  try { return JSON.parse(readFileSync(join(here, "..", "package.json"), "utf8")).version || "0.0.0"; }
+  catch { return "0.0.0"; }
+})();
 const DEFAULT_PORT = Number(process.env.PORT) || 5178;
 const DEFAULT_HOST = "127.0.0.1";
 
@@ -64,6 +68,17 @@ const DEMO_FILE = `# Todo List
 `;
 
 const expandPath = (p) => resolve(String(p || "").replace(/^~(?=\/|$)/, homedir()));
+
+const UPLOAD_LIMIT = 40_000_000; // ~30 MB after base64 inflation
+const MIME = {
+  ".pdf": "application/pdf", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+  ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml", ".txt": "text/plain; charset=utf-8",
+  ".md": "text/markdown; charset=utf-8", ".markdown": "text/markdown; charset=utf-8", ".csv": "text/csv; charset=utf-8",
+  ".json": "application/json", ".html": "text/html; charset=utf-8", ".zip": "application/zip",
+  ".doc": "application/msword", ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".xls": "application/vnd.ms-excel", ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".ppt": "application/vnd.ms-powerpoint", ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+};
 
 // Remember the last-opened file so a restart reconnects instead of dropping to onboarding.
 const STATE_DIR = process.env.BIGROCKS_STATE_DIR || join(homedir(), ".config", "big-rocks-first");
@@ -181,7 +196,7 @@ export function createBigRocksServer({
   }
 
   function modelView() {
-    if (!configured()) return { configured: false, busy };
+    if (!configured()) return { configured: false, busy, appVersion: APP_VERSION };
     refreshFromDisk();
     const model = currentModel();
     const ageOf = (text) => { const a = ageDays(seen, text); return a != null && a >= 7 ? a : null; };
@@ -206,6 +221,7 @@ export function createBigRocksServer({
       canUndo: vault.hasHistory(),
       goalsChanged,
       goalsBefore: goalsChanged ? baseGoals : null,
+      documents: vault.listAttachments(),
       goals: draftGoals,
       toread: readLines(model.toread, /^\s*-\s+/).map((entry) => ({ ...entry, age: ageOf(entry.text) })),
       tags,
@@ -253,11 +269,11 @@ export function createBigRocksServer({
     res.writeHead(status, { "content-type": "application/json" });
     res.end(JSON.stringify(obj));
   };
-  const readBody = (req) => new Promise((resolveBody, reject) => {
+  const readBody = (req, maxBytes = 1_000_000) => new Promise((resolveBody, reject) => {
     let body = "";
     req.on("data", (chunk) => {
       body += chunk;
-      if (body.length > 1_000_000) reject(new Error("request too large"));
+      if (body.length > maxBytes) reject(new Error("request too large"));
     });
     req.on("end", () => {
       try { resolveBody(body ? JSON.parse(body) : {}); } catch { reject(new Error("invalid JSON")); }
@@ -321,21 +337,36 @@ export function createBigRocksServer({
         if (externalConflict) return json(res, 409, conflictBody("The file changed externally. Reload before continuing the draft."));
         const { message } = await readBody(req);
         if (!message?.trim()) return json(res, 400, { error: "Enter a message." });
+        // Stream the agent's steps (SSE) when the client asks; otherwise plain JSON.
+        const stream = (req.headers.accept || "").includes("text/event-stream");
         const candidate = clone(draft ?? base);
         const candidateOps = [...draftOps];
         busy = true;
         activeAbort = new AbortController();
         const timeout = setTimeout(() => activeAbort?.abort("Assistant request timed out."), 120_000);
+        let sse = null;
+        if (stream) {
+          res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
+          sse = (event, data) => { try { res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); } catch {} };
+          sse("start", { ok: true });
+        }
         try {
           const before = candidateOps.length;
-          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort });
+          const onEvent = stream ? (ev) => sse("step", ev) : undefined;
+          const docs = { list: () => vault.listAttachments(), read: (name) => vault.readAttachment(name) };
+          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort, onEvent, docs });
           sessionId = result.sessionId;
           chatMessages.push({ role: "you", text: message }, { role: "bot", text: result.reply });
           saveChat(vault.todoDocPath, { sessionId, messages: chatMessages });
           draft = candidateOps.length ? candidate : draft;
           draftOps = candidateOps;
           if (draft && !draftBaseVersion) draftBaseVersion = baseVersion;
-          return json(res, 200, { reply: result.reply, model: modelView(), newOps: candidateOps.slice(before) });
+          const payload = { reply: result.reply, model: modelView(), newOps: candidateOps.slice(before) };
+          if (stream) { sse("done", payload); return res.end(); }
+          return json(res, 200, payload);
+        } catch (err) {
+          if (stream) { sse("error", { error: String(err?.message || err) }); return res.end(); }
+          throw err;
         } finally {
           clearTimeout(timeout);
           activeAbort = null;
@@ -356,6 +387,35 @@ export function createBigRocksServer({
         if (!activeAbort) return json(res, 400, { error: "The assistant is not currently working." });
         activeAbort.abort("Cancelled by user.");
         return json(res, 200, { ok: true });
+      }
+
+      if (req.method === "POST" && p === "/api/documents") {
+        requireConfigured();
+        const { name, data } = await readBody(req, UPLOAD_LIMIT);
+        if (!name?.trim() || typeof data !== "string") return json(res, 400, { error: "A file name and contents are required." });
+        const saved = vault.saveAttachment(name, Buffer.from(data, "base64"));
+        return json(res, 200, { ok: true, name: saved, model: modelView() });
+      }
+
+      if (req.method === "GET" && p === "/api/documents/file") {
+        requireConfigured();
+        const name = url.searchParams.get("name") || "";
+        const buf = vault.readAttachment(name);
+        if (!buf) return json(res, 404, { error: "That document was not found." });
+        const safe = name.split(/[\\/]/).pop().replace(/["\r\n]/g, "");
+        res.writeHead(200, {
+          "content-type": MIME[extname(safe).toLowerCase()] || "application/octet-stream",
+          "content-disposition": `inline; filename="${safe}"`,
+          "content-length": buf.length,
+        });
+        return res.end(buf);
+      }
+
+      if (req.method === "POST" && p === "/api/documents/remove") {
+        requireConfigured();
+        const { name } = await readBody(req);
+        if (!vault.removeAttachment(name)) return json(res, 404, { error: "That document was not found." });
+        return json(res, 200, { ok: true, model: modelView() });
       }
 
       if (req.method === "POST" && p === "/api/act") {
@@ -408,6 +468,7 @@ export function createBigRocksServer({
         if (draft) externalConflict = true;
         return json(res, 409, conflictBody(error.message));
       }
+      if (error?.message === "request too large") return json(res, 413, { error: "That file is too large (about 30 MB maximum)." });
       const clientCodes = new Set(["NOT_CONFIGURED", "PICKER_CANCELLED", "PICKER_UNAVAILABLE", "FILE_NOT_FOUND", "FILE_EXISTS"]);
       const status = error?.code === "DRAFT_PENDING" || error?.code === "FILE_EXISTS" ? 409 : clientCodes.has(error?.code) ? 400 : 500;
       if (status === 500) console.error(error);

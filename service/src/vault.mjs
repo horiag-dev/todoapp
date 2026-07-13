@@ -6,9 +6,11 @@ import {
   appendFileSync,
   readdirSync,
   rmSync,
+  statSync,
+  renameSync,
 } from "node:fs";
 import { createHash } from "node:crypto";
-import { join, dirname, basename } from "node:path";
+import { join, dirname, basename, extname } from "node:path";
 import { parseVault } from "./parse.mjs";
 import { migrate } from "./migrate.mjs";
 import { serialize } from "./serialize.mjs";
@@ -46,6 +48,10 @@ export class Vault {
   }
   get logPath() {
     return join(this.machineDir, "log.jsonl");
+  }
+  // User documents live as ordinary files in the vault (Obsidian sees them).
+  get attachmentsDir() {
+    return join(this.vaultPath, "attachments");
   }
 
   readRaw() {
@@ -118,5 +124,63 @@ export class Vault {
       JSON.stringify({ at: new Date().toISOString(), op: "undo", restored: newest }) + "\n",
     );
     return { content, version: digest(content) };
+  }
+
+  // --- Attachments: files the user drops in, kept in <vault>/attachments -------
+  #safeAttachmentName(name) {
+    const base = basename(String(name ?? "")).replace(/^\.+/, "").trim();
+    if (!base || base.includes("/") || base.includes("\\")) throw new Error("Invalid attachment name.");
+    return base;
+  }
+
+  #uniqueAttachmentPath(name) {
+    let candidate = join(this.attachmentsDir, name);
+    if (!existsSync(candidate)) return candidate;
+    const ext = extname(name);
+    const stem = name.slice(0, name.length - ext.length);
+    for (let i = 2; ; i++) {
+      candidate = join(this.attachmentsDir, `${stem} (${i})${ext}`);
+      if (!existsSync(candidate)) return candidate;
+    }
+  }
+
+  listAttachments() {
+    let names;
+    try { names = readdirSync(this.attachmentsDir); } catch { return []; }
+    return names
+      .filter((f) => !f.startsWith("."))
+      .map((f) => {
+        try {
+          const s = statSync(join(this.attachmentsDir, f));
+          return s.isFile() ? { name: f, size: s.size, mtime: s.mtimeMs } : null;
+        } catch { return null; }
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.mtime - a.mtime);
+  }
+
+  saveAttachment(name, data) {
+    const safe = this.#safeAttachmentName(name);
+    mkdirSync(this.attachmentsDir, { recursive: true });
+    const target = this.#uniqueAttachmentPath(safe);
+    writeFileAtomic(target, data);
+    return basename(target);
+  }
+
+  readAttachment(name) {
+    const p = join(this.attachmentsDir, this.#safeAttachmentName(name));
+    return existsSync(p) ? readFileSync(p) : null;
+  }
+
+  // Removal is recoverable: move to .bigrocks/trash rather than hard-delete.
+  removeAttachment(name) {
+    const safe = this.#safeAttachmentName(name);
+    const p = join(this.attachmentsDir, safe);
+    if (!existsSync(p)) return false;
+    const trash = join(this.machineDir, "trash");
+    mkdirSync(trash, { recursive: true });
+    const ts = new Date().toISOString().replace(/[:.]/g, "-");
+    renameSync(p, join(trash, `${ts}__${safe}`));
+    return true;
   }
 }

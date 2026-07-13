@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createBigRocksServer } from "../src/server.mjs";
@@ -154,6 +154,89 @@ test("a goals-changing draft reports before/after in the model view", async () =
     assert.deepEqual(result.body.model.goals, ["**Launch**", "- Ship v2"]);
     // Un-applied draft: the file on disk is untouched.
     assert.doesNotMatch(readFileSync(f.doc, "utf8"), /Ship v2/);
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("chat streams the agent's steps over SSE when requested", async () => {
+  const streamingAgent = async ({ model, ops, onEvent }) => {
+    onEvent?.({ kind: "tool", label: "Reviewing your list" });
+    onEvent?.({ kind: "text", text: "On it." });
+    model.normal.push({ id: "x", title: "Streamed add", checked: false, starred: false });
+    ops.push("added via stream");
+    return { reply: "On it.", sessionId: "s1" };
+  };
+  const f = await fixture(streamingAgent);
+  try {
+    const res = await fetch(`http://127.0.0.1:${f.server.address().port}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "text/event-stream" },
+      body: JSON.stringify({ message: "add something" }),
+    });
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /text\/event-stream/);
+    const body = await res.text();
+    assert.match(body, /event: step/);
+    assert.match(body, /Reviewing your list/);
+    assert.match(body, /event: done/);
+    assert.match(body, /Streamed add/); // final model rides in the done event
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("documents attach to the vault, serve back, and remove to trash", async () => {
+  const f = await fixture();
+  try {
+    const data = Buffer.from("hello doc").toString("base64");
+    let r = await f.request("/api/documents", { name: "note.txt", data });
+    assert.equal(r.response.status, 200);
+    assert.equal(r.body.model.documents[0].name, "note.txt");
+    assert.match(readFileSync(join(f.dir, "attachments", "note.txt"), "utf8"), /hello doc/);
+
+    const fileRes = await fetch(`http://127.0.0.1:${f.server.address().port}/api/documents/file?name=note.txt`);
+    assert.equal(fileRes.status, 200);
+    assert.equal(await fileRes.text(), "hello doc");
+
+    r = await f.request("/api/documents/remove", { name: "note.txt" });
+    assert.equal(r.body.model.documents.length, 0);
+    assert.ok(!existsSync(join(f.dir, "attachments", "note.txt")));
+    // recoverable in the machine trash, not hard-deleted
+    assert.ok(existsSync(join(f.dir, ".bigrocks", "trash")));
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("a duplicate document name is kept, not clobbered", async () => {
+  const f = await fixture();
+  try {
+    const a = await f.request("/api/documents", { name: "d.txt", data: Buffer.from("one").toString("base64") });
+    const b = await f.request("/api/documents", { name: "d.txt", data: Buffer.from("two").toString("base64") });
+    assert.equal(a.body.name, "d.txt");
+    assert.equal(b.body.name, "d (2).txt");
+    assert.equal(b.body.model.documents.length, 2);
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("Empty Trash permanently clears the Deleted bucket", async () => {
+  const f = await fixture();
+  try {
+    // Move the seed item to Deleted, then empty the trash.
+    let r = await f.request("/api/model");
+    const id = r.body.urgent[0].id;
+    await f.request("/api/act", { action: "delete", id });
+    r = await f.request("/api/model");
+    assert.equal(r.body.deleted.length, 1);
+    r = await f.request("/api/act", { action: "clearDeleted" });
+    assert.equal(r.body.model.deleted.length, 0);
   } finally {
     await new Promise((resolve) => f.server.close(resolve));
     rmSync(f.dir, { recursive: true, force: true });
