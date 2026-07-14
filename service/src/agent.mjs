@@ -186,38 +186,55 @@ export async function runAgent({ model, ops, seen, message, sessionId, abortCont
   const server = buildServer({ model, ops, seen, docs });
   const prompt = `Current board:\n${snapshot(model, docs)}\n\nUser: ${message}`;
 
-  let reply = "";
-  let session = sessionId;
-  const q = query({
-    prompt,
-    options: {
-      systemPrompt: SYSTEM,
-      settingSources: [],
-      mcpServers: { todo: server },
-      maxTurns: 24,
-      ...(abortController ? { abortController } : {}),
-      ...(sessionId ? { resume: sessionId } : {}),
-      canUseTool: async (name) =>
-        name.startsWith("mcp__todo__")
-          ? { behavior: "allow", updatedInput: undefined }
-          : { behavior: "deny", message: "Only the todo tools are available." },
-    },
-  });
+  const opsBaseline = ops.length;
 
-  for await (const msg of q) {
-    if (msg.session_id) session = msg.session_id;
-    if (msg.type === "assistant") {
-      let msgText = "";
-      for (const b of msg.message?.content ?? []) {
-        if (b.type === "text" && b.text) { msgText += b.text; emit({ kind: "text", text: b.text }); }
-        else if (b.type === "thinking" && b.thinking) emit({ kind: "thinking", text: b.thinking });
-        else if (b.type === "tool_use") emit({ kind: "tool", label: toolLabel(b.name) });
+  const attempt = async (resumeId) => {
+    let reply = "";
+    let session = resumeId;
+    const q = query({
+      prompt,
+      options: {
+        systemPrompt: SYSTEM,
+        settingSources: [],
+        mcpServers: { todo: server },
+        maxTurns: 24,
+        ...(abortController ? { abortController } : {}),
+        ...(resumeId ? { resume: resumeId } : {}),
+        canUseTool: async (name) =>
+          name.startsWith("mcp__todo__")
+            ? { behavior: "allow", updatedInput: undefined }
+            : { behavior: "deny", message: "Only the todo tools are available." },
+      },
+    });
+
+    for await (const msg of q) {
+      if (msg.session_id) session = msg.session_id;
+      if (msg.type === "assistant") {
+        let msgText = "";
+        for (const b of msg.message?.content ?? []) {
+          if (b.type === "text" && b.text) { msgText += b.text; emit({ kind: "text", text: b.text }); }
+          else if (b.type === "thinking" && b.thinking) emit({ kind: "thinking", text: b.thinking });
+          else if (b.type === "tool_use") emit({ kind: "tool", label: toolLabel(b.name) });
+        }
+        // Separate narration emitted across turns (text · tool · text) with a blank line.
+        if (msgText.trim()) reply += (reply ? "\n\n" : "") + msgText;
+      } else if (msg.type === "result" && msg.result && !reply) {
+        reply = msg.result;
       }
-      // Separate narration emitted across turns (text · tool · text) with a blank line.
-      if (msgText.trim()) reply += (reply ? "\n\n" : "") + msgText;
-    } else if (msg.type === "result" && msg.result && !reply) {
-      reply = msg.result;
     }
+    return { reply: reply.trim(), sessionId: session };
+  };
+
+  try {
+    return await attempt(sessionId);
+  } catch (e) {
+    // A saved session can vanish (history cleared, a different machine, an
+    // expired id). Don't fail the whole chat — retry once as a fresh session.
+    const stale = sessionId && /no conversation found|conversation not found|session id|invalid session|session not found/i.test(String(e?.message || e));
+    if (stale) {
+      ops.length = opsBaseline;
+      return await attempt(undefined);
+    }
+    throw e;
   }
-  return { reply: reply.trim(), sessionId: session };
 }
