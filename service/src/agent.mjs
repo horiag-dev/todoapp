@@ -1,6 +1,6 @@
 import { query, tool, createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
-import { findById, reflowUrgent, newItem, itemView } from "./model.mjs";
+import { findById, reflowUrgent, newItem, itemView, searchModel } from "./model.mjs";
 import { tagsOf } from "./parse.mjs";
 import { ageDays } from "./ledger.mjs";
 import { insertGoal } from "./ops.mjs";
@@ -56,13 +56,7 @@ function buildServer(ctx) {
       ops.push("edited the Goals notepad");
       return ok("Goals updated.");
     }),
-    tool("search", "Search item titles across Urgent, Normal, and Top 5.", { query: z.string() }, async ({ query }) => {
-      const q = query.toLowerCase();
-      const hits = ["urgent", "normal", "top5"].flatMap((b) =>
-        model[b].filter((it) => it.title.toLowerCase().includes(q)).map((it) => ({ ...itemView(it), bucket: b })),
-      );
-      return ok(JSON.stringify(hits));
-    }),
+    tool("search", "Search everywhere: item titles in Urgent, Normal, Top 5, and Completed, plus the Goals notepad and the To Read list. Use this to check whether something already exists (including already-done work) before adding.", { query: z.string() }, async ({ query }) => ok(JSON.stringify(searchModel(model, query)))),
     tool("add_todo", "Add a new todo. First check the board/list_items: if an item with essentially the same meaning already exists, don't duplicate it — tell the user about the existing one (or refine it) instead of adding.", { title: z.string(), bucket: z.enum(["urgent", "normal"]).optional(), today: z.boolean().optional() }, async ({ title, bucket = "urgent", today = false }) => {
       const b = today ? "urgent" : bucket;
       const it = newItem(title, { starred: today });

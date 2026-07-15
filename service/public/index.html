@@ -35,7 +35,7 @@
 </style>
 </head>
 <body>
-<header><h1>🪨 Big Rocks First</h1><span class="ver" id="ver" title="App version"></span><span class="sub">Markdown-owned · assistant changes require approval</span><span class="path" id="path"></span><button class="iconbtn" id="mem-btn" title="What the assistant remembers">🧠 Memory</button><button class="iconbtn" id="undo" hidden title="Undo the last saved change">↶ Undo</button><button class="iconbtn" id="choose">File…</button></header>
+<header><h1>🪨 Big Rocks First</h1><span class="ver" id="ver" title="App version"></span><span class="sub">Markdown-owned · assistant changes require approval</span><span class="path" id="path"></span><button class="iconbtn" id="review-btn" title="Guided weekly review">◆ Weekly Review</button><button class="iconbtn" id="mem-btn" title="What the assistant remembers">🧠 Memory</button><button class="iconbtn" id="undo" hidden title="Undo the last saved change">↶ Undo</button><button class="iconbtn" id="choose">File…</button></header>
 <div class="notice" id="notice" hidden><span id="notice-text"></span><button class="mini" id="notice-action" hidden></button><button class="mini" id="notice-close">×</button></div>
 <main>
   <div class="col">
@@ -175,6 +175,16 @@ async function saveGoals(){const save=$("#goals-save");save.disabled=true;$("#go
 $("#edit-goals").onclick=openGoalsEditor;$("#goals-cancel").onclick=closeGoalsEditor;$("#goals-save").onclick=saveGoals;$("#goals-ta").oninput=updateGoalsPreview;$("#goals-ta").onkeydown=e=>{if(e.key==="Escape"){e.preventDefault();closeGoalsEditor()}else if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)){e.preventDefault();saveGoals()}};
 async function openMemory(){try{const r=await api("/api/memory");$("#memory-view").innerHTML=(r.content&&r.content.trim())?mdRender(r.content):'<div class="empty">No memory yet — it fills in as you chat. Tell the assistant a lasting preference (e.g. "always keep my replies short") to seed it.</div>';$("#memory-path").textContent=r.path||"";$("#memory-modal").hidden=false}catch(e){handleError(e)}}
 $("#mem-btn").onclick=openMemory;$("#memory-close").onclick=()=>{$("#memory-modal").hidden=true};
+const REVIEW_PROMPT=`Let's do my weekly review. Go step by step and conversationally — propose, don't bulk-change; wait for my go-ahead before applying sweeping edits.
+
+1. Wins: call list_items for "completed" and give me a short, specific recap of what I actually finished — group by #tag or theme, name the meaningful ones (2–4 sentences, no stats dashboard).
+2. Last week's Top 5: for each current Top 5 item, tell me in one line whether it looks done, should carry over, or be dropped.
+3. De-stale: using age_days, surface the most stale items in Urgent and Normal and the oldest To Read links. For each, propose demote-to-Normal, move-to-Goals, or delete — name them exactly so I can choose.
+4. Read my Goals notepad and your memory notes for context.
+5. Next week: propose a new Top 5 (five items). Then do a Big Rocks check — compare the proposed five against my Goals sections and flag any goal area none of them touches, and ask if that's intentional.
+
+Keep it tight and skimmable. I'll tell you what to apply.`;
+$("#review-btn").onclick=()=>{if(!current?.configured)return;chat(REVIEW_PROMPT,"Let's do my weekly review")};
 function addMsg(cls,text){const d=document.createElement("div");d.className="msg "+cls;d.textContent=text;$("#log").appendChild(d);$("#log").scrollTop=$("#log").scrollHeight;return d}
 let chatContext=null;
 function setChatContext(li){chatContext={id:li.dataset.id,title:li.dataset.title,bucket:li.dataset.section};$("#chat-context-title").textContent=chatContext.title;$("#chat-context").hidden=false;$("#chatin").placeholder="What should happen to this todo?";$("#chatin").focus()}
