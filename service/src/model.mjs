@@ -36,6 +36,28 @@ export function itemView(it) {
   return { id: it.id, title: it.title, today: !!it.starred, done: !!it.checked, tags: tagsOf(it.title) };
 }
 
+// Server-side near-duplicate detection (mirrors the client quick-add check) —
+// used by the capture endpoint, which has no browser to run the client version.
+const DUP_STOP = new Set(["the", "and", "for", "with", "from", "this", "that", "your", "you", "are", "was", "get", "got", "new", "now", "out", "its"]);
+const dupToks = (t) => [...new Set(String(t).toLowerCase().replace(/#[\w/-]+/g, " ").replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !DUP_STOP.has(w)))];
+function dupScore(a, b) {
+  const A = dupToks(a), B = dupToks(b);
+  if (!A.length || !B.length) return 0;
+  const bs = new Set(B);
+  let inter = 0;
+  for (const w of A) if (bs.has(w)) inter++;
+  if (!inter) return 0;
+  return Math.max((inter / Math.min(A.length, B.length)) * 0.92, inter / (A.length + B.length - inter));
+}
+export function findDuplicate(model, title) {
+  let best = null;
+  for (const b of ["urgent", "normal", "top5"]) for (const it of model[b] ?? []) {
+    const s = dupScore(title, it.title);
+    if (s >= 0.67 && (!best || s > best.score)) best = { ...itemView(it), bucket: b, score: s };
+  }
+  return best;
+}
+
 // Search everywhere: item titles across Urgent/Normal/Top 5/Completed, plus the
 // Goals notepad and the To Read list. Pure (testable) — the agent's search tool
 // is a thin wrapper over this.

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { searchModel, assignIds } from "../src/model.mjs";
+import { searchModel, findDuplicate, assignIds } from "../src/model.mjs";
 import { migrate } from "../src/migrate.mjs";
 import { parseVault } from "../src/parse.mjs";
 
@@ -56,4 +56,11 @@ test("search is case-insensitive and item hits carry id + bucket", () => {
   assert.equal(hits.length, 1);
   assert.equal(hits[0].bucket, "urgent");
   assert.ok(hits[0].id, "item hits include an id");
+});
+
+test("findDuplicate flags near-duplicate active items only", () => {
+  assert.equal(findDuplicate(model, "Book the venue").bucket, "urgent"); // exact-ish
+  assert.equal(findDuplicate(model, "book venue tickets").bucket, "urgent"); // subset overlap
+  assert.equal(findDuplicate(model, "Send the Q3 report"), null); // completed items don't count as dupes
+  assert.equal(findDuplicate(model, "totally unrelated errand"), null);
 });

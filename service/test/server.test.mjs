@@ -87,6 +87,43 @@ test("assistant drafts block direct edits and conflict after an external write",
   }
 });
 
+test("capture adds to Urgent and reports a near-duplicate", async () => {
+  const f = await fixture();
+  try {
+    let r = await f.request("/api/capture", { title: "Brand new capture" });
+    assert.equal(r.body.captured, true);
+    assert.equal(r.body.bucket, "urgent");
+    assert.equal(r.body.duplicateOf, null);
+    assert.match(readFileSync(f.doc, "utf8"), /Brand new capture/);
+
+    // The seed file has "Existing" in Urgent — a near-dup should be flagged (still captured).
+    r = await f.request("/api/capture", { title: "existing" });
+    assert.equal(r.body.captured, true);
+    assert.equal(r.body.duplicateOf, "Existing");
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("adding a bare URL to To Read unfurls it to a titled link", async () => {
+  const f = await fixture();
+  try {
+    // Point To Read at a tiny local server that returns an HTML title.
+    const { createServer } = await import("node:http");
+    const page = createServer((req, res) => { res.writeHead(200, { "content-type": "text/html" }); res.end("<title>Example Domain</title>"); });
+    await new Promise((r) => page.listen(0, "127.0.0.1", r));
+    const url = `http://127.0.0.1:${page.address().port}/`;
+    const r = await f.request("/api/act", { action: "addToRead", text: url });
+    assert.equal(r.response.status, 200);
+    assert.match(readFileSync(f.doc, "utf8"), new RegExp(`\\[Example Domain\\]\\(${url.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}\\)`));
+    await new Promise((res) => page.close(res));
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
 test("unconfigured server can create and connect a blank Markdown file", async () => {
   const dir = mkdtempSync(join(tmpdir(), "bigrocks-setup-"));
   const doc = join(dir, "new.md");

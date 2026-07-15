@@ -6,15 +6,15 @@ Status legend: **[building]** in progress · **[next]** queued · **[later]** ·
 
 ## Quick wins (hours each)
 
-- **[building] Search everywhere** (S) — extend the `search` tool (was Urgent/Normal/Top 5 titles only) and UI filter to Goals, To Read, and Completed. Also strengthens dupe-detection, which couldn't see Completed.
+- **[done ✓ v0.5.0] Search everywhere** (S) — extend the `search` tool (was Urgent/Normal/Top 5 titles only) and UI filter to Goals, To Read, and Completed. Also strengthens dupe-detection, which couldn't see Completed.
 - **[next] Live-reload on external edits** (S) — `fs.watch` the `.md` → push a refresh over the existing SSE channel instead of surfacing a hard conflict after the fact. Makes "edit in Obsidian anytime" feel true.
-- **[next] To Read title unfurl** (S) — on `add_to_read`, fetch the page `<title>` and store `[Title](url)`. Bare URLs are why To Read rots; titles make de-staling doable. Best-effort, falls back to the raw URL.
-- **[next] Quick-capture endpoint + Apple Shortcut** (S) — a dumb `POST /capture` (no agent in the path, so it never blocks on the API key) + a share-sheet Shortcut/Raycast snippet, reusing the server-side dupe check.
+- **[done ✓ v0.6.0] To Read title unfurl** (S) — on `add_to_read`, fetch the page `<title>` and store `[Title](url)`. Bare URLs are why To Read rots; titles make de-staling doable. Best-effort, falls back to the raw URL.
+- **[done ✓ v0.6.0] Quick-capture endpoint + Apple Shortcut** (S) — a dumb `POST /capture` (no agent in the path, so it never blocks on the API key) + a share-sheet Shortcut/Raycast snippet, reusing the server-side dupe check.
 - **[later] Obsidian deep links** (S) — render `[[wikilinks]]` as `obsidian://open?...` links in todos, the memory modal, and the documents shelf. Cheapest bridge to the vault north-star.
 
 ## Medium bets (a day-ish)
 
-- **[building] Guided Weekly Review + Big Rocks Check** (M) — *the headline.* A "Weekly Review" button runs a scripted agent flow: **recap what got done** (summarize Completed with detail — group by #tag/theme, name the meaningful ones) → reconcile last week's Top 5 (done / carry / drop) → sweep stale items via the age ledger (propose demote / delete / move-to-Goals) → de-stale To Read → propose next week's Top 5 → **Big Rocks Check** (compare the proposed five against the Goals notepad; flag any goal area none of them touches). Every mutation rides the existing per-change ✓/✗ draft surface; conversational, propose-and-confirm.
+- **[done ✓ v0.5.0] Guided Weekly Review + Big Rocks Check** (M) — *the headline.* A "Weekly Review" button runs a scripted agent flow: **recap what got done** (summarize Completed with detail — group by #tag/theme, name the meaningful ones) → reconcile last week's Top 5 (done / carry / drop) → sweep stale items via the age ledger (propose demote / delete / move-to-Goals) → de-stale To Read → propose next week's Top 5 → **Big Rocks Check** (compare the proposed five against the Goals notepad; flag any goal area none of them touches). Every mutation rides the existing per-change ✓/✗ draft surface; conversational, propose-and-confirm.
   - *User ask folded in:* the review explicitly reviews **all closed/completed items** and gives a specific recap (not just a count).
 - **[next] "Plan my day" triage** (S/M) — daily counterpart: agent proposes today's "Today" set from Urgent + `age_days` + memory ("you said Fridays are for writing"), propose-and-confirm. First place Memory visibly pays off.
 - **[next] PDF reading for the documents shelf** (S/M) — close the gap `read_document` admits; Claude reads PDFs natively as base64 `document` blocks.

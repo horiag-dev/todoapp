@@ -5,6 +5,7 @@ import { tagsOf } from "./parse.mjs";
 import { ageDays } from "./ledger.mjs";
 import { insertGoal } from "./ops.mjs";
 import { SECTIONS as MEMORY_SECTIONS } from "./memory.mjs";
+import { unfurlUrl } from "./unfurl.mjs";
 
 const ok = (text) => ({ content: [{ type: "text", text }] });
 
@@ -95,10 +96,11 @@ function buildServer(ctx) {
       ops.push(`added "${title}" to Top 5`);
       return ok("Added to Top 5.");
     }),
-    tool("add_to_read", "Add a link or reference to the To Read list.", { url: z.string() }, async ({ url }) => {
+    tool("add_to_read", "Add a link or reference to the To Read list. Bare URLs are unfurled to a [Title](url) link automatically.", { url: z.string() }, async ({ url }) => {
       if (!model.toread) model.toread = { headerLine: "## 📚 To Read", rawLines: [] };
-      model.toread.rawLines.push(`- ${url}`);
-      ops.push(`added to To Read: ${url}`);
+      const entry = await unfurlUrl(url);
+      model.toread.rawLines.push(`- ${entry}`);
+      ops.push(`added to To Read: ${entry}`);
       return ok("Added to To Read.");
     }),
     tool("remove_from_read", "Remove a To Read entry containing the given text (use for de-staling).", { match: z.string() }, async ({ match }) => {

@@ -8,7 +8,8 @@ import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { Vault, VaultConflictError } from "./vault.mjs";
-import { assignIds, itemView, findById, reflowUrgent } from "./model.mjs";
+import { assignIds, itemView, findById, reflowUrgent, findDuplicate } from "./model.mjs";
+import { unfurlUrl } from "./unfurl.mjs";
 import { runAgent } from "./agent.mjs";
 import { touch, ageDays } from "./ledger.mjs";
 import { applyAction } from "./ops.mjs";
@@ -547,8 +548,22 @@ export function createBigRocksServer({
 
       if (req.method === "POST" && p === "/api/act") {
         const { action, ...args } = await readBody(req);
+        if (action === "addToRead") args.text = await unfurlUrl(args.text);
         saveDirect((working) => applyAction(working, action, args));
         return json(res, 200, { ok: true, model: modelView() });
+      }
+
+      // Dumb, agent-free capture path (share sheet, Shortcut, curl): title in,
+      // added to Urgent (or Normal), with a server-side near-duplicate note.
+      if (req.method === "POST" && p === "/api/capture") {
+        requireConfigured();
+        requireNoDraft();
+        const { title, bucket } = await readBody(req);
+        if (!title?.trim()) return json(res, 400, { error: "A title is required." });
+        const dup = findDuplicate(base, title);
+        const b = bucket === "normal" ? "normal" : "urgent";
+        saveDirect((working) => applyAction(working, "add", { title: title.trim(), bucket: b }), "capture");
+        return json(res, 200, { ok: true, captured: true, bucket: b, duplicateOf: dup ? dup.title : null });
       }
 
       if (req.method === "POST" && p === "/api/goals") {

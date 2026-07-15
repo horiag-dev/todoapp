@@ -70,6 +70,22 @@ then `node src/server.mjs`. Set `PORT=5179 sh run.sh` to change the port. For a
 Dock icon, use Chrome's "Save and Share → Create Shortcut" (a web manifest + PNG
 icons are served).
 
+### Capture (share sheet / Shortcut / curl)
+
+A dumb, agent-free endpoint for fast capture into Urgent — no API key required:
+
+```sh
+curl -s -X POST http://127.0.0.1:5178/api/capture \
+  -H 'content-type: application/json' -d '{"title":"Buy milk"}'
+# -> {"ok":true,"captured":true,"bucket":"urgent","duplicateOf":null}
+```
+
+Pass `"bucket":"normal"` to land it in Normal instead. `duplicateOf` is the title
+of a near-duplicate already on your list (the item is still captured — the caller
+decides what to do). Wrap it in a macOS **Shortcut** ("Get Contents of URL" → POST
+JSON) on the share sheet for one-tap capture from anywhere. Bare URLs added to
+**To Read** are unfurled to a `[Page Title](url)` link automatically.
+
 ## Safety model
 
 - The server binds to loopback only.
