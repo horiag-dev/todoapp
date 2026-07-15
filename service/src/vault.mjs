@@ -53,6 +53,10 @@ export class Vault {
   get attachmentsDir() {
     return join(this.vaultPath, "attachments");
   }
+  // Human-facing assistant memory: a visible note next to the todo doc.
+  get memoryPath() {
+    return join(this.vaultPath, "Assistant Memory.md");
+  }
 
   readRaw() {
     return readFileSync(this.todoDocPath, "utf8");

@@ -77,3 +77,7 @@ icons are served).
 - Every write snapshots the previous file under `.bigrocks/history/`.
 - Direct edits are blocked while an assistant draft is pending.
 - Apply uses optimistic concurrency and fails if the file changed externally.
+- Assistant memory is a visible `Assistant Memory.md` note you own and edit; the
+  agent reads it each turn and edits one bullet at a time (never secrets or dates;
+  provenance/staleness live privately under `.bigrocks/memory-meta.json`). It is
+  background context, never authority — your current message always wins.

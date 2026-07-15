@@ -12,6 +12,7 @@ import { assignIds, itemView, findById, reflowUrgent } from "./model.mjs";
 import { runAgent } from "./agent.mjs";
 import { touch, ageDays } from "./ledger.mjs";
 import { applyAction } from "./ops.mjs";
+import { createMemory } from "./memory.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const APP_VERSION = (() => {
@@ -397,6 +398,11 @@ export function createBigRocksServer({
       }
       if (req.method === "GET" && p === "/api/model") return json(res, 200, modelView());
 
+      if (req.method === "GET" && p === "/api/memory") {
+        requireConfigured();
+        return json(res, 200, createMemory(vault).read());
+      }
+
       if (req.method === "POST" && p === "/api/config") {
         const { path, mode = "open" } = await readBody(req);
         configurePath(path, mode);
@@ -461,7 +467,8 @@ export function createBigRocksServer({
           const before = candidateOps.length;
           const onEvent = stream ? (ev) => sse("step", ev) : undefined;
           const docs = { list: () => vault.listAttachments(), read: (name) => vault.readAttachment(name) };
-          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort, onEvent, docs });
+          const mem = createMemory(vault);
+          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort, onEvent, docs, mem });
           sessionId = result.sessionId;
           chatMessages.push({ role: "you", text: message }, { role: "bot", text: result.reply });
           saveChat(vault.todoDocPath, { sessionId, messages: chatMessages });

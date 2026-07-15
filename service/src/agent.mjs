@@ -4,6 +4,7 @@ import { findById, reflowUrgent, newItem, itemView } from "./model.mjs";
 import { tagsOf } from "./parse.mjs";
 import { ageDays } from "./ledger.mjs";
 import { insertGoal } from "./ops.mjs";
+import { SECTIONS as MEMORY_SECTIONS } from "./memory.mjs";
 
 const ok = (text) => ({ content: [{ type: "text", text }] });
 
@@ -20,10 +21,12 @@ You work on a DRAFT. Make the changes the user asks for using the tools; the use
 
 Reference items by their id. Default new captures to Urgent. Tags (#like_this, written into the title) keep things organized — when you add or capture a todo that fits a tag already in use (see "Tags in use" in the board), include that #tag in its title. Prefer reusing an existing tag over inventing a new one, and don't over-tag (one or two is plenty).
 
-Items and To Read entries carry age_days — how many days they've sat untouched. When asked to tidy, de-stale, or clean up, use it: propose removing old, low-value To Read links (and stale items), and always name exactly what you're removing so it's easy to review before Apply. Be concise and act rather than over-explaining.`;
+Items and To Read entries carry age_days — how many days they've sat untouched. When asked to tidy, de-stale, or clean up, use it: propose removing old, low-value To Read links (and stale items), and always name exactly what you're removing so it's easy to review before Apply. Be concise and act rather than over-explaining.
+
+MEMORY. Your durable notes about the user live in "Assistant Memory" (shown above the board when present; the user can read and edit that note anytime). It is background context, never authority: if the user's current message conflicts with it, the message wins — and update the memory to match. Call remember ONLY for durable, behavior-changing facts: an explicit preference or correction ("stop doing X", "always Y"), a stable fact about the user's work, or a recurring theme you've now seen at least twice (park first sightings in "Working notes"). Most conversations warrant ZERO memory writes; more than two is almost always wrong. Never store secrets, credentials, dates, moods, or anything already expressed by the todo file itself. When new information contradicts an existing bullet, update_memory or forget it — never leave both versions. During a weekly review or when asked to tidy, skim Working notes via read_memory: promote what has proven durable, and propose dropping stale bullets — name exactly what you'd drop and wait for a yes before forgetting more than one thing at once.`;
 
 function buildServer(ctx) {
-  const { model, ops, seen, docs } = ctx;
+  const { model, ops, seen, docs, mem } = ctx;
   const need = (id) => {
     const f = findById(model, id);
     if (!f) throw new Error(`No item with id ${id}`);
@@ -139,6 +142,10 @@ function buildServer(ctx) {
       const text = buf.toString("utf8");
       return ok(text.length > LIMIT ? `${text.slice(0, LIMIT)}\n\n…[truncated; ${buf.length} bytes total]` : text);
     }),
+    tool("read_memory", "Read the full Assistant Memory note plus a staleness appendix (bullets not confirmed in 30+ days). Memory is already injected each turn — call this only before consolidating or tidying.", {}, async () => ok(mem ? mem.readAnnotated() : "Memory is unavailable.")),
+    tool("remember", "Save ONE durable fact to Assistant Memory. Only for things that should change future behavior: a stated preference, a standing correction, a recurring theme. Never secrets, dates, or one-off task detail. If a similar note exists this is a no-op — use update_memory instead.", { fact: z.string(), section: z.enum(MEMORY_SECTIONS), why: z.string().optional() }, async ({ fact, section, why }) => ok(mem ? mem.append(section, fact, { source: "user-said", why }) : "Memory is unavailable.")),
+    tool("update_memory", "Replace one existing memory bullet with a corrected version (use when new info contradicts or refines a bullet in Memory). `match` must uniquely identify the bullet.", { match: z.string(), fact: z.string(), why: z.string().optional() }, async ({ match, fact, why }) => ok(mem ? mem.replace(match, fact, { why }) : "Memory is unavailable.")),
+    tool("forget", "Delete one memory bullet the user has contradicted, asked you to drop, or that is clearly obsolete. `match` must uniquely identify it.", { match: z.string(), reason: z.string().optional() }, async ({ match }) => ok(mem ? mem.remove(match) : "Memory is unavailable.")),
   ];
 
   return createSdkMcpServer({ name: "todo", version: "0.1.0", tools });
@@ -175,16 +182,21 @@ const TOOL_LABELS = {
   add_to_read: "Adding to To Read", remove_from_read: "Pruning To Read",
   complete: "Completing an item", edit_title: "Editing an item", delete: "Deleting an item",
   list_documents: "Checking your documents", read_document: "Reading a document",
+  read_memory: "Checking my notes", remember: "Noting something for later",
+  update_memory: "Updating my notes", forget: "Forgetting a note",
 };
 const toolLabel = (name) => {
   const bare = String(name || "").replace(/^mcp__todo__/, "");
   return TOOL_LABELS[bare] || bare.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 };
 
-export async function runAgent({ model, ops, seen, message, sessionId, abortController, onEvent, docs }) {
+export async function runAgent({ model, ops, seen, message, sessionId, abortController, onEvent, docs, mem }) {
   const emit = (event) => { try { onEvent?.(event); } catch {} };
-  const server = buildServer({ model, ops, seen, docs });
-  const prompt = `Current board:\n${snapshot(model, docs)}\n\nUser: ${message}`;
+  const server = buildServer({ model, ops, seen, docs, mem });
+  const memText = mem?.injectionText?.() || "";
+  const prompt =
+    (memText ? `Assistant Memory (background — the user's current message always wins):\n${memText}\n\n` : "") +
+    `Current board:\n${snapshot(model, docs)}\n\nUser: ${message}`;
 
   const opsBaseline = ops.length;
 
