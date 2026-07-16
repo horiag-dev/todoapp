@@ -22,7 +22,7 @@
   .card{--c:var(--line);background:color-mix(in srgb,var(--c) 2.5%,var(--card));border:1px solid color-mix(in srgb,var(--c) 22%,var(--line));border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}.goals-card{--c:var(--goals);border:0;background:transparent;box-shadow:none;overflow:visible}.read-card{--c:var(--read)}.top-card{--c:var(--normal)}.today-card{--c:var(--today);border-color:var(--line);background:color-mix(in srgb,var(--today) 3.5%,var(--card))}.normal-card{--c:var(--normal)}.urgent-card{--c:var(--urgent)}.life-card{--c:var(--soft);background:var(--card)}.docs-card{--c:#7c5cc4}.docs-card.dropping{box-shadow:0 0 0 2px var(--accent),var(--shadow)}
   .card>h2{display:flex;align-items:center;gap:7px;margin:0;padding:10px 13px;font-size:13px;font-weight:700;letter-spacing:-.005em;border-bottom:1px solid color-mix(in srgb,var(--c) 20%,var(--line));background:color-mix(in srgb,var(--c) 6%,var(--card))}.goals-card>h2{padding:9px 5px;border-bottom:1px solid var(--line);background:transparent}.today-card>h2{border-bottom-color:var(--line);background:transparent}.section-icon{color:var(--c);width:15px;text-align:center;font-weight:800}.badge{font-size:10px;font-variant-numeric:tabular-nums;font-weight:750;color:var(--c);background:color-mix(in srgb,var(--c) 12%,var(--card));border:1px solid color-mix(in srgb,var(--c) 20%,transparent);padding:0 7px;border-radius:999px}.today-card .badge{border:0;background:color-mix(in srgb,var(--today) 10%,transparent)}.hacts{margin-left:auto;display:flex;gap:5px}.body{padding:8px 9px}.collapsed .body{display:none}.toggle{cursor:pointer}.chev{font-size:9px;color:var(--soft);transition:transform .15s}.collapsed .chev{transform:rotate(-90deg)}
   ul.items{list-style:none;margin:0;padding:0;transition:background .12s,box-shadow .12s}.items.drop-zone{background:color-mix(in srgb,var(--accent) 7%,var(--card));box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--accent) 36%,transparent)}.item{display:flex;gap:7px;align-items:flex-start;padding:6px 7px;border:1px solid transparent;border-radius:8px;position:relative;transition:background .12s,border-color .12s,box-shadow .12s}.item:hover{background:var(--hover)}.item.today{background:transparent}.item.today:hover{background:color-mix(in srgb,var(--today) 6%,var(--card))}.item .t{flex:1;min-width:0;overflow-wrap:anywhere}.pill{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;height:17px;margin-top:0;padding:0 7px;border:0;border-radius:999px;background:color-mix(in srgb,var(--today) 10%,transparent);color:color-mix(in srgb,var(--today) 84%,var(--ink));font-size:9px;font-weight:800;line-height:17px;letter-spacing:.055em;text-transform:uppercase}.draghandle{width:10px;height:15px;cursor:grab;opacity:0;user-select:none;flex:0 0 10px;position:relative;transition:opacity .12s}.draghandle:before{content:"";position:absolute;inset:2px 0 1px 0;background:radial-gradient(circle,color-mix(in srgb,var(--soft) 72%,transparent) 1px,transparent 1.5px) 0 0/5px 5px}.item:hover .draghandle{opacity:1}.draghandle:active{cursor:grabbing}.item.dragging{opacity:.35;box-shadow:none}.item.drop-before:before,.item.drop-after:after{content:"";position:absolute;left:7px;right:7px;height:2px;background:var(--accent);border-radius:2px;box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 15%,transparent)}.item.drop-before:before{top:-2px}.item.drop-after:after{bottom:-2px}.box{appearance:none;border:1.5px solid color-mix(in srgb,var(--soft) 72%,var(--line));background:var(--card);color:transparent;padding:0;margin-top:1px;width:15px;height:15px;border-radius:50%;font-size:0;line-height:1;flex:0 0 15px;transition:border-color .12s,box-shadow .12s}.box:hover{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 10%,transparent)}.rowact{display:none;flex:0 0 auto}.item:hover .rowact,.item:focus-within .rowact{display:flex}.rowact button.talk{border:0;background:transparent;color:var(--accent);padding:1px 5px;font-size:10.5px;font-weight:650;border-radius:5px;white-space:nowrap}.rowact button.talk:hover{background:color-mix(in srgb,var(--accent) 9%,transparent)}.rowact button:not(.talk){border:0;background:none;color:var(--soft);padding:1px 4px;font-size:11px;border-radius:5px}.rowact button:not(.talk):hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent)}.tag{display:inline-block;border:1px solid color-mix(in srgb,var(--tc,var(--soft)) 28%,transparent);background:color-mix(in srgb,var(--tc,var(--soft)) 9%,var(--card));color:color-mix(in srgb,var(--tc,var(--soft)) 72%,var(--ink));border-radius:999px;font-size:10px;font-weight:650;padding:0 6px;margin-left:4px}.age{font-size:10px;color:var(--soft);margin-left:5px}.empty{color:var(--soft);font-size:11.5px;padding:7px}.readline{display:flex;gap:6px;align-items:flex-start;margin:4px 2px;padding:3px 2px;border-radius:6px}.readline:hover{background:var(--hover)}.readline .text{flex:1;overflow-wrap:anywhere}.readline a{color:var(--accent)}.wikilink{color:var(--accent);text-decoration:none;border-bottom:1px dotted color-mix(in srgb,var(--accent) 55%,transparent)}.wikilink:hover{border-bottom-style:solid}.linkx{border:0;background:none;color:var(--soft);font-size:11px;line-height:1;padding:0 3px;margin-right:2px;cursor:pointer;vertical-align:middle}.linkx:hover{color:var(--danger)}
-  #wiki-pop{position:fixed;z-index:40;background:var(--card);border:1px solid var(--line);border-radius:9px;box-shadow:0 10px 30px #1018283a;max-height:220px;overflow:auto;font-size:12.5px;padding:4px;min-width:180px}#wiki-pop[hidden]{display:none}#wiki-pop .wp-head{font-size:10px;color:var(--soft);padding:3px 8px 4px;letter-spacing:.03em}.wp-item{padding:5px 8px;border-radius:6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wp-item.on,.wp-item:hover{background:color-mix(in srgb,var(--accent) 15%,var(--card))}
+  #wiki-pop{position:fixed;z-index:40;background:var(--card);border:1px solid var(--line);border-radius:9px;box-shadow:0 10px 30px #1018283a;max-height:238px;overflow-y:auto;overflow-x:hidden;font-size:12.5px;padding:4px;min-width:200px;max-width:min(340px,calc(100vw - 12px))}#wiki-pop[hidden]{display:none}#wiki-pop .wp-head{font-size:10px;color:var(--soft);padding:3px 8px 4px;letter-spacing:.03em;text-transform:uppercase}.wp-item{padding:5px 8px;border-radius:6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}.wp-item.on{background:color-mix(in srgb,var(--accent) 15%,var(--card))}.wp-item b{font-weight:650;color:var(--accent)}.wp-item .wp-dir{color:var(--soft);font-size:11px;margin-left:6px}
   .urgent-guard{display:flex;align-items:center;gap:8px;padding:8px 11px;border:1px solid color-mix(in srgb,var(--urgent) 42%,var(--line));background:color-mix(in srgb,var(--urgent) 9%,var(--card));border-radius:var(--r);font-size:12px;box-shadow:var(--shadow)}.urgent-guard[hidden]{display:none}.urgent-guard span{flex:1}
   .inlineform,.quickadd{display:flex;gap:7px;padding:8px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);transition:border-color .15s,box-shadow .15s}.quickadd:focus-within{border-color:color-mix(in srgb,var(--accent) 65%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 11%,transparent),var(--shadow)}.inlineform{border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none;background:transparent}.inlineform input,.quickadd input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);outline:none}.inlineform input::placeholder,.quickadd input::placeholder,.chat input::placeholder,.search::placeholder{color:color-mix(in srgb,var(--soft) 72%,transparent)}.inlineform button,.quickadd .add,.primary{border:0;background:var(--accent);color:#fff;border-radius:7px;padding:5px 11px;font-weight:650;box-shadow:0 1px 2px color-mix(in srgb,var(--accent) 24%,transparent)}.inlineform button:hover,.quickadd .add:hover,.primary:hover{background:color-mix(in srgb,var(--accent) 88%,#102f70)}.qa-prio{border:0;border-radius:7px;background:color-mix(in srgb,var(--qc,var(--urgent)) 13%,var(--card));color:color-mix(in srgb,var(--qc,var(--urgent)) 85%,var(--ink));font-size:10px;font-weight:800;padding:5px 10px;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--qc,var(--urgent)) 22%,transparent)}.goals{padding:10px 0!important}.goal-group{--gc:var(--goals);border:1px solid color-mix(in srgb,var(--gc) 16%,var(--line));border-radius:11px;padding:11px 13px;margin-bottom:11px;background:var(--card);box-shadow:var(--shadow)}.goal-group h3{font-size:13px;margin:0 0 7px;padding-left:9px;border-left:3px solid var(--gc);letter-spacing:-.005em}.goal-group ul{margin:0;padding-left:18px}.goal-group li{margin:4px 0}.goal-group li::marker{color:color-mix(in srgb,var(--gc) 60%,var(--line))}.goals-ta{width:100%;min-height:260px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px;font:12px/1.5 ui-monospace,"SF Mono",monospace;resize:vertical}
   .pending{padding:10px 12px;border:1px solid color-mix(in srgb,var(--today) 26%,var(--line));background:color-mix(in srgb,var(--today) 7%,var(--card));border-radius:var(--r);box-shadow:var(--shadow)}.pending[hidden]{display:none}
@@ -161,16 +161,202 @@ $("#mid").ondblclick=e=>{const li=e.target.closest("li[data-id]");if(li&&e.targe
 function startEdit(li){if(li.querySelector("input.edit"))return;const raw=li.dataset.title,id=li.dataset.id,input=document.createElement("input");input.className="edit";input.value=raw;li.querySelector(".t").replaceWith(input);input.focus();input.select();input.oninput=()=>onWikiInput(input);let done=false;const finish=save=>{if(done)return;done=true;const v=input.value.trim();hideWiki();render(current);if(save&&v&&v!==raw)act("editTitle",{id,title:v})};input.onkeydown=e=>{if(wikiKey(e))return;if(e.key==="Enter"){e.preventDefault();finish(true)}else if(e.key==="Escape"){e.preventDefault();finish(false)}};input.onblur=()=>setTimeout(()=>finish(true),120)}
 let noteCache=null;
 async function fetchNotes(){if(noteCache)return noteCache;try{noteCache=(await api("/api/notes")).notes||[]}catch{noteCache=[]}return noteCache}
-// Obsidian-style [[ autocomplete for any text input.
-let wikiPop=null,wikiInput=null,wikiItems=[],wikiSel=0,wikiStart=-1;
-function ensureWikiPop(){if(wikiPop)return wikiPop;wikiPop=document.createElement("div");wikiPop.id="wiki-pop";wikiPop.hidden=true;document.body.appendChild(wikiPop);wikiPop.addEventListener("mousedown",e=>{const it=e.target.closest("[data-i]");if(it){e.preventDefault();chooseWiki(+it.dataset.i)}});return wikiPop}
-function hideWiki(){if(wikiPop)wikiPop.hidden=true;wikiItems=[];wikiInput=null}
-async function onWikiInput(el){ensureWikiPop();const v=el.value,c=el.selectionStart??v.length,m=v.slice(0,c).match(/\[\[([^\]\[]*)$/);if(!m){hideWiki();return}const q=m[1].toLowerCase(),names=(await fetchNotes()).map(n=>n.replace(/\.md$/i,""));wikiItems=names.filter(n=>n.toLowerCase().includes(q)).slice(0,8);if(!wikiItems.length){hideWiki();return}wikiInput=el;wikiStart=c-m[1].length;wikiSel=0;renderWiki();positionWiki(el)}
-function renderWiki(){wikiPop.innerHTML='<div class="wp-head">link a note</div>'+wikiItems.map((n,i)=>`<div class="wp-item ${i===wikiSel?"on":""}" data-i="${i}">${esc(n)}</div>`).join("");wikiPop.hidden=false}
-function positionWiki(el){const r=el.getBoundingClientRect();wikiPop.style.left=Math.max(6,Math.min(r.left,innerWidth-280))+"px";wikiPop.style.minWidth=Math.max(200,Math.min(320,r.width))+"px";if(r.bottom+230>innerHeight){wikiPop.style.top="";wikiPop.style.bottom=(innerHeight-r.top+4)+"px"}else{wikiPop.style.bottom="";wikiPop.style.top=(r.bottom+4)+"px"}}
-function chooseWiki(i){if(!wikiInput||i<0||i>=wikiItems.length){hideWiki();return}const el=wikiInput,name=wikiItems[i],v=el.value,c=el.selectionStart??v.length,pre=v.slice(0,wikiStart),post=v.slice(c).replace(/^\]\]/,"");el.value=pre+name+"]]"+post;const caret=(pre+name+"]]").length;el.focus();try{el.setSelectionRange(caret,caret)}catch{}hideWiki()}
-function wikiKey(e){if(!wikiPop||wikiPop.hidden||!wikiItems.length)return false;if(e.key==="ArrowDown"){wikiSel=(wikiSel+1)%wikiItems.length;renderWiki();e.preventDefault();return true}if(e.key==="ArrowUp"){wikiSel=(wikiSel-1+wikiItems.length)%wikiItems.length;renderWiki();e.preventDefault();return true}if(e.key==="Enter"||e.key==="Tab"){chooseWiki(wikiSel);e.preventDefault();return true}if(e.key==="Escape"){hideWiki();e.preventDefault();return true}return false}
-function attachWiki(el){el.addEventListener("input",()=>onWikiInput(el));el.addEventListener("keydown",e=>{wikiKey(e)});el.addEventListener("blur",()=>setTimeout(hideWiki,150))}
+// Obsidian-style [[ autocomplete (caret-anchored, ranked, robust dismissal).
+const WIKI_MIN=2;
+let wikiPop=null,wikiInput=null,wikiItems=[],wikiSel=0,wikiStart=-1,wikiQuery="",wikiSeq=0,wikiMute=null,wikiMirror=null,wikiRaf=0,wikiBound=false;
+function ensureWikiPop(){
+  if(wikiPop)return wikiPop;
+  wikiPop=document.createElement("div");
+  wikiPop.id="wiki-pop";wikiPop.hidden=true;
+  wikiPop.setAttribute("role","listbox");wikiPop.setAttribute("aria-label","Note suggestions");
+  document.body.appendChild(wikiPop);
+  wikiPop.addEventListener("mousedown",e=>{e.preventDefault();const it=e.target.closest(".wp-item");if(it)chooseWiki(+it.dataset.i)});
+  wikiPop.addEventListener("mouseover",e=>{const it=e.target.closest(".wp-item");if(it&&+it.dataset.i!==wikiSel){wikiSel=+it.dataset.i;paintWikiSel(false)}});
+  return wikiPop;
+}
+function hideWiki(){
+  if(wikiPop)wikiPop.hidden=true;
+  if(wikiInput&&wikiInput.isConnected)wikiInput.removeAttribute("aria-activedescendant");
+  wikiItems=[];wikiInput=null;wikiStart=-1;wikiQuery="";
+  unbindWikiGlobals();
+}
+async function onWikiInput(el){
+  ensureWikiPop();
+  const seq=++wikiSeq;
+  const v=el.value,c=el.selectionStart??v.length;
+  const m=el.selectionEnd===c?v.slice(0,c).match(/\[\[([^\]\[]*)$/):null;
+  if(!m){wikiMute=null;hideWiki();return}
+  const start=c-m[1].length;
+  if(wikiMute&&(wikiMute.el!==el||wikiMute.start!==start))wikiMute=null;
+  const q=m[1].trim().toLowerCase();
+  if(wikiMute||q.length<WIKI_MIN){hideWiki();return}
+  const notes=await fetchNotes();
+  if(seq!==wikiSeq)return;
+  if(!el.isConnected||document.activeElement!==el){hideWiki();return}
+  const ranked=rankWiki(notes,q);
+  if(!ranked.length){hideWiki();return}
+  wikiInput=el;wikiStart=start;wikiQuery=m[1];wikiSel=0;wikiItems=ranked;
+  renderWiki(q);positionWiki();bindWikiGlobals();
+}
+function rankWiki(paths,q){
+  const out=[];
+  for(const p of paths||[]){
+    const name=String(p).replace(/\.md$/i,"");
+    const lower=name.toLowerCase(),base=lower.slice(lower.lastIndexOf("/")+1);
+    let s=-1;
+    if(base.startsWith(q))s=0;
+    else if(wikiWordStart(base,q))s=1;
+    else if(lower.startsWith(q))s=2;
+    else if(wikiWordStart(lower,q))s=3;
+    else if(base.includes(q))s=4;
+    else if(lower.includes(q))s=5;
+    if(s>=0)out.push({name,base,s});
+  }
+  out.sort((a,b)=>a.s-b.s||a.base.length-b.base.length||a.name.localeCompare(b.name));
+  return out.slice(0,8).map(o=>o.name);
+}
+function wikiWordStart(s,q){let i=s.indexOf(q);while(i!==-1){if(i===0||!/[a-z0-9]/i.test(s[i-1]))return true;i=s.indexOf(q,i+1)}return false}
+function renderWiki(q){
+  wikiPop.innerHTML='<div class="wp-head">Link a note</div>'+wikiItems.map((n,i)=>{
+    const cut=n.lastIndexOf("/"),base=cut<0?n:n.slice(cut+1),dir=cut<0?"":n.slice(0,cut);
+    return `<div class="wp-item" id="wp-opt-${i}" role="option" data-i="${i}">${wikiHi(base,q)}${dir?` <span class="wp-dir">${esc(dir)}</span>`:""}</div>`;
+  }).join("");
+  wikiPop.hidden=false;
+  paintWikiSel(true);
+}
+function wikiHi(base,q){
+  const i=q?base.toLowerCase().indexOf(q):-1;
+  if(i<0)return esc(base);
+  return esc(base.slice(0,i))+"<b>"+esc(base.slice(i,i+q.length))+"</b>"+esc(base.slice(i+q.length));
+}
+function paintWikiSel(scroll){
+  const els=wikiPop.querySelectorAll(".wp-item");
+  els.forEach((d,i)=>{d.classList.toggle("on",i===wikiSel);d.setAttribute("aria-selected",i===wikiSel?"true":"false")});
+  const on=els[wikiSel];
+  if(on){if(scroll)on.scrollIntoView({block:"nearest"});if(wikiInput)wikiInput.setAttribute("aria-activedescendant",on.id)}
+}
+function wikiCaretX(el,index){
+  if(!wikiMirror){
+    wikiMirror=document.createElement("div");
+    wikiMirror.style.cssText="position:fixed;top:-9999px;left:0;visibility:hidden;white-space:pre;pointer-events:none";
+    document.body.appendChild(wikiMirror);
+  }
+  const cs=getComputedStyle(el);
+  for(const p of ["fontFamily","fontSize","fontWeight","fontStyle","fontVariant","letterSpacing","textTransform"])wikiMirror.style[p]=cs[p];
+  wikiMirror.textContent=el.value.slice(0,index);
+  const w=wikiMirror.getBoundingClientRect().width;
+  const r=el.getBoundingClientRect();
+  const x=r.left+el.clientLeft+(parseFloat(cs.paddingLeft)||0)+w-el.scrollLeft;
+  return Math.min(Math.max(x,r.left+4),r.right-4);
+}
+function positionWiki(){
+  const el=wikiInput;
+  if(!el||!el.isConnected){hideWiki();return}
+  const r=el.getBoundingClientRect();
+  if(!r.width&&!r.height){hideWiki();return}
+  const x=wikiCaretX(el,Math.max(0,wikiStart-2));
+  wikiPop.style.visibility="hidden";wikiPop.hidden=false;
+  const pw=wikiPop.offsetWidth,ph=wikiPop.offsetHeight;
+  const fitsBelow=r.bottom+4+ph<=innerHeight-6,fitsAbove=r.top-4-ph>=6;
+  const top=fitsBelow||!fitsAbove?r.bottom+4:r.top-4-ph;
+  wikiPop.style.left=Math.max(6,Math.min(x,innerWidth-pw-6))+"px";
+  wikiPop.style.top=Math.max(6,Math.min(top,innerHeight-40))+"px";
+  wikiPop.style.visibility="";
+}
+function chooseWiki(i){
+  const el=wikiInput;
+  if(!el||!el.isConnected||i<0||i>=wikiItems.length){hideWiki();return}
+  const name=wikiItems[i],v=el.value;
+  let end=Math.max(el.selectionStart??v.length,wikiStart);
+  const after=v.slice(end);
+  if(after.startsWith("]]"))end+=2;else if(after.startsWith("]"))end+=1;
+  wikiMute=null;
+  el.focus();
+  wikiInsert(el,wikiStart,end,name+"]]");
+  hideWiki();
+}
+function wikiInsert(el,start,end,text){
+  let ok=false;
+  try{
+    el.setSelectionRange(start,end);
+    ok=document.execCommand("insertText",false,text);
+  }catch{ok=false}
+  if(!ok||el.value.slice(start,start+text.length)!==text){
+    try{el.setRangeText(text,start,end,"end")}catch{el.value=el.value.slice(0,start)+text+el.value.slice(end)}
+    el.dispatchEvent(new Event("input",{bubbles:true}));
+  }
+  const caret=start+text.length;
+  try{el.setSelectionRange(caret,caret)}catch{}
+}
+function wikiKey(e){
+  if(!wikiPop||wikiPop.hidden||!wikiItems.length||!wikiInput)return false;
+  if(e.isComposing||e.keyCode===229)return false;
+  const plain=!e.metaKey&&!e.ctrlKey&&!e.altKey&&!e.shiftKey;
+  if(plain&&(e.key==="ArrowDown"||e.key==="ArrowUp")){
+    wikiSel=(wikiSel+(e.key==="ArrowDown"?1:-1)+wikiItems.length)%wikiItems.length;
+    paintWikiSel(true);
+    e.preventDefault();e.stopPropagation();return true;
+  }
+  if(plain&&(e.key==="Enter"||e.key==="Tab")){
+    chooseWiki(wikiSel);
+    e.preventDefault();e.stopPropagation();return true;
+  }
+  if(e.key==="Escape"){
+    wikiMute={el:wikiInput,start:wikiStart};
+    hideWiki();
+    e.preventDefault();e.stopPropagation();return true;
+  }
+  if(!plain||/^(Arrow(Left|Right)|Home|End|Page(Up|Down))$/.test(e.key))setTimeout(recheckWiki,0);
+  return false;
+}
+function recheckWiki(){
+  const el=wikiInput;
+  if(!el||!wikiPop||wikiPop.hidden)return;
+  if(!el.isConnected||document.activeElement!==el){hideWiki();return}
+  const v=el.value,c=el.selectionStart??v.length;
+  if(el.selectionEnd!==c){hideWiki();return}
+  const m=v.slice(0,c).match(/\[\[([^\]\[]*)$/);
+  if(!m){hideWiki();return}
+  if(c-m[1].length!==wikiStart||m[1]!==wikiQuery)onWikiInput(el);
+}
+function onWikiWin(e){
+  if(!wikiPop||wikiPop.hidden)return;
+  if(e&&e.target===wikiPop)return;
+  if(wikiRaf)return;
+  wikiRaf=requestAnimationFrame(()=>{wikiRaf=0;if(wikiPop&&!wikiPop.hidden)positionWiki()});
+}
+function onWikiDocDown(e){
+  if(!wikiPop||wikiPop.hidden)return;
+  if(wikiPop.contains(e.target))return;
+  if(e.target===wikiInput){setTimeout(recheckWiki,0);return}
+  hideWiki();
+}
+function onWikiFocusOut(e){if(wikiInput&&e.target===wikiInput)hideWiki()}
+function onWikiSelChange(){recheckWiki()}
+function onWikiWinBlur(){hideWiki()}
+function bindWikiGlobals(){
+  if(wikiBound)return;wikiBound=true;
+  window.addEventListener("scroll",onWikiWin,{capture:true,passive:true});
+  window.addEventListener("resize",onWikiWin);
+  window.addEventListener("blur",onWikiWinBlur);
+  document.addEventListener("mousedown",onWikiDocDown,true);
+  document.addEventListener("focusout",onWikiFocusOut,true);
+  document.addEventListener("selectionchange",onWikiSelChange);
+}
+function unbindWikiGlobals(){
+  if(!wikiBound)return;wikiBound=false;
+  window.removeEventListener("scroll",onWikiWin,{capture:true});
+  window.removeEventListener("resize",onWikiWin);
+  window.removeEventListener("blur",onWikiWinBlur);
+  document.removeEventListener("mousedown",onWikiDocDown,true);
+  document.removeEventListener("focusout",onWikiFocusOut,true);
+  document.removeEventListener("selectionchange",onWikiSelChange);
+  if(wikiRaf){cancelAnimationFrame(wikiRaf);wikiRaf=0}
+}
+function attachWiki(el){
+  el.addEventListener("input",()=>onWikiInput(el));
+  el.addEventListener("keydown",e=>{wikiKey(e)});
+}
 async function startLinkNote(li){if(li.querySelector("input.linkadd"))return;const t=li.querySelector(".t");if(!t)return;const id=li.dataset.id,base=li.dataset.title,input=document.createElement("input");input.className="tagadd linkadd";input.setAttribute("list","note-names");input.placeholder="link a note…";t.appendChild(input);input.focus();const notes=await fetchNotes();$("#note-names").innerHTML=notes.map(n=>`<option value="${esc(n.replace(/\.md$/i,""))}"></option>`).join("");let done=false;const finish=save=>{if(done)return;done=true;const v=input.value.trim().replace(/^\[\[|\]\]$/g,"").replace(/\.md$/i,"");render(current);if(save&&v)act("editTitle",{id,title:base+" [["+v+"]]"})};input.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();finish(true)}else if(e.key==="Escape"){e.preventDefault();finish(false)}};input.onblur=()=>finish(true)}
 function startAddTag(li){if(li.querySelector("input.tagadd"))return;const t=li.querySelector(".t");if(!t)return;const id=li.dataset.id,base=li.dataset.title,input=document.createElement("input");input.className="tagadd";input.placeholder="tag…";t.appendChild(input);input.focus();let done=false;const finish=save=>{if(done)return;done=true;const v=input.value.trim().replace(/^#+/,"");render(current);if(save&&v)act("editTitle",{id,title:base+" #"+v})};input.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();finish(true)}else if(e.key==="Escape"){e.preventDefault();finish(false)}};input.onblur=()=>finish(true)}
 
