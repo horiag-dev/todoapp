@@ -411,13 +411,13 @@ export function createBigRocksServer({
       if (req.method === "GET" && p === "/api/notes") {
         requireConfigured();
         const list = createNotes(vault).list().map((n) => n.note);
-        let rootEntries = null, subdirs = null;
+        let rootEntries = null, subdirs = null, dirError = null;
         try {
           const entries = readdirSync(vault.vaultPath, { withFileTypes: true });
           rootEntries = entries.length;
           subdirs = entries.filter((e) => e.isDirectory() && !e.name.startsWith(".")).length;
-        } catch {}
-        return json(res, 200, { notes: list, dir: vault.vaultPath, rootEntries, subdirs });
+        } catch (e) { dirError = e.code || String(e.message || e); }
+        return json(res, 200, { notes: list, dir: vault.vaultPath, rootEntries, subdirs, dirError });
       }
 
       if (req.method === "POST" && p === "/api/config") {
