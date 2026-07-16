@@ -1,8 +1,9 @@
 // Vault Module 2 (read-only): let the assistant read and search the user's other
 // notes in the vault — the folder around the todo doc. No writes, no indexing;
 // plain filesystem reads with path-safety and caps. Follows [[wikilink]] names.
-import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
-import { join, relative, extname, basename, resolve, sep } from "node:path";
+import { readFileSync, readdirSync, statSync, existsSync, mkdirSync, copyFileSync, rmSync } from "node:fs";
+import { join, relative, extname, basename, resolve, sep, dirname } from "node:path";
+import { writeFileAtomic } from "./fsAtomic.mjs";
 
 const TEXT_EXT = new Set([".md", ".markdown", ".txt", ".text", ".org"]);
 const SKIP_DIRS = new Set([".bigrocks", ".obsidian", ".git", ".trash", "node_modules", "attachments"]);
@@ -85,5 +86,41 @@ export function createNotes(vault) {
       }
       return hits;
     },
+    // --- Writes (called at Apply time; every write is snapshotted) -------------
+    appendToNote(name, content) {
+      const r = resolveNote(name);
+      if (r && r.ambiguous) return { error: `"${name}" matches several notes — use the full path.` };
+      const path = r && !r.ambiguous ? r : safeNewPath(name);
+      if (!path) return { error: `Invalid note name "${name}".` };
+      snapshotNote(path);
+      mkdirSync(dirname(path), { recursive: true });
+      const existing = existsSync(path) ? readFileSync(path, "utf8").replace(/\s+$/, "") : "";
+      const body = String(content ?? "").replace(/\s+$/, "");
+      writeFileAtomic(path, (existing ? existing + "\n\n" : "") + body + "\n");
+      return { path: relative(root, path) };
+    },
+    createNote(name, content) {
+      const path = safeNewPath(name);
+      if (!path) return { error: `Invalid note name "${name}".` };
+      if (existsSync(path)) return { error: `"${name}" already exists — append to it instead.` };
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileAtomic(path, String(content ?? "").replace(/\s+$/, "") + "\n");
+      return { path: relative(root, path) };
+    },
   };
+
+  function safeNewPath(name) {
+    const n = String(name ?? "").replace(/^\[\[|\]\]$/g, "").split("|")[0].trim();
+    if (!n) return null;
+    const p = resolve(root, /\.\w+$/.test(n) ? n : `${n}.md`);
+    return withinRoot(p) && !excluded.has(p) ? p : null;
+  }
+  function snapshotNote(path) {
+    if (!existsSync(path)) return;
+    const dir = join(vault.machineDir || join(root, ".bigrocks"), "note-history");
+    mkdirSync(dir, { recursive: true });
+    const ts = new Date().toISOString().replace(/[:.]/g, "-");
+    copyFileSync(path, join(dir, `${ts}__${basename(path)}`));
+    try { for (const old of readdirSync(dir).filter((f) => f.endsWith(".md")).sort().slice(0, -40)) rmSync(join(dir, old), { force: true }); } catch {}
+  }
 }

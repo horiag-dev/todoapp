@@ -18,6 +18,7 @@ The model is categorical, never temporal — there are NO due dates, calendars, 
 - Normal: the pile of everything else.
 - Top 5: the handful of priorities for the week.
 - Documents: files the user has attached, kept in the vault. Use list_documents to see them and read_document to read one when the user refers to a file, or asks you to summarize, use, or pull from it.
+- Vault writes: you can PROPOSE edits to notes (append_to_note, create_note). These are ALWAYS staged for the user to review and Apply — never silently written. Use them to file information into a note, make a new note, or wire notes and todos together (add a [[note]] to a todo with edit_title, and/or append a link back to the todos in the note). Keep note edits small and clearly labeled; don't rewrite whole notes.
 - Vault notes: the user's other markdown notes in the vault (list_notes, read_note, search_vault) — read-only. Use them when a todo references a note (e.g. a [[wikilink]]), or the user asks about their notes. Cite notes by name; never invent note contents. list_notes and read_note include each note's created/modified date — weigh recency (a note written long ago may be stale; a recent one is current), and prefer the most recently updated note when several could match.
 
 You work on a DRAFT. Make the changes the user asks for using the tools; the user reviews the pending changes and clicks Apply, so you don't need to ask permission for ordinary edits — just do them, then give a ONE-LINE summary of what you changed. For clearly destructive or bulk actions (deleting several items, clearing a whole section), state plainly what you're about to do and do it, but keep it easy to undo by describing it.
@@ -32,6 +33,7 @@ MEMORY. Your durable notes about the user live in "Assistant Memory" (shown abov
 
 function buildServer(ctx) {
   const { model, ops, seen, docs, mem, notes } = ctx;
+  const noteEdits = ctx.noteEdits || [];
   const need = (id) => {
     const f = findById(model, id);
     if (!f) throw new Error(`No item with id ${id}`);
@@ -169,6 +171,14 @@ function buildServer(ctx) {
       return ok(r.error || `# ${r.path}  (created ${r.created}, modified ${r.modified})\n\n${r.content}`);
     }),
     tool("search_vault", "Search the full text of all notes in the vault for a query. Returns matching notes with line snippets — use it to answer questions about the user's notes or follow a reference from a todo.", { query: z.string() }, async ({ query }) => ok(notes ? JSON.stringify(notes.search(query)) : "Vault notes are unavailable.")),
+    tool("append_to_note", "Append text to a vault note (creates it if it doesn't exist). STAGED for the user to review — nothing is written until they Apply. Use to file takeaways into a note, or to add a backlink (e.g. append '- [[Big Rocks]]' to a note so it points back to the todos).", { name: z.string(), content: z.string() }, async ({ name, content }) => {
+      noteEdits.push({ op: "append", name, content, label: `Append to “${name}”: ${String(content).trim().replace(/\s+/g, " ").slice(0, 50)}` });
+      return ok(`Staged an append to “${name}” — the user will review and Apply it.`);
+    }),
+    tool("create_note", "Create a new vault note. STAGED for the user to review — nothing is written until they Apply.", { name: z.string(), content: z.string() }, async ({ name, content }) => {
+      noteEdits.push({ op: "create", name, content, label: `Create note “${name}”` });
+      return ok(`Staged a new note “${name}” — the user will review and Apply it.`);
+    }),
   ];
 
   return createSdkMcpServer({ name: "todo", version: "0.1.0", tools });
@@ -209,15 +219,16 @@ const TOOL_LABELS = {
   read_memory: "Checking my notes", remember: "Noting something for later",
   update_memory: "Updating my notes", forget: "Forgetting a note",
   list_notes: "Listing your notes", read_note: "Reading a note", search_vault: "Searching your vault",
+  append_to_note: "Drafting a note edit", create_note: "Drafting a new note",
 };
 const toolLabel = (name) => {
   const bare = String(name || "").replace(/^mcp__todo__/, "");
   return TOOL_LABELS[bare] || bare.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 };
 
-export async function runAgent({ model, ops, seen, message, sessionId, abortController, onEvent, docs, mem, notes }) {
+export async function runAgent({ model, ops, seen, message, sessionId, abortController, onEvent, docs, mem, notes, noteEdits }) {
   const emit = (event) => { try { onEvent?.(event); } catch {} };
-  const server = buildServer({ model, ops, seen, docs, mem, notes });
+  const server = buildServer({ model, ops, seen, docs, mem, notes, noteEdits });
   const memText = mem?.injectionText?.() || "";
   const prompt =
     (memText ? `Assistant Memory (background — the user's current message always wins):\n${memText}\n\n` : "") +

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createNotes } from "../src/notes.mjs";
@@ -50,6 +50,38 @@ test("read refuses path traversal outside the vault", () => {
   try {
     assert.ok(f.notes.read("../../../etc/hosts").error);
     assert.ok(f.notes.read("/etc/hosts").error);
+  } finally { rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test("appendToNote appends (creating if missing) and snapshots; createNote makes new", () => {
+  const f = fixture();
+  try {
+    // append to an existing note
+    let r = f.notes.appendToNote("Team Notes", "- New action item");
+    assert.equal(r.path, "Team Notes.md");
+    const teamPath = join(f.root, "Team Notes.md");
+    assert.match(readFileSync(teamPath, "utf8"), /vendor quote[\s\S]*New action item/);
+    assert.ok(existsSync(join(f.root, ".bigrocks", "note-history")), "prior version snapshotted");
+
+    // append to a non-existent note creates it
+    r = f.notes.appendToNote("Brand New", "hello");
+    assert.equal(r.path, "Brand New.md");
+    assert.match(readFileSync(join(f.root, "Brand New.md"), "utf8"), /hello/);
+
+    // create refuses to overwrite an existing note
+    assert.ok(f.notes.createNote("Team Notes", "x").error);
+    // create makes a new one (in a subfolder path)
+    r = f.notes.createNote("Archive/Old", "archived");
+    assert.equal(r.path, join("Archive", "Old.md"));
+    assert.match(readFileSync(join(f.root, "Archive", "Old.md"), "utf8"), /archived/);
+  } finally { rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test("note writes refuse paths outside the vault", () => {
+  const f = fixture();
+  try {
+    assert.ok(f.notes.createNote("../escape", "x").error);
+    assert.ok(f.notes.appendToNote("/etc/hosts", "x").error);
   } finally { rmSync(f.root, { recursive: true, force: true }); }
 });
 

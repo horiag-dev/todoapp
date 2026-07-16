@@ -230,6 +230,45 @@ test("chat streams the agent's steps over SSE when requested", async () => {
   }
 });
 
+test("a staged note edit is held for review, then written on Apply", async () => {
+  const noteAgent = async ({ noteEdits }) => {
+    noteEdits.push({ op: "create", name: "Meeting Notes", content: "# Meeting\n- takeaway", label: 'Create note "Meeting Notes"' });
+    return { reply: "Drafted a note.", sessionId: "s" };
+  };
+  const f = await fixture(noteAgent);
+  try {
+    let r = await f.request("/api/chat", { message: "make a note" });
+    assert.equal(r.body.model.dirty, true); // held, never auto-applied
+    assert.equal(r.body.model.changes.length, 1);
+    assert.equal(r.body.model.changes[0].kind, "note");
+    assert.ok(!existsSync(join(f.dir, "Meeting Notes.md")), "nothing written before Apply");
+    r = await f.request("/api/apply", {});
+    assert.match(readFileSync(join(f.dir, "Meeting Notes.md"), "utf8"), /takeaway/);
+    assert.equal(r.body.model.dirty, false);
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("rejecting a staged note edit drops it with nothing written", async () => {
+  const noteAgent = async ({ noteEdits }) => {
+    noteEdits.push({ op: "create", name: "Scratchpad", content: "y", label: 'Create note "Scratchpad"' });
+    return { reply: "ok", sessionId: "s" };
+  };
+  const f = await fixture(noteAgent);
+  try {
+    let r = await f.request("/api/chat", { message: "note" });
+    assert.equal(r.body.model.changes.length, 1);
+    r = await f.request("/api/reject-change", { key: r.body.model.changes[0].key });
+    assert.equal(r.body.model.dirty, false);
+    assert.ok(!existsSync(join(f.dir, "Scratchpad.md")));
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
 test("a small change set applies directly (no draft) and reports what to flash", async () => {
   const oneAdd = async ({ model, ops }) => {
     model.normal.push({ id: "s1", title: "Quick add", checked: false, starred: false });

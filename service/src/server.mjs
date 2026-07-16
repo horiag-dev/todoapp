@@ -230,7 +230,14 @@ export function createBigRocksServer({
   let draft = null;
   let draftOps = [];
   let draftBaseVersion = null;
+  let draftNoteEdits = []; // staged, reviewable edits to vault notes (never auto-applied)
   let externalConflict = false;
+  const clearDraft = () => { draft = null; draftOps = []; draftBaseVersion = null; draftNoteEdits = []; };
+  // Execute the currently-staged note edits (snapshotted inside notes.mjs).
+  function runNoteEdits(edits) {
+    const m = createNotes(vault);
+    return edits.map((e) => ({ label: e.label, ...(e.op === "create" ? m.createNote(e.name, e.content) : m.appendToNote(e.name, e.content)) }));
+  }
   let sessionId;
   let chatMessages = [];
   let busy = false;
@@ -243,9 +250,7 @@ export function createBigRocksServer({
   function setVault(todoDocPath) {
     vault = new Vault({ todoDocPath: expandPath(todoDocPath) });
     reloadBase();
-    draft = null;
-    draftOps = [];
-    draftBaseVersion = null;
+    clearDraft();
     externalConflict = false;
     const savedChat = loadChat(vault.todoDocPath);
     sessionId = savedChat.sessionId;
@@ -317,9 +322,12 @@ export function createBigRocksServer({
       todoDocPath: vault.todoDocPath,
       vaultDir: dirname(vault.todoDocPath),
       version: baseVersion,
-      dirty: !!draft,
+      dirty: !!draft || draftNoteEdits.length > 0,
       ops: draftOps,
-      changes: draft ? diffModels(base, draft) : [],
+      changes: [
+        ...(draft ? diffModels(base, draft) : []),
+        ...draftNoteEdits.map((e, i) => ({ key: `note:${i}`, kind: "note", label: e.label })),
+      ],
       conflict: externalConflict,
       busy,
       canUndo: vault.hasHistory(),
@@ -436,9 +444,7 @@ export function createBigRocksServer({
 
       if (req.method === "POST" && p === "/api/reload") {
         requireConfigured();
-        draft = null;
-        draftOps = [];
-        draftBaseVersion = null;
+        clearDraft();
         externalConflict = false;
         reloadBase();
         sessionId = undefined;
@@ -451,9 +457,7 @@ export function createBigRocksServer({
         // Undo reverts the last change written to disk; drop any un-applied draft first.
         const result = vault.undo();
         if (!result) return json(res, 400, { error: "Nothing to undo yet." });
-        draft = null;
-        draftOps = [];
-        draftBaseVersion = null;
+        clearDraft();
         externalConflict = false;
         reloadBase();
         return json(res, 200, { ok: true, model: modelView() });
@@ -468,9 +472,10 @@ export function createBigRocksServer({
         if (!message?.trim()) return json(res, 400, { error: "Enter a message." });
         // Stream the agent's steps (SSE) when the client asks; otherwise plain JSON.
         const stream = (req.headers.accept || "").includes("text/event-stream");
-        const hadDraft = !!draft;
+        const hadPending = !!draft || draftNoteEdits.length > 0;
         const candidate = clone(draft ?? base);
         const candidateOps = [...draftOps];
+        const noteEdits = [...draftNoteEdits];
         busy = true;
         activeAbort = new AbortController();
         const timeout = setTimeout(() => activeAbort?.abort("Assistant request timed out."), 120_000);
@@ -486,25 +491,30 @@ export function createBigRocksServer({
           const docs = { list: () => vault.listAttachments(), read: (name) => vault.readAttachment(name) };
           const mem = createMemory(vault);
           const notes = createNotes(vault);
-          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort, onEvent, docs, mem, notes });
+          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort, onEvent, docs, mem, notes, noteEdits });
           sessionId = result.sessionId;
           chatMessages.push({ role: "you", text: message }, { role: "bot", text: result.reply });
           saveChat(vault.todoDocPath, { sessionId, messages: chatMessages });
-          // Small change sets apply straight to the file; large ones (or changes
-          // stacked on an existing draft) are held for review.
+          // Small todo-only change sets apply straight to the file; larger ones —
+          // or anything touching a note — are held for review (note writes never
+          // auto-apply, guardrail).
           let flash = null, applied = false;
           const changes = candidateOps.length ? diffModels(base, candidate) : [];
-          if (changes.length && !hadDraft && isSmallChangeSet(base, candidate, changes)) {
+          const anyNote = noteEdits.length > 0;
+          if (changes.length && !hadPending && !anyNote && isSmallChangeSet(base, candidate, changes)) {
             const saved = vault.save(candidate, { op: "agent", expectedVersion: baseVersion });
             base = assignIds(candidate);
             baseVersion = saved.version;
             seen = touch(vault, base);
             flash = flashInfo(changes);
             applied = true;
-          } else if (changes.length) {
-            draft = candidate;
-            draftOps = candidateOps;
-            if (!draftBaseVersion) draftBaseVersion = baseVersion;
+          } else if (changes.length || anyNote) {
+            if (changes.length) {
+              draft = candidate;
+              draftOps = candidateOps;
+              if (!draftBaseVersion) draftBaseVersion = baseVersion;
+            }
+            draftNoteEdits = noteEdits;
           }
           const payload = { reply: result.reply, model: modelView(), newOps: candidateOps.slice(before), applied, flash };
           if (stream) { sse("done", payload); return res.end(); }
@@ -595,34 +605,45 @@ export function createBigRocksServer({
 
       if (req.method === "POST" && p === "/api/apply") {
         requireConfigured();
-        if (!draft) return json(res, 400, { error: "There is no assistant draft to apply." });
+        if (!draft && !draftNoteEdits.length) return json(res, 400, { error: "There is nothing to apply." });
         refreshFromDisk();
-        if (externalConflict || vault.version() !== draftBaseVersion) {
+        if (draft && (externalConflict || vault.version() !== draftBaseVersion)) {
           externalConflict = true;
           return json(res, 409, conflictBody("The file changed after this draft started. Reload and ask the assistant again."));
         }
-        const applied = flashInfo(diffModels(base, draft));
-        const saved = vault.save(draft, { op: "agent", expectedVersion: draftBaseVersion });
-        base = assignIds(draft);
-        baseVersion = saved.version;
-        draft = null;
-        draftOps = [];
-        draftBaseVersion = null;
+        let flash = null;
+        if (draft) {
+          flash = flashInfo(diffModels(base, draft));
+          const saved = vault.save(draft, { op: "agent", expectedVersion: draftBaseVersion });
+          base = assignIds(draft);
+          baseVersion = saved.version;
+          seen = touch(vault, base);
+        }
+        const notes = runNoteEdits(draftNoteEdits);
+        clearDraft();
         externalConflict = false;
-        seen = touch(vault, base);
-        return json(res, 200, { ok: true, model: modelView(), flash: applied });
+        return json(res, 200, { ok: true, model: modelView(), flash, notes });
       }
 
       if (req.method === "POST" && p === "/api/approve-change") {
         requireConfigured();
-        if (!draft) return json(res, 400, { error: "There is no assistant draft." });
+        if (!draft && !draftNoteEdits.length) return json(res, 400, { error: "There is no assistant draft." });
+        const { key } = await readBody(req);
+        if (!key) return json(res, 400, { error: "Which change to approve?" });
+        if (key.startsWith("note:")) {
+          const i = Number(key.slice(5));
+          if (!Number.isInteger(i) || i < 0 || i >= draftNoteEdits.length) return json(res, 400, { error: "No such note change." });
+          const [edit] = draftNoteEdits.splice(i, 1);
+          const [r] = runNoteEdits([edit]);
+          if (r.error) { draftNoteEdits.splice(i, 0, edit); return json(res, 400, { error: r.error }); }
+          return json(res, 200, { ok: true, model: modelView(), note: r });
+        }
+        if (!draft) return json(res, 400, { error: "No such change to approve." });
         refreshFromDisk();
         if (externalConflict || vault.version() !== draftBaseVersion) {
           externalConflict = true;
           return json(res, 409, conflictBody("The file changed after this draft started. Reload and ask again."));
         }
-        const { key } = await readBody(req);
-        if (!key) return json(res, 400, { error: "Which change to approve?" });
         const next = applyChangeToBase(base, draft, key);
         const saved = vault.save(next, { op: "agent", expectedVersion: baseVersion });
         base = assignIds(next);
@@ -636,22 +657,25 @@ export function createBigRocksServer({
 
       if (req.method === "POST" && p === "/api/reject-change") {
         requireConfigured();
-        if (!draft) return json(res, 400, { error: "There is no assistant draft." });
-        refreshFromDisk();
-        if (externalConflict) return json(res, 409, conflictBody("The file changed externally. Reload before editing the draft."));
+        if (!draft && !draftNoteEdits.length) return json(res, 400, { error: "There is no assistant draft." });
         const { key } = await readBody(req);
         if (!key) return json(res, 400, { error: "Which change to reject?" });
-        rejectChangeOn(base, draft, key);
-        // Nothing left that differs from base → drop the draft entirely.
-        if (!diffModels(base, draft).length) { draft = null; draftOps = []; draftBaseVersion = null; }
+        if (key.startsWith("note:")) {
+          const i = Number(key.slice(5));
+          if (Number.isInteger(i) && i >= 0 && i < draftNoteEdits.length) draftNoteEdits.splice(i, 1);
+        } else if (draft) {
+          refreshFromDisk();
+          if (externalConflict) return json(res, 409, conflictBody("The file changed externally. Reload before editing the draft."));
+          rejectChangeOn(base, draft, key);
+          // Todo draft no longer differs from base → drop it (note edits stay).
+          if (!diffModels(base, draft).length) { draft = null; draftOps = []; draftBaseVersion = null; }
+        }
         return json(res, 200, { ok: true, model: modelView() });
       }
 
       if (req.method === "POST" && p === "/api/discard") {
         requireConfigured();
-        draft = null;
-        draftOps = [];
-        draftBaseVersion = null;
+        clearDraft();
         externalConflict = false;
         refreshFromDisk();
         return json(res, 200, { ok: true, model: modelView() });
