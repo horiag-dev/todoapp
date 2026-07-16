@@ -13,8 +13,16 @@ function walk(dir, out) {
   try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
   for (const e of entries) {
     if (out.length >= MAX_FILES) return;
-    if (e.isDirectory()) { if (!SKIP_DIRS.has(e.name) && !e.name.startsWith(".")) walk(join(dir, e.name), out); }
-    else if (e.isFile() && TEXT_EXT.has(extname(e.name).toLowerCase())) out.push(join(dir, e.name));
+    const full = join(dir, e.name);
+    let isDir = e.isDirectory(), isFile = e.isFile();
+    // On Dropbox/iCloud (CloudStorage) folders, entries can come back as
+    // symlinks / cloud placeholders — neither file nor dir. Stat to resolve
+    // (stat doesn't download the file, just reads metadata).
+    if (!isDir && !isFile) {
+      try { const s = statSync(full); isDir = s.isDirectory(); isFile = s.isFile(); } catch { continue; }
+    }
+    if (isDir) { if (!SKIP_DIRS.has(e.name) && !e.name.startsWith(".")) walk(full, out); }
+    else if (isFile && TEXT_EXT.has(extname(e.name).toLowerCase())) out.push(full);
   }
 }
 

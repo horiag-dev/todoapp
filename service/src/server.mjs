@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve, extname } from "node:path";
@@ -410,7 +410,14 @@ export function createBigRocksServer({
 
       if (req.method === "GET" && p === "/api/notes") {
         requireConfigured();
-        return json(res, 200, { notes: createNotes(vault).list().map((n) => n.note) });
+        const list = createNotes(vault).list().map((n) => n.note);
+        let rootEntries = null, subdirs = null;
+        try {
+          const entries = readdirSync(vault.vaultPath, { withFileTypes: true });
+          rootEntries = entries.length;
+          subdirs = entries.filter((e) => e.isDirectory() && !e.name.startsWith(".")).length;
+        } catch {}
+        return json(res, 200, { notes: list, dir: vault.vaultPath, rootEntries, subdirs });
       }
 
       if (req.method === "POST" && p === "/api/config") {
