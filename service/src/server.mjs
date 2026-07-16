@@ -315,6 +315,7 @@ export function createBigRocksServer({
       configured: true,
       appVersion: APP_VERSION,
       todoDocPath: vault.todoDocPath,
+      vaultDir: dirname(vault.todoDocPath),
       version: baseVersion,
       dirty: !!draft,
       ops: draftOps,
