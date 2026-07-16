@@ -10,7 +10,7 @@ Status legend: **[building]** in progress · **[next]** queued · **[later]** ·
 - **[next] Live-reload on external edits** (S) — `fs.watch` the `.md` → push a refresh over the existing SSE channel instead of surfacing a hard conflict after the fact. Makes "edit in Obsidian anytime" feel true.
 - **[done ✓ v0.6.0] To Read title unfurl** (S) — on `add_to_read`, fetch the page `<title>` and store `[Title](url)`. Bare URLs are why To Read rots; titles make de-staling doable. Best-effort, falls back to the raw URL.
 - **[done ✓ v0.6.0] Quick-capture endpoint + Apple Shortcut** (S) — a dumb `POST /capture` (no agent in the path, so it never blocks on the API key) + a share-sheet Shortcut/Raycast snippet, reusing the server-side dupe check.
-- **[later] Obsidian deep links** (S) — render `[[wikilinks]]` as `obsidian://open?...` links in todos, the memory modal, and the documents shelf. Cheapest bridge to the vault north-star.
+- **[done ✓ v0.8.0] Obsidian deep links** (S) — render `[[wikilinks]]` as `obsidian://open?...` links in todos, the memory modal, and the documents shelf. Cheapest bridge to the vault north-star.
 
 ## Medium bets (a day-ish)
 
@@ -18,12 +18,12 @@ Status legend: **[building]** in progress · **[next]** queued · **[later]** ·
   - *User ask folded in:* the review explicitly reviews **all closed/completed items** and gives a specific recap (not just a count).
 - **[done ✓ v0.7.0] "Plan my day" triage** (S/M) — daily counterpart: agent proposes today's "Today" set from Urgent + `age_days` + memory ("you said Fridays are for writing"), propose-and-confirm. First place Memory visibly pays off.
 - **[next] PDF reading for the documents shelf** (S/M) — close the gap `read_document` admits; Claude reads PDFs natively as base64 `document` blocks.
-- **[next] Urgent-integrity guard** (S) — when Urgent exceeds ~15, a once-a-week dismissible nudge ("when everything's urgent, nothing is — tidy?") that opens a curation draft. Defends the categorical model itself.
+- **[done ✓ v0.8.0] Urgent-integrity guard** (S) — when Urgent exceeds ~15, a once-a-week dismissible nudge ("when everything's urgent, nothing is — tidy?") that opens a curation draft. Defends the categorical model itself.
 - **[later] Item notes** (M) — model indented lines under a todo as attached notes (click-to-expand, `append_note` tool). Long-lived Urgent items accumulate context that currently evaporates.
 
 ## Bigger bets / north-star
 
-- **[later] Vault Module 2 — chat with your notes, read-only** (M/L) — `list_notes` / `read_note` / `search_vault` (ripgrep) against the existing `Vault` seam. Follow `[[wikilinks]]` from a todo into notes; cite notes as Obsidian deep links. Read-only = shippable without touching write-safety. *This is the north star.*
+- **[done ✓ v0.8.0] Vault Module 2 — chat with your notes, read-only** (M/L) — `list_notes` / `read_note` / `search_vault` (ripgrep) against the existing `Vault` seam. Follow `[[wikilinks]]` from a todo into notes; cite notes as Obsidian deep links. Read-only = shippable without touching write-safety. *This is the north star.*
 - **[later] Vault writes via draft/approve** (L) — extend preserve-and-splice + the ✓/✗ draft flow to arbitrary notes ("file these takeaways into [[Team Notes]]"). Never auto-apply to non-todo notes regardless of size — every note write is a reviewed draft.
 - **[later] Review journal** (M) — the weekly review writes a short visible `reviews/…md` entry the user owns and browses in Obsidian. *Guardrail nuance:* the no-dates rule protects task metadata; a dated journal entry is a journal (Obsidian-native). Dates never touch `todo.md`. Decision pending.
 - **[later] To Read graduation** (M/L) — when a To Read item is done, offer to fetch the page and draft a short literature note into the vault, link it, and remove the list entry. Turns To Read into a pipeline that feeds the vault.

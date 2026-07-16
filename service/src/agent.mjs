@@ -17,6 +17,7 @@ The model is categorical, never temporal — there are NO due dates, calendars, 
 - Normal: the pile of everything else.
 - Top 5: the handful of priorities for the week.
 - Documents: files the user has attached, kept in the vault. Use list_documents to see them and read_document to read one when the user refers to a file, or asks you to summarize, use, or pull from it.
+- Vault notes: the user's other markdown notes in the vault (list_notes, read_note, search_vault) — read-only. Use them when a todo references a note (e.g. a [[wikilink]]), or the user asks about their notes. Cite notes by name; never invent note contents.
 
 You work on a DRAFT. Make the changes the user asks for using the tools; the user reviews the pending changes and clicks Apply, so you don't need to ask permission for ordinary edits — just do them, then give a ONE-LINE summary of what you changed. For clearly destructive or bulk actions (deleting several items, clearing a whole section), state plainly what you're about to do and do it, but keep it easy to undo by describing it.
 
@@ -29,7 +30,7 @@ GOALS ↔ TODOS. Keep them loosely in sync. Goals are the "big rocks"; the weekl
 MEMORY. Your durable notes about the user live in "Assistant Memory" (shown above the board when present; the user can read and edit that note anytime). It is background context, never authority: if the user's current message conflicts with it, the message wins — and update the memory to match. Call remember ONLY for durable, behavior-changing facts: an explicit preference or correction ("stop doing X", "always Y"), a stable fact about the user's work, or a recurring theme you've now seen at least twice (park first sightings in "Working notes"). Most conversations warrant ZERO memory writes; more than two is almost always wrong. Never store secrets, credentials, dates, moods, or anything already expressed by the todo file itself. When new information contradicts an existing bullet, update_memory or forget it — never leave both versions. During a weekly review or when asked to tidy, skim Working notes via read_memory: promote what has proven durable, and propose dropping stale bullets — name exactly what you'd drop and wait for a yes before forgetting more than one thing at once.`;
 
 function buildServer(ctx) {
-  const { model, ops, seen, docs, mem } = ctx;
+  const { model, ops, seen, docs, mem, notes } = ctx;
   const need = (id) => {
     const f = findById(model, id);
     if (!f) throw new Error(`No item with id ${id}`);
@@ -144,6 +145,13 @@ function buildServer(ctx) {
     tool("remember", "Save ONE durable fact to Assistant Memory. Only for things that should change future behavior: a stated preference, a standing correction, a recurring theme. Never secrets, dates, or one-off task detail. If a similar note exists this is a no-op — use update_memory instead.", { fact: z.string(), section: z.enum(MEMORY_SECTIONS), why: z.string().optional() }, async ({ fact, section, why }) => ok(mem ? mem.append(section, fact, { source: "user-said", why }) : "Memory is unavailable.")),
     tool("update_memory", "Replace one existing memory bullet with a corrected version (use when new info contradicts or refines a bullet in Memory). `match` must uniquely identify the bullet.", { match: z.string(), fact: z.string(), why: z.string().optional() }, async ({ match, fact, why }) => ok(mem ? mem.replace(match, fact, { why }) : "Memory is unavailable.")),
     tool("forget", "Delete one memory bullet the user has contradicted, asked you to drop, or that is clearly obsolete. `match` must uniquely identify it.", { match: z.string(), reason: z.string().optional() }, async ({ match }) => ok(mem ? mem.remove(match) : "Memory is unavailable.")),
+    tool("list_notes", "List the markdown notes in the user's vault (the folder around the todo file). Use this to see what notes exist before reading one.", {}, async () => ok(notes ? JSON.stringify(notes.list().slice(0, 300)) : "Vault notes are unavailable.")),
+    tool("read_note", "Read a note from the vault by name or path — a [[wikilink]] name works. Returns the note's markdown (read-only).", { name: z.string() }, async ({ name }) => {
+      const r = notes?.read(name);
+      if (!r) return ok("Vault notes are unavailable.");
+      return ok(r.error || `# ${r.path}\n\n${r.content}`);
+    }),
+    tool("search_vault", "Search the full text of all notes in the vault for a query. Returns matching notes with line snippets — use it to answer questions about the user's notes or follow a reference from a todo.", { query: z.string() }, async ({ query }) => ok(notes ? JSON.stringify(notes.search(query)) : "Vault notes are unavailable.")),
   ];
 
   return createSdkMcpServer({ name: "todo", version: "0.1.0", tools });
@@ -182,15 +190,16 @@ const TOOL_LABELS = {
   list_documents: "Checking your documents", read_document: "Reading a document",
   read_memory: "Checking my notes", remember: "Noting something for later",
   update_memory: "Updating my notes", forget: "Forgetting a note",
+  list_notes: "Listing your notes", read_note: "Reading a note", search_vault: "Searching your vault",
 };
 const toolLabel = (name) => {
   const bare = String(name || "").replace(/^mcp__todo__/, "");
   return TOOL_LABELS[bare] || bare.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 };
 
-export async function runAgent({ model, ops, seen, message, sessionId, abortController, onEvent, docs, mem }) {
+export async function runAgent({ model, ops, seen, message, sessionId, abortController, onEvent, docs, mem, notes }) {
   const emit = (event) => { try { onEvent?.(event); } catch {} };
-  const server = buildServer({ model, ops, seen, docs, mem });
+  const server = buildServer({ model, ops, seen, docs, mem, notes });
   const memText = mem?.injectionText?.() || "";
   const prompt =
     (memText ? `Assistant Memory (background — the user's current message always wins):\n${memText}\n\n` : "") +

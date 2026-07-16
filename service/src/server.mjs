@@ -14,6 +14,7 @@ import { runAgent } from "./agent.mjs";
 import { touch, ageDays } from "./ledger.mjs";
 import { applyAction } from "./ops.mjs";
 import { createMemory } from "./memory.mjs";
+import { createNotes } from "./notes.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const APP_VERSION = (() => {
@@ -469,7 +470,8 @@ export function createBigRocksServer({
           const onEvent = stream ? (ev) => sse("step", ev) : undefined;
           const docs = { list: () => vault.listAttachments(), read: (name) => vault.readAttachment(name) };
           const mem = createMemory(vault);
-          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort, onEvent, docs, mem });
+          const notes = createNotes(vault);
+          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort, onEvent, docs, mem, notes });
           sessionId = result.sessionId;
           chatMessages.push({ role: "you", text: message }, { role: "bot", text: result.reply });
           saveChat(vault.todoDocPath, { sessionId, messages: chatMessages });
