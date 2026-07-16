@@ -43,7 +43,7 @@ function buildServer(ctx) {
   };
 
   const tools = [
-    tool("list_items", "List items in a bucket (includes age_days).", { bucket: z.enum(["urgent", "normal", "top5", "completed", "deleted", "toread"]) }, async ({ bucket }) => {
+    tool("list_items", "List items in a bucket (includes age_days).", { bucket: z.enum(["urgent", "normal", "top5", "completed", "deleted", "parked", "toread"]) }, async ({ bucket }) => {
       if (bucket === "toread") {
         return ok(JSON.stringify((model.toread?.rawLines ?? []).map((l) => {
           const t = l.replace(/^-\s+/, "").trim();
@@ -130,6 +130,16 @@ function buildServer(ctx) {
       ops.push(`deleted "${f.item.title}"`);
       return ok("Deleted.");
     }),
+    tool("park", "Park an item: hide it from the daily view (it moves to a collapsed 'Parked' section in the file), without deleting it. The weekly review resurfaces parked items. Use for things that aren't now but shouldn't be dropped.", { id: z.string() }, async ({ id }) => {
+      const f = need(id); f.item.checked = false; f.item.starred = false; move(f, "parked");
+      ops.push(`parked "${f.item.title}"`);
+      return ok("Parked.");
+    }),
+    tool("unpark", "Bring a parked item back to the Normal list.", { id: z.string() }, async ({ id }) => {
+      const f = need(id); move(f, "normal");
+      ops.push(`un-parked "${f.item.title}"`);
+      return ok("Un-parked.");
+    }),
     tool("list_documents", "List the documents the user has attached (files in the vault's attachments folder).", {}, async () => {
       const list = docs?.list?.() ?? [];
       return ok(list.length ? JSON.stringify(list.map((d) => ({ name: d.name, size: d.size }))) : "No documents are attached.");
@@ -194,6 +204,7 @@ const TOOL_LABELS = {
   move_to_goals: "Moving to Goals", add_to_top5: "Updating Top 5",
   add_to_read: "Adding to To Read", remove_from_read: "Pruning To Read",
   complete: "Completing an item", edit_title: "Editing an item", delete: "Deleting an item",
+  park: "Parking an item", unpark: "Un-parking an item",
   list_documents: "Checking your documents", read_document: "Reading a document",
   read_memory: "Checking my notes", remember: "Noting something for later",
   update_memory: "Updating my notes", forget: "Forgetting a note",

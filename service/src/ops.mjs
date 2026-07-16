@@ -68,6 +68,19 @@ export function applyAction(model, action, a = {}) {
       f.arr.splice(f.idx, 1);
       return `permanently removed "${f.item.title}"`;
     }
+    case "park": {
+      const f = need(model, a.id);
+      if (f.bucket === "parked") return null;
+      f.item.checked = false; f.item.starred = false;
+      move(model, f, "parked");
+      return `parked "${f.item.title}"`;
+    }
+    case "unpark": {
+      const f = need(model, a.id);
+      if (f.bucket !== "parked") throw new Error("only parked items can be un-parked");
+      move(model, f, "normal");
+      return `un-parked "${f.item.title}"`;
+    }
     case "archiveCompleted": {
       if (!model.completed.length) return null;
       const count = model.completed.length;

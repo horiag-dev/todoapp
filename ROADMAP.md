@@ -31,7 +31,7 @@ Status legend: **[building]** in progress · **[next]** queued · **[later]** ·
 
 ## Explicitly avoid (fight the guardrails)
 
-- **[avoid] Due dates / snooze / "remind me Tuesday."** Core violation (snooze is a date in a trenchcoat). Aligned substitute: a **"park it"** action that hides an item via the private ledger; the weekly review resurfaces it — cadence-based deferral, no date in the markdown.
+- **[avoid] Due dates / snooze / "remind me Tuesday."** Core violation (snooze is a date in a trenchcoat). Aligned substitute: a **"park it"** action **(shipped ✓ v0.10.0)** — moves an item to a collapsed "Parked" section in the file; the weekly review resurfaces it. Cadence-based deferral, no date in the markdown.
 - **[avoid] Recurring tasks.** Guardrailed until dates exist. Substitute: a memory bullet that lets the review *suggest* re-adding.
 - **[avoid] Stats dashboards / streaks / karma.** Hold the line at a one-line review recap; a chart page makes the product optimize throughput over judgment.
 - **[avoid] New buckets ("Someday" / custom / kanban).** Normal + age ledger + move-to-Goals already express "someday." Taxonomy creep is the slow death of categorical priority.

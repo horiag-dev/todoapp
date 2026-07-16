@@ -82,6 +82,7 @@ export function migrate(parsed) {
 
   const completed = itemsOf(sections, "completed");
   const deleted = itemsOf(sections, "deleted");
+  const parked = itemsOf(sections, "parked");
 
   // Preserve any unrecognized sections verbatim.
   const unknown = collect(sections, "unknown").map((s) => ({
@@ -89,5 +90,5 @@ export function migrate(parsed) {
     rawLines: s.rawLines ?? [],
   }));
 
-  return { preamble, goals, top5, bigthings, toread, urgent, normal, completed, deleted, unknown };
+  return { preamble, goals, top5, bigthings, toread, urgent, normal, completed, deleted, parked, unknown };
 }

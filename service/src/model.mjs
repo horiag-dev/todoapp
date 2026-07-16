@@ -4,7 +4,7 @@
 import { tagsOf } from "./parse.mjs";
 
 let counter = 0;
-const BUCKETS = ["urgent", "normal", "top5", "completed", "deleted"];
+const BUCKETS = ["urgent", "normal", "top5", "completed", "deleted", "parked"];
 
 export function assignIds(model) {
   for (const b of BUCKETS) for (const it of model[b]) if (!it.id) it.id = "i" + ++counter;

@@ -28,10 +28,11 @@ export function classify(name) {
   if (n.includes("normal") || n.includes("when there's time")) return "normal";
   if (n.includes("complet")) return "completed";
   if (n.includes("delet")) return "deleted";
+  if (n.includes("park")) return "parked";
   return "unknown";
 }
 
-const OWNED = new Set(["top5", "urgent", "normal", "completed", "deleted"]);
+const OWNED = new Set(["top5", "urgent", "normal", "completed", "deleted", "parked"]);
 const MIGRATED = new Set(["today", "thisweek"]);
 // kinds whose items we parse (owned buckets + the legacy ones we migrate away)
 const PARSED = new Set([...OWNED, ...MIGRATED]);

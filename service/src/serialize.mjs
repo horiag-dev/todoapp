@@ -9,6 +9,7 @@ const HEADERS = {
   top5: "### 🔴 Top 5 of the week",
   urgent: "### 🔴 Urgent",
   normal: "### 🔵 Normal",
+  parked: "### 💤 Parked",
   completed: "### ✅ Completed",
   deleted: "### 🗑️ Deleted",
 };
@@ -48,6 +49,8 @@ export function serialize(model) {
 
   blocks.push(block(HEADERS.urgent, model.urgent.map(renderItem)));
   blocks.push(block(HEADERS.normal, model.normal.map(renderItem)));
+  // Parked is emitted only when non-empty, so files without it round-trip untouched.
+  if (model.parked?.length) blocks.push(block(HEADERS.parked, model.parked.map(renderItem)));
   blocks.push(block(HEADERS.completed, model.completed.map(renderItem)));
   blocks.push(block(HEADERS.deleted, model.deleted.map(renderItem)));
 

@@ -98,8 +98,8 @@ const clone = (value) => structuredClone(value);
 const conflictBody = (message) => ({ error: message, code: "VAULT_CONFLICT", conflict: true });
 
 // --- Draft as a set of individually-reviewable changes -----------------------
-const BUCKET_LABEL = { urgent: "Urgent", normal: "Normal", top5: "Top 5", completed: "Completed", deleted: "Deleted" };
-const CHANGE_BUCKETS = ["urgent", "normal", "top5", "completed", "deleted"];
+const BUCKET_LABEL = { urgent: "Urgent", normal: "Normal", top5: "Top 5", parked: "Parked", completed: "Completed", deleted: "Deleted" };
+const CHANGE_BUCKETS = ["urgent", "normal", "top5", "parked", "completed", "deleted"];
 function indexItems(model) {
   const map = new Map();
   for (const b of CHANGE_BUCKETS) for (const it of model[b] ?? []) map.set(it.id, { item: it, bucket: b });
@@ -115,6 +115,7 @@ function diffModels(base, draft) {
     if (b.bucket !== d.bucket) {
       if (d.bucket === "completed") changes.push({ key: `item:${id}`, kind: "completed", label: `Completed “${d.item.title}”` });
       else if (d.bucket === "deleted") changes.push({ key: `item:${id}`, kind: "deleted", label: `Deleted “${d.item.title}”` });
+      else if (d.bucket === "parked") changes.push({ key: `item:${id}`, kind: "parked", label: `Parked “${d.item.title}”` });
       else changes.push({ key: `item:${id}`, kind: "moved", label: `Moved “${d.item.title}” → ${BUCKET_LABEL[d.bucket]}` });
     } else if (b.item.title !== d.item.title) {
       changes.push({ key: `item:${id}`, kind: "retitled", label: `“${b.item.title}” → “${d.item.title}”` });
@@ -330,6 +331,7 @@ export function createBigRocksServer({
       top5: model.top5.map(view),
       urgent: model.urgent.map(view),
       normal: model.normal.map(view),
+      parked: (model.parked ?? []).map(view),
       completed: model.completed.map(view),
       deleted: model.deleted.map(view),
     };
