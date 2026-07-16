@@ -36,15 +36,30 @@ export function createNotes(vault) {
     return null;
   };
 
+  // When was the note created / last changed? macOS keeps birthtime; fall back to
+  // mtime. Surfaced so the assistant can weigh recency (an old note may be stale).
+  const stampOf = (f) => {
+    try {
+      const s = statSync(f);
+      const created = s.birthtimeMs && s.birthtimeMs > 0 ? s.birthtimeMs : s.mtimeMs;
+      return { created: new Date(created).toISOString().slice(0, 10), modified: new Date(s.mtimeMs).toISOString().slice(0, 10) };
+    } catch { return { created: null, modified: null }; }
+  };
+
   return {
-    list() { return listFiles().map((f) => relative(root, f)).sort(); },
+    // Most-recently-changed first, each with its created/modified date.
+    list() {
+      return listFiles()
+        .map((f) => ({ note: relative(root, f), ...stampOf(f) }))
+        .sort((a, b) => (b.modified || "").localeCompare(a.modified || ""));
+    },
     read(name) {
       const r = resolveNote(name);
       if (!r) return { error: `No note found for "${name}". Use list_notes to see what exists.` };
       if (r.ambiguous) return { error: `"${name}" matches several notes: ${r.ambiguous.join(", ")}. Use the full path.` };
       try {
         const txt = readFileSync(r, "utf8");
-        return { path: relative(root, r), content: txt.length > MAX_READ ? `${txt.slice(0, MAX_READ)}\n…[truncated]` : txt };
+        return { path: relative(root, r), ...stampOf(r), content: txt.length > MAX_READ ? `${txt.slice(0, MAX_READ)}\n…[truncated]` : txt };
       } catch { return { error: `Could not read "${name}".` }; }
     },
     search(query) {

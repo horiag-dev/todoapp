@@ -407,6 +407,11 @@ export function createBigRocksServer({
         return json(res, 200, createMemory(vault).read());
       }
 
+      if (req.method === "GET" && p === "/api/notes") {
+        requireConfigured();
+        return json(res, 200, { notes: createNotes(vault).list().map((n) => n.note) });
+      }
+
       if (req.method === "POST" && p === "/api/config") {
         const { path, mode = "open" } = await readBody(req);
         configurePath(path, mode);

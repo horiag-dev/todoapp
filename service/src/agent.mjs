@@ -18,7 +18,7 @@ The model is categorical, never temporal — there are NO due dates, calendars, 
 - Normal: the pile of everything else.
 - Top 5: the handful of priorities for the week.
 - Documents: files the user has attached, kept in the vault. Use list_documents to see them and read_document to read one when the user refers to a file, or asks you to summarize, use, or pull from it.
-- Vault notes: the user's other markdown notes in the vault (list_notes, read_note, search_vault) — read-only. Use them when a todo references a note (e.g. a [[wikilink]]), or the user asks about their notes. Cite notes by name; never invent note contents.
+- Vault notes: the user's other markdown notes in the vault (list_notes, read_note, search_vault) — read-only. Use them when a todo references a note (e.g. a [[wikilink]]), or the user asks about their notes. Cite notes by name; never invent note contents. list_notes and read_note include each note's created/modified date — weigh recency (a note written long ago may be stale; a recent one is current), and prefer the most recently updated note when several could match.
 
 You work on a DRAFT. Make the changes the user asks for using the tools; the user reviews the pending changes and clicks Apply, so you don't need to ask permission for ordinary edits — just do them, then give a ONE-LINE summary of what you changed. For clearly destructive or bulk actions (deleting several items, clearing a whole section), state plainly what you're about to do and do it, but keep it easy to undo by describing it.
 
@@ -163,10 +163,10 @@ function buildServer(ctx) {
     tool("update_memory", "Replace one existing memory bullet with a corrected version (use when new info contradicts or refines a bullet in Memory). `match` must uniquely identify the bullet.", { match: z.string(), fact: z.string(), why: z.string().optional() }, async ({ match, fact, why }) => ok(mem ? mem.replace(match, fact, { why }) : "Memory is unavailable.")),
     tool("forget", "Delete one memory bullet the user has contradicted, asked you to drop, or that is clearly obsolete. `match` must uniquely identify it.", { match: z.string(), reason: z.string().optional() }, async ({ match }) => ok(mem ? mem.remove(match) : "Memory is unavailable.")),
     tool("list_notes", "List the markdown notes in the user's vault (the folder around the todo file). Use this to see what notes exist before reading one.", {}, async () => ok(notes ? JSON.stringify(notes.list().slice(0, 300)) : "Vault notes are unavailable.")),
-    tool("read_note", "Read a note from the vault by name or path — a [[wikilink]] name works. Returns the note's markdown (read-only).", { name: z.string() }, async ({ name }) => {
+    tool("read_note", "Read a note from the vault by name or path — a [[wikilink]] name works. Returns the note's markdown plus its created/modified date (read-only).", { name: z.string() }, async ({ name }) => {
       const r = notes?.read(name);
       if (!r) return ok("Vault notes are unavailable.");
-      return ok(r.error || `# ${r.path}\n\n${r.content}`);
+      return ok(r.error || `# ${r.path}  (created ${r.created}, modified ${r.modified})\n\n${r.content}`);
     }),
     tool("search_vault", "Search the full text of all notes in the vault for a query. Returns matching notes with line snippets — use it to answer questions about the user's notes or follow a reference from a todo.", { query: z.string() }, async ({ query }) => ok(notes ? JSON.stringify(notes.search(query)) : "Vault notes are unavailable.")),
   ];

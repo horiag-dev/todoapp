@@ -20,15 +20,18 @@ function fixture() {
   return { root, notes: createNotes(vault) };
 }
 
-test("list excludes the todo doc, memory note, and dotfolders", () => {
+test("list excludes the todo doc, memory note, and dotfolders — with dates", () => {
   const f = fixture();
   try {
     const list = f.notes.list();
-    assert.ok(list.includes("Team Notes.md"));
-    assert.ok(list.includes(join("projects", "Roadmap.md")));
-    assert.ok(!list.includes("todo.md"));
-    assert.ok(!list.includes("Assistant Memory.md"));
-    assert.ok(!list.some((p) => p.includes(".obsidian") || p.includes(".bigrocks")));
+    const paths = list.map((n) => n.note);
+    assert.ok(paths.includes("Team Notes.md"));
+    assert.ok(paths.includes(join("projects", "Roadmap.md")));
+    assert.ok(!paths.includes("todo.md"));
+    assert.ok(!paths.includes("Assistant Memory.md"));
+    assert.ok(!paths.some((p) => p.includes(".obsidian") || p.includes(".bigrocks")));
+    assert.match(list[0].created, /^\d{4}-\d{2}-\d{2}$/, "each note carries a created date");
+    assert.match(list[0].modified, /^\d{4}-\d{2}-\d{2}$/);
   } finally { rmSync(f.root, { recursive: true, force: true }); }
 });
 
