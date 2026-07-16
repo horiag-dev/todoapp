@@ -416,6 +416,16 @@ export function createBigRocksServer({
         return json(res, 200, createMemory(vault).read());
       }
 
+      // User-initiated note creation (their explicit action — immediate, snapshotted).
+      if (req.method === "POST" && p === "/api/notes/create") {
+        requireConfigured();
+        const { name, content } = await readBody(req);
+        if (!name?.trim()) return json(res, 400, { error: "A note name is required." });
+        const r = createNotes(vault).createNote(name, content ?? "");
+        if (r.error) return json(res, 400, { error: r.error });
+        return json(res, 200, { ok: true, path: r.path });
+      }
+
       if (req.method === "GET" && p === "/api/notes") {
         requireConfigured();
         const list = createNotes(vault).list().map((n) => n.note);

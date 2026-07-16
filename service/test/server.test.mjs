@@ -230,6 +230,21 @@ test("chat streams the agent's steps over SSE when requested", async () => {
   }
 });
 
+test("notes/create makes a new note directly and refuses duplicates", async () => {
+  const f = await fixture();
+  try {
+    let r = await f.request("/api/notes/create", { name: "Ideas" });
+    assert.equal(r.body.ok, true);
+    assert.equal(r.body.path, "Ideas.md");
+    assert.ok(existsSync(join(f.dir, "Ideas.md")));
+    r = await f.request("/api/notes/create", { name: "Ideas" });
+    assert.equal(r.response.status, 400); // already exists
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
 test("a staged note edit is held for review, then written on Apply", async () => {
   const noteAgent = async ({ noteEdits }) => {
     noteEdits.push({ op: "create", name: "Meeting Notes", content: "# Meeting\n- takeaway", label: 'Create note "Meeting Notes"' });
