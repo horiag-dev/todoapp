@@ -6,6 +6,7 @@ import { ageDays } from "./ledger.mjs";
 import { insertGoal } from "./ops.mjs";
 import { SECTIONS as MEMORY_SECTIONS } from "./memory.mjs";
 import { unfurlUrl } from "./unfurl.mjs";
+import { extractPdfText, isPdf } from "./pdf.mjs";
 
 const ok = (text) => ({ content: [{ type: "text", text }] });
 
@@ -133,11 +134,17 @@ function buildServer(ctx) {
       const list = docs?.list?.() ?? [];
       return ok(list.length ? JSON.stringify(list.map((d) => ({ name: d.name, size: d.size }))) : "No documents are attached.");
     }),
-    tool("read_document", "Read the text contents of an attached document by exact name. Works for text files (markdown, txt, csv, json, code, etc.). Binary files like PDFs or images cannot be read as text yet.", { name: z.string() }, async ({ name }) => {
+    tool("read_document", "Read the text contents of an attached document by exact name. Works for text files (markdown, txt, csv, json, code) and PDFs (text is extracted). Images and scanned/image-only PDFs can't be read.", { name: z.string() }, async ({ name }) => {
       const buf = docs?.read?.(name);
       if (!buf) return ok(`No document named "${name}". Use list_documents to see what's attached.`);
-      if (buf.subarray(0, 8000).includes(0)) return ok(`"${name}" looks like a binary file (PDF, image, or Office doc); I can't read it as text yet.`);
       const LIMIT = 40000;
+      if (isPdf(name, buf)) {
+        const text = await extractPdfText(buf);
+        if (text == null) return ok(`Could not extract text from "${name}".`);
+        if (!text.trim()) return ok(`"${name}" is a PDF with no selectable text (it may be scanned images).`);
+        return ok(text.length > LIMIT ? `${text.slice(0, LIMIT)}\n\n…[truncated]` : text);
+      }
+      if (buf.subarray(0, 8000).includes(0)) return ok(`"${name}" looks like a binary file (image or Office doc); I can't read it as text yet.`);
       const text = buf.toString("utf8");
       return ok(text.length > LIMIT ? `${text.slice(0, LIMIT)}\n\n…[truncated; ${buf.length} bytes total]` : text);
     }),
