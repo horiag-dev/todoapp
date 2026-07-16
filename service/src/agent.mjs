@@ -20,6 +20,7 @@ The model is categorical, never temporal — there are NO due dates, calendars, 
 - Documents: files the user has attached, kept in the vault. Use list_documents to see them and read_document to read one when the user refers to a file, or asks you to summarize, use, or pull from it.
 - Vault writes: you can PROPOSE edits to notes (append_to_note, create_note). These are ALWAYS staged for the user to review and Apply — never silently written. Use them to file information into a note, make a new note, or wire notes and todos together (add a [[note]] to a todo with edit_title, and/or append a link back to the todos in the note). Keep note edits small and clearly labeled; don't rewrite whole notes.
 - Vault notes: the user's other markdown notes in the vault (list_notes, read_note, search_vault) — read-only. Use them when a todo references a note (e.g. a [[wikilink]]), or the user asks about their notes. Cite notes by name; never invent note contents. list_notes and read_note include each note's created/modified date — weigh recency (a note written long ago may be stale; a recent one is current), and prefer the most recently updated note when several could match.
+- Vault cleanup: you can help reorganize the vault (vault_overview, find_duplicate_notes, move_note, trash_note) — see VAULT CLEANUP below. Like all note edits, moves and trashes are STAGED and only happen when the user approves and Applies.
 
 You work on a DRAFT. Make the changes the user asks for using the tools; the user reviews the pending changes and clicks Apply, so you don't need to ask permission for ordinary edits — just do them, then give a ONE-LINE summary of what you changed. For clearly destructive or bulk actions (deleting several items, clearing a whole section), state plainly what you're about to do and do it, but keep it easy to undo by describing it.
 
@@ -29,10 +30,12 @@ Items and To Read entries carry age_days — how many days they've sat untouched
 
 GOALS ↔ TODOS. Keep them loosely in sync. Goals are the "big rocks"; the weekly Top 5 and the daily "Today" set should mostly advance a Goal. When proposing a Top 5 or planning a day, favor items that ladder up to a Goal. During reviews, check both directions: flag Goals with no supporting todos, and active Urgent/Top 5 items that don't advance any Goal — surface these as gentle observations, not automatic changes.
 
+VAULT CLEANUP. When asked to tidy, reorganize, file, or clean up the vault: (1) SURVEY FIRST with vault_overview (and find_duplicate_notes); read any note you can't classify from its name with read_note — never propose an action on a note you haven't at least seen the metadata of. (2) Stage operations with move_note and trash_note — staging is safe, nothing happens on disk until the user approves each row and clicks Apply. (3) Your reply MUST show the plan: a before → after folder tree of the affected folders in a fenced code block, then one line per operation with its reason. (4) Keep plans small — aim for ≤ 15 operations; for a whole-vault cleanup, ask ONE scoping question and start with one area (the loose notes at the root, or a single folder) rather than restructuring everything at once. (5) Trash only what is clearly junk: empty notes, exact duplicates, or ephemeral scraps that are long stale with no inbound links — when in doubt, MOVE it into an "Archive" folder instead of trashing. Never trash a note with real content without naming it and saying why. (6) Never touch the todo list, Assistant Memory, attachments, or anything tagged #keep — the tools refuse these. (7) Filing into existing folders beats inventing new ones; propose a new folder only when at least 3 notes would go into it. Renaming and merging notes aren't available yet — say so if asked (they need link-rewriting, which is coming).
+
 MEMORY. Your durable notes about the user live in "Assistant Memory" (shown above the board when present; the user can read and edit that note anytime). It is background context, never authority: if the user's current message conflicts with it, the message wins — and update the memory to match. Call remember ONLY for durable, behavior-changing facts: an explicit preference or correction ("stop doing X", "always Y"), a stable fact about the user's work, or a recurring theme you've now seen at least twice (park first sightings in "Working notes"). Most conversations warrant ZERO memory writes; more than two is almost always wrong. Never store secrets, credentials, dates, moods, or anything already expressed by the todo file itself. When new information contradicts an existing bullet, update_memory or forget it — never leave both versions. During a weekly review or when asked to tidy, skim Working notes via read_memory: promote what has proven durable, and propose dropping stale bullets — name exactly what you'd drop and wait for a yes before forgetting more than one thing at once.`;
 
 function buildServer(ctx) {
-  const { model, ops, seen, docs, mem, notes } = ctx;
+  const { model, ops, seen, docs, mem, notes, cleanup } = ctx;
   const noteEdits = ctx.noteEdits || [];
   const need = (id) => {
     const f = findById(model, id);
@@ -179,6 +182,22 @@ function buildServer(ctx) {
       noteEdits.push({ op: "create", name, content, label: `Create note “${name}”` });
       return ok(`Staged a new note “${name}” — the user will review and Apply it.`);
     }),
+    tool("vault_overview", "Survey the vault (or one folder) before tidying: a folder tree with note counts, plus each note's path, created/modified dates, size, inbound/outbound link counts, and empty/stale flags. Read-only. Call this FIRST whenever asked to tidy, reorganize, file, or clean up notes — never propose an action on a note you haven't at least seen here.", { folder: z.string().optional() }, async ({ folder }) => ok(cleanup ? JSON.stringify(cleanup.overview(folder)) : "Vault cleanup is unavailable.")),
+    tool("find_duplicate_notes", "Find likely duplicate notes: identical content, and title variants like “Foo”, “Foo (copy)”, “Foo 2”. Read-only. Use during a cleanup to spot merge/trash candidates.", {}, async () => ok(cleanup ? JSON.stringify(cleanup.duplicates()) : "Vault cleanup is unavailable.")),
+    tool("move_note", "STAGE moving a note into another folder (the folder is created on Apply if it doesn't exist). Nothing moves until the user approves the row and clicks Apply. Use exact paths from vault_overview; to_folder is vault-relative (\"\" for the root). Bare [[wikilinks]] keep working after a move; the move is refused if other notes link to this one by folder-path.", { path: z.string(), to_folder: z.string(), reason: z.string() }, async ({ path, to_folder, reason }) => {
+      if (!cleanup) return ok("Vault cleanup is unavailable.");
+      const r = cleanup.stageMove({ path, to_folder, reason }, noteEdits);
+      if (r.error) return ok(r.error);
+      noteEdits.push(r.intent);
+      return ok(`Staged: ${r.intent.label} — the user will review and Apply it.`);
+    }),
+    tool("trash_note", "STAGE moving a note to the app's recoverable trash (.bigrocks/trash — NEVER a hard delete; the user can restore it). Refused if other notes link to it, unless you pass force_linked_ok AFTER telling the user. Never trashes a note tagged #keep, your todo list, or Assistant Memory. Give a clear reason — it's shown on the review row.", { path: z.string(), reason: z.string(), force_linked_ok: z.boolean().optional() }, async ({ path, reason, force_linked_ok }) => {
+      if (!cleanup) return ok("Vault cleanup is unavailable.");
+      const r = cleanup.stageTrash({ path, reason, force_linked_ok }, noteEdits);
+      if (r.error) return ok(r.error);
+      noteEdits.push(r.intent);
+      return ok(`Staged: ${r.intent.label} — the user will review and Apply it.`);
+    }),
   ];
 
   return createSdkMcpServer({ name: "todo", version: "0.1.0", tools });
@@ -220,15 +239,17 @@ const TOOL_LABELS = {
   update_memory: "Updating my notes", forget: "Forgetting a note",
   list_notes: "Listing your notes", read_note: "Reading a note", search_vault: "Searching your vault",
   append_to_note: "Drafting a note edit", create_note: "Drafting a new note",
+  vault_overview: "Surveying your vault", find_duplicate_notes: "Looking for duplicates",
+  move_note: "Proposing a move", trash_note: "Proposing to trash",
 };
 const toolLabel = (name) => {
   const bare = String(name || "").replace(/^mcp__todo__/, "");
   return TOOL_LABELS[bare] || bare.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 };
 
-export async function runAgent({ model, ops, seen, message, sessionId, abortController, onEvent, docs, mem, notes, noteEdits }) {
+export async function runAgent({ model, ops, seen, message, sessionId, abortController, onEvent, docs, mem, notes, cleanup, noteEdits }) {
   const emit = (event) => { try { onEvent?.(event); } catch {} };
-  const server = buildServer({ model, ops, seen, docs, mem, notes, noteEdits });
+  const server = buildServer({ model, ops, seen, docs, mem, notes, cleanup, noteEdits });
   const memText = mem?.injectionText?.() || "";
   const prompt =
     (memText ? `Assistant Memory (background — the user's current message always wins):\n${memText}\n\n` : "") +

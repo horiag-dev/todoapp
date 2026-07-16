@@ -455,3 +455,62 @@ test("native picker endpoint uses the chosen path and requested creation mode", 
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("HTTP: assistant-staged vault cleanup — review rows, apply moves/trashes, then undo", async () => {
+  // A stub agent that stages a move and a trash exactly as the real tools do.
+  const stub = async ({ cleanup, noteEdits }) => {
+    const mv = cleanup.stageMove({ path: "Loose.md", to_folder: "Filed", reason: "belongs in Filed" });
+    if (mv.intent) noteEdits.push(mv.intent);
+    const tr = cleanup.stageTrash({ path: "Junk.md", reason: "empty scrap" });
+    if (tr.intent) noteEdits.push(tr.intent);
+    return { reply: "Proposed a move and a trash.", sessionId: "s" };
+  };
+  const f = await fixture(stub);
+  try {
+    writeFileSync(join(f.dir, "Loose.md"), "# Loose\n\ncontent\n");
+    writeFileSync(join(f.dir, "Junk.md"), "   \n");
+
+    let { body } = await f.request("/api/chat", { message: "tidy up" });
+    assert.equal(body.applied, false, "note-touching drafts never auto-apply");
+    assert.equal(body.model.dirty, true);
+    assert.deepEqual(body.model.changes.map((c) => c.kind).sort(), ["note-move", "note-trash"]);
+
+    ({ body } = await f.request("/api/apply", {}));
+    assert.ok(existsSync(join(f.dir, "Filed", "Loose.md")) && !existsSync(join(f.dir, "Loose.md")), "note moved");
+    assert.ok(!existsSync(join(f.dir, "Junk.md")), "note trashed");
+    assert.equal(body.model.canUndoCleanup, true);
+    assert.equal(body.model.dirty, false);
+
+    ({ body } = await f.request("/api/cleanup/undo", {}));
+    assert.equal(body.done, true);
+    assert.equal(body.restored, 2);
+    assert.ok(existsSync(join(f.dir, "Loose.md")) && !existsSync(join(f.dir, "Filed", "Loose.md")), "move undone");
+    assert.ok(existsSync(join(f.dir, "Junk.md")), "trash undone");
+    assert.equal(body.model.canUndoCleanup, false);
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("HTTP: a cleanup op whose file changed on disk is skipped and kept in the panel", async () => {
+  const stub = async ({ cleanup, noteEdits }) => {
+    const mv = cleanup.stageMove({ path: "Moves.md", to_folder: "Filed", reason: "x" });
+    if (mv.intent) noteEdits.push(mv.intent);
+    return { reply: "staged", sessionId: "s" };
+  };
+  const f = await fixture(stub);
+  try {
+    writeFileSync(join(f.dir, "Moves.md"), "original\n");
+    await f.request("/api/chat", { message: "move it" });
+    writeFileSync(join(f.dir, "Moves.md"), "EDITED since staging\n"); // change under the plan
+    const { body } = await f.request("/api/apply", {});
+    assert.ok((body.notes || []).some((n) => n.skipped), "reported as skipped");
+    assert.ok(existsSync(join(f.dir, "Moves.md")) && !existsSync(join(f.dir, "Filed", "Moves.md")), "not moved");
+    assert.equal(body.model.dirty, true, "skipped op kept in the panel");
+    assert.deepEqual(body.model.changes.map((c) => c.kind), ["note-move"]);
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});

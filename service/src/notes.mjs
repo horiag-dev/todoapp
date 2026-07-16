@@ -5,8 +5,10 @@ import { readFileSync, readdirSync, statSync, existsSync, mkdirSync, copyFileSyn
 import { join, relative, extname, basename, resolve, sep, dirname } from "node:path";
 import { writeFileAtomic } from "./fsAtomic.mjs";
 
-const TEXT_EXT = new Set([".md", ".markdown", ".txt", ".text", ".org"]);
-const SKIP_DIRS = new Set([".bigrocks", ".obsidian", ".git", ".trash", "node_modules", "attachments"]);
+// Shared with cleanup.mjs so read, write, and reorganize all agree on which
+// files are notes and which folders are off-limits.
+export const TEXT_EXT = new Set([".md", ".markdown", ".txt", ".text", ".org"]);
+export const SKIP_DIRS = new Set([".bigrocks", ".obsidian", ".git", ".trash", "node_modules", "attachments"]);
 const MAX_FILES = 3000, MAX_READ = 200_000, MAX_HITS = 40;
 
 function walk(dir, out) {

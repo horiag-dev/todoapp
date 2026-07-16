@@ -15,6 +15,7 @@ import { touch, ageDays } from "./ledger.mjs";
 import { applyAction } from "./ops.mjs";
 import { createMemory } from "./memory.mjs";
 import { createNotes } from "./notes.mjs";
+import { createCleanup } from "./cleanup.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const APP_VERSION = (() => {
@@ -233,10 +234,41 @@ export function createBigRocksServer({
   let draftNoteEdits = []; // staged, reviewable edits to vault notes (never auto-applied)
   let externalConflict = false;
   const clearDraft = () => { draft = null; draftOps = []; draftBaseVersion = null; draftNoteEdits = []; };
-  // Execute the currently-staged note edits (snapshotted inside notes.mjs).
-  function runNoteEdits(edits) {
+  // Execute the currently-staged note edits. Appends/creates go through notes.mjs
+  // (snapshotted there); moves/trashes go through the cleanup engine inside one
+  // recoverable batch (manifest + before-copies). Runs in a deterministic order
+  // (moves before trashes) and, crucially, a move/trash whose precondition fails
+  // (the file changed on disk since it was staged) is SKIPPED, not forced — it's
+  // returned in `keep` so the row stays in the panel for the user to re-ask.
+  const CLEANUP_OPS = new Set(["move", "trash"]);
+  const EXEC_ORDER = { move: 0, trash: 1, append: 2, create: 3 };
+  function executeIntents(edits) {
     const m = createNotes(vault);
-    return edits.map((e) => ({ label: e.label, ...(e.op === "create" ? m.createNote(e.name, e.content) : m.appendToNote(e.name, e.content)) }));
+    const cleanup = createCleanup(vault);
+    const batch = edits.some((e) => CLEANUP_OPS.has(e.op)) ? cleanup.openBatch() : null;
+    const sorted = edits
+      .map((e, i) => ({ e, i }))
+      .sort((a, b) => (EXEC_ORDER[a.e.op] ?? 9) - (EXEC_ORDER[b.e.op] ?? 9) || a.i - b.i);
+    const results = [], keep = [];
+    for (const { e } of sorted) {
+      try {
+        if (CLEANUP_OPS.has(e.op)) {
+          const r = cleanup.execute(e, batch);
+          results.push({ label: e.label, ...r });
+          if (r.skipped) keep.push(e);
+        } else {
+          results.push({ label: e.label, ...(e.op === "create" ? m.createNote(e.name, e.content) : m.appendToNote(e.name, e.content)) });
+        }
+      } catch (err) {
+        // One op's filesystem error must never abort the batch — record it as
+        // skipped (kept in the panel) so the rest apply and the manifest still
+        // closes over whatever succeeded (so those ops stay undoable).
+        results.push({ label: e.label, skipped: true, error: String(err?.message || err) });
+        keep.push(e);
+      }
+    }
+    if (batch) cleanup.closeBatch(batch);
+    return { results, keep };
   }
   let sessionId;
   let chatMessages = [];
@@ -326,11 +358,12 @@ export function createBigRocksServer({
       ops: draftOps,
       changes: [
         ...(draft ? diffModels(base, draft) : []),
-        ...draftNoteEdits.map((e, i) => ({ key: `note:${i}`, kind: "note", label: e.label })),
+        ...draftNoteEdits.map((e, i) => ({ key: `note:${i}`, kind: e.kind || "note", label: e.label })),
       ],
       conflict: externalConflict,
       busy,
       canUndo: vault.hasHistory(),
+      canUndoCleanup: createCleanup(vault).hasBatches(),
       goalsChanged,
       goalsBefore: goalsChanged ? baseGoals : null,
       documents: vault.listAttachments(),
@@ -473,6 +506,17 @@ export function createBigRocksServer({
         return json(res, 200, { ok: true, model: modelView() });
       }
 
+      // Undo the most recent applied vault cleanup batch (moves back, un-trash).
+      // Separate from the todo Undo above — they undo different files, and users
+      // must not fear that undoing a todo edit un-moves a dozen notes.
+      if (req.method === "POST" && p === "/api/cleanup/undo") {
+        requireConfigured();
+        if (busy) return json(res, 409, { error: "The assistant is working. Wait for it to finish.", code: "BUSY" });
+        const r = createCleanup(vault).undoLastBatch();
+        if (r.error) return json(res, 400, { error: r.error });
+        return json(res, 200, { ok: true, model: modelView(), restored: r.restored, skipped: r.skipped, done: r.done });
+      }
+
       if (req.method === "POST" && p === "/api/chat") {
         requireConfigured();
         if (busy) return json(res, 409, { error: "The assistant is already working.", code: "BUSY" });
@@ -501,7 +545,8 @@ export function createBigRocksServer({
           const docs = { list: () => vault.listAttachments(), read: (name) => vault.readAttachment(name) };
           const mem = createMemory(vault);
           const notes = createNotes(vault);
-          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort, onEvent, docs, mem, notes, noteEdits });
+          const cleanup = createCleanup(vault);
+          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort, onEvent, docs, mem, notes, cleanup, noteEdits });
           sessionId = result.sessionId;
           chatMessages.push({ role: "you", text: message }, { role: "bot", text: result.reply });
           saveChat(vault.todoDocPath, { sessionId, messages: chatMessages });
@@ -629,10 +674,13 @@ export function createBigRocksServer({
           baseVersion = saved.version;
           seen = touch(vault, base);
         }
-        const notes = runNoteEdits(draftNoteEdits);
-        clearDraft();
+        const { results, keep } = executeIntents(draftNoteEdits);
+        // A move/trash whose file changed on disk is skipped and kept staged so
+        // the user can re-ask; everything else is done — drop the draft.
+        draft = null; draftOps = []; draftBaseVersion = null;
+        draftNoteEdits = keep;
         externalConflict = false;
-        return json(res, 200, { ok: true, model: modelView(), flash, notes });
+        return json(res, 200, { ok: true, model: modelView(), flash, notes: results });
       }
 
       if (req.method === "POST" && p === "/api/approve-change") {
@@ -643,9 +691,10 @@ export function createBigRocksServer({
         if (key.startsWith("note:")) {
           const i = Number(key.slice(5));
           if (!Number.isInteger(i) || i < 0 || i >= draftNoteEdits.length) return json(res, 400, { error: "No such note change." });
-          const [edit] = draftNoteEdits.splice(i, 1);
-          const [r] = runNoteEdits([edit]);
-          if (r.error) { draftNoteEdits.splice(i, 0, edit); return json(res, 400, { error: r.error }); }
+          const { results } = executeIntents([draftNoteEdits[i]]);
+          const r = results[0];
+          if (r.error || r.skipped) return json(res, 400, { error: r.error || "That change couldn't be applied." });
+          draftNoteEdits.splice(i, 1);
           return json(res, 200, { ok: true, model: modelView(), note: r });
         }
         if (!draft) return json(res, 400, { error: "No such change to approve." });
