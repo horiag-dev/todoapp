@@ -32,6 +32,9 @@
   .gdiff{border:1px solid color-mix(in srgb,var(--goals) 32%,var(--line));border-radius:9px;overflow:hidden;font-size:11.5px;max-width:100%}.msg.gdiff-msg{max-width:100%;padding:0;background:transparent;border:0}.gdiff-t{padding:5px 9px;background:color-mix(in srgb,var(--goals) 13%,var(--card));color:color-mix(in srgb,var(--goals) 82%,var(--ink));font-weight:750;letter-spacing:-.005em}.gdiff-row{padding:3px 9px;font-family:ui-monospace,"SF Mono",Menlo,monospace;line-height:1.5;overflow-wrap:anywhere;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)}.gdiff-r{background:color-mix(in srgb,var(--danger) 9%,transparent);color:color-mix(in srgb,var(--danger) 78%,var(--ink))}.gdiff-a{background:color-mix(in srgb,#2f9461 13%,transparent);color:color-mix(in srgb,#2f9461 76%,var(--ink))}.gdiff-none{padding:6px 9px;color:var(--soft);font-style:italic}
   .modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:#10182878;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}.modal[hidden]{display:none}.dialog{width:min(520px,calc(100vw - 28px));background:var(--card);border:1px solid color-mix(in srgb,var(--line) 82%,transparent);border-radius:16px;padding:20px;box-shadow:0 24px 80px #1018284d}.dialog h2{margin:0 0 5px;letter-spacing:-.015em}.dialog p{color:var(--soft)}.dialog input{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}.dialog .actions{display:flex;justify-content:flex-end;gap:7px;margin-top:12px}.dialog button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 11px}.dialog button:hover{background:var(--hover)}.dialog button.primary{border:0;color:#fff}.dialog button.primary:hover{background:color-mix(in srgb,var(--accent) 88%,#102f70)}.dialog button:disabled{cursor:default;opacity:.55}
   .goals-dialog{width:min(620px,calc(100vw - 32px));max-height:calc(100vh - 32px);padding:0;overflow:hidden;display:flex;flex-direction:column}.goals-editor-head{display:flex;align-items:center;gap:12px;padding:17px 19px;border-bottom:1px solid var(--line)}.goals-editor-head h2{margin:0;font-size:16px}.goals-editor-head .hint{margin-left:auto;color:var(--soft);font-size:11px}.goals-editor-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);flex:1;min-height:0}.goals-pane{display:flex;flex-direction:column;min-width:0;min-height:0}.goals-pane+.goals-pane{border-left:1px solid var(--line);background:var(--surface)}.pane-label{display:flex;align-items:center;gap:7px;padding:9px 13px;border-bottom:1px solid var(--line);color:var(--soft);font-size:10px;font-weight:750;letter-spacing:.06em;text-transform:uppercase}.pane-label .help{margin-left:auto;font-weight:500;letter-spacing:0;text-transform:none}.goals-editor-text{flex:1;width:100%;min-height:0;overflow:auto;resize:none;border:0!important;border-radius:0!important;background:var(--card)!important;color:var(--ink);padding:14px 16px!important;outline:none;font:12.5px/1.65 ui-monospace,"SF Mono",Menlo,monospace}.goals-editor-text:focus{box-shadow:inset 3px 0 0 color-mix(in srgb,var(--accent) 65%,transparent)}.goals-preview{flex:1;overflow:auto;padding:12px 14px}.goals-preview .goal-group{box-shadow:none;margin-bottom:9px}.goals-editor-foot{display:flex;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid var(--line);background:var(--surface)}.goals-editor-foot .status{color:var(--soft);font-size:11px;flex:1}.goals-editor-foot button{min-width:76px}
+  #goals-editor-modal.docked{background:none;backdrop-filter:none;-webkit-backdrop-filter:none;pointer-events:none;display:block;inset:0}
+  #goals-editor-modal.docked .goals-dialog{pointer-events:auto;position:fixed;left:10px;top:var(--gtop,64px);right:var(--gright,400px);bottom:10px;width:auto;max-width:none;max-height:none;height:auto;background:var(--surface);box-shadow:0 8px 40px #10182833}
+  @media(max-width:760px){#goals-editor-modal.docked .goals-dialog{right:10px}}
   .goals-arrange{flex:1;overflow:auto;padding:14px 16px 10px}
   .ge-group{margin-bottom:15px;border-left:3px solid var(--gc,var(--soft));padding-left:11px}
   .ge-head{display:flex;align-items:center;gap:6px;margin-bottom:3px}
@@ -287,32 +290,38 @@ function paintWikiSel(scroll){
   const on=els[wikiSel];
   if(on){if(scroll)on.scrollIntoView({block:"nearest"});if(wikiInput)wikiInput.setAttribute("aria-activedescendant",on.id)}
 }
-function wikiCaretX(el,index){
-  if(!wikiMirror){
-    wikiMirror=document.createElement("div");
-    wikiMirror.style.cssText="position:fixed;top:-9999px;left:0;visibility:hidden;white-space:pre;pointer-events:none";
-    document.body.appendChild(wikiMirror);
-  }
-  const cs=getComputedStyle(el);
-  for(const p of ["fontFamily","fontSize","fontWeight","fontStyle","fontVariant","letterSpacing","textTransform"])wikiMirror.style[p]=cs[p];
-  wikiMirror.textContent=el.value.slice(0,index);
-  const w=wikiMirror.getBoundingClientRect().width;
-  const r=el.getBoundingClientRect();
-  const x=r.left+el.clientLeft+(parseFloat(cs.paddingLeft)||0)+w-el.scrollLeft;
-  return Math.min(Math.max(x,r.left+4),r.right-4);
+// Caret screen coords via a mirror that matches the element's box + wrapping —
+// works for single-line inputs AND multi-line textareas (the earlier version
+// measured one line, so [[ autocomplete mispositioned in a textarea).
+function caretXY(el,index){
+  const isInput=el.tagName==="INPUT";
+  if(!wikiMirror){wikiMirror=document.createElement("div");document.body.appendChild(wikiMirror)}
+  const m=wikiMirror,cs=getComputedStyle(el);
+  m.style.cssText="position:fixed;top:-9999px;left:0;visibility:hidden;pointer-events:none;overflow:hidden";
+  m.style.whiteSpace=isInput?"pre":"pre-wrap";m.style.wordWrap="break-word";
+  for(const p of ["fontFamily","fontSize","fontWeight","fontStyle","fontVariant","letterSpacing","textTransform","lineHeight","textIndent","paddingTop","paddingRight","paddingBottom","paddingLeft","borderTopWidth","borderRightWidth","borderBottomWidth","borderLeftWidth","boxSizing","tabSize"])m.style[p]=cs[p];
+  m.style.width=isInput?"auto":cs.width;
+  m.textContent=el.value.slice(0,index);
+  const span=document.createElement("span");span.textContent=el.value.slice(index)||".";
+  m.appendChild(span);
+  const sx=span.offsetLeft,sy=span.offsetTop;
+  m.textContent="";
+  const r=el.getBoundingClientRect(),lh=parseFloat(cs.lineHeight)||parseFloat(cs.fontSize)*1.3;
+  return {x:r.left+sx-el.scrollLeft,y:r.top+sy-el.scrollTop,lineHeight:lh};
 }
 function positionWiki(){
   const el=wikiInput;
   if(!el||!el.isConnected){hideWiki();return}
   const r=el.getBoundingClientRect();
   if(!r.width&&!r.height){hideWiki();return}
-  const x=wikiCaretX(el,Math.max(0,wikiStart-2));
+  const c=caretXY(el,wikiStart);
   wikiPop.style.visibility="hidden";wikiPop.hidden=false;
   const pw=wikiPop.offsetWidth,ph=wikiPop.offsetHeight;
-  const fitsBelow=r.bottom+4+ph<=innerHeight-6,fitsAbove=r.top-4-ph>=6;
-  const top=fitsBelow||!fitsAbove?r.bottom+4:r.top-4-ph;
+  const below=c.y+c.lineHeight+3,above=c.y-3-ph;
+  const top=(below+ph<=innerHeight-6)||!(above>=6)?below:above;
+  const x=Math.max(r.left+4,Math.min(c.x,r.right-4));
   wikiPop.style.left=Math.max(6,Math.min(x,innerWidth-pw-6))+"px";
-  wikiPop.style.top=Math.max(6,Math.min(top,innerHeight-40))+"px";
+  wikiPop.style.top=Math.max(6,Math.min(top,innerHeight-ph-6))+"px";
   wikiPop.style.visibility="";
 }
 function chooseWiki(i){
@@ -463,17 +472,21 @@ function renderGoalEditor(){
   ta.hidden=true;host.hidden=false;$("#goals-mode").textContent="Markdown";$("#goals-subhead").textContent="Drag to reorder · click a goal to edit · ⌥↑ ⌥↓ to move";
   host.innerHTML=goalUnits.sections.map((s,si)=>{
     const head=s.header==null?`<span class="ge-htext ge-untitled">Goals</span>`:`<span class="ge-htext" data-ehead="${si}">${titleLinks(geHeaderText(s),false)||"Untitled"}</span>`;
-    const bullets=s.bullets.map((b,bi)=>`<li class="ge-b" data-sec="${si}" data-bi="${bi}" tabindex="0"><span class="draghandle" draggable="true" title="Drag to reorder"></span><span class="ge-t" data-eb="${si}:${bi}">${titleLinks(geBulletText(b.raw),true)}</span><span class="ge-acts"><button class="ge-link" data-glink="${si}:${bi}" title="Link a note">🔗</button><button class="ge-del" data-gdel="${si}:${bi}" title="Delete goal">×</button></span></li>`).join("");
+    const bullets=s.bullets.map((b,bi)=>`<li class="ge-b" data-sec="${si}" data-bi="${bi}" tabindex="0"><span class="draghandle" draggable="true" title="Drag to reorder"></span><span class="ge-t" data-eb="${si}:${bi}">${titleLinks(geBulletText(b.raw),true)}</span><span class="ge-acts"><button class="ge-link" data-glink="${si}:${bi}" title="Link a note">🔗</button></span></li>`).join("");
     return `<section class="ge-group" data-sec="${si}" style="--gc:${GCOLORS[si%GCOLORS.length]}"><div class="ge-head">${head}</div><ul class="ge-bullets" data-sec="${si}">${bullets}<li class="ge-add" data-gadd="${si}">+ Add a goal…</li></ul></section>`;
   }).join("")+`<button class="ge-addsec" data-gaddsec>+ New section…</button>`;
   geStatus(geStats());
 }
+// Dock the editor over the left+middle columns, leaving the chat column visible
+// and interactive to its right (not a full-screen modal).
+function dockGoals(){const chat=$("#log")?.closest(".col"),m=$("main");if(!chat||!m)return;const cr=chat.getBoundingClientRect(),mr=m.getBoundingClientRect();const R=document.documentElement.style;R.setProperty("--gtop",Math.round(mr.top)+"px");R.setProperty("--gright",Math.round(innerWidth-cr.left+10)+"px")}
 function openGoalsEditor(){
   if(current?.dirty){showNotice("Apply or discard the assistant's pending draft before editing goals.",{sticky:true});return}
   goalMode="visual";goalUnits=parseGoals(current?.goals||[]);
-  $("#goals-editor-modal").hidden=false;renderGoalEditor();
+  const modal=$("#goals-editor-modal");modal.hidden=false;modal.classList.add("docked");dockGoals();renderGoalEditor();
+  addEventListener("resize",dockGoals);
 }
-function closeGoalsEditor(){if(goalMode==="markdown")goalUnits=parseGoals($("#goals-ta").value.replace(/\r/g,"").split("\n"));saveGoalsNow();$("#goals-editor-modal").hidden=true}
+function closeGoalsEditor(){if(goalMode==="markdown")goalUnits=parseGoals($("#goals-ta").value.replace(/\r/g,"").split("\n"));saveGoalsNow();const modal=$("#goals-editor-modal");modal.hidden=true;modal.classList.remove("docked");removeEventListener("resize",dockGoals)}
 function geToggleMode(){if(goalMode==="visual")goalMode="markdown";else{goalUnits=parseGoals($("#goals-ta").value.replace(/\r/g,"").split("\n"));goalMode="visual";scheduleGoalSave()}renderGoalEditor()}
 // One inline input over an anchor element; Enter commits, Esc reverts, blur commits.
 function geInline(anchor,value,withWiki,onCommit,onCancel){
@@ -502,18 +515,30 @@ function geAddSection(){const ghost=document.querySelector(".ge-addsec");if(!gho
   let done=false;const close=()=>{if(done)return;done=true;renderGoalEditor()};
   input.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();const v=input.value.trim();if(v){goalUnits.sections.push({header:"**"+v+"**",pre:[],bullets:[],post:[]});geAnnounce("Added section");geCommit()}else close()}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();close()}};
   input.onblur=()=>setTimeout(close,120);}
-async function geLinkBullet(key){const [si,bi]=key.split(":").map(Number);const b=goalUnits.sections[si]?.bullets[bi];if(!b)return;
-  const li=document.querySelector(`.ge-b[data-sec="${si}"][data-bi="${bi}"]`),t=li&&li.querySelector(".ge-t");if(!t)return;
-  const input=document.createElement("input");input.className="ge-input";input.setAttribute("list","note-names");input.placeholder="link / create a note…";input.value=geBulletText(b.raw).replace(WIKI,"").trim();
-  t.replaceWith(input);input.focus();input.select();
-  const notes=await fetchNotes();$("#note-names").innerHTML=notes.map(n=>`<option value="${esc(n.replace(/\.md$/i,""))}"></option>`).join("");
-  let done=false;const finish=async save=>{if(done)return;done=true;const v=input.value.trim().replace(/^\[\[|\]\]$/g,"").replace(/\.md$/i,"");renderGoalEditor();if(!save||!v)return;
-    const list=await fetchNotes(),norm=s=>s.replace(/\.md$/i,"").toLowerCase(),exists=list.some(n=>norm(n)===v.toLowerCase()||norm(n.split("/").pop())===v.toLowerCase());
-    if(!exists){try{await api("/api/notes/create",{method:"POST",body:JSON.stringify({name:v})});noteCache=null;showNotice(`Created note “${v}” in your vault.`,{info:true})}catch(e){handleError(e)}}
-    if(!linksOfClient(b.raw).some(n=>n.toLowerCase()===v.toLowerCase())){b.raw=b.raw.replace(/\s+$/,"")+" [["+v+"]]";geAnnounce("Linked "+v)}
-    geCommit();};
-  input.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();finish(true)}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();finish(false)}};
-  input.onblur=()=>finish(true);}
+// The 🔗 button seeds a `[[` at the end of the goal and opens the same ranked
+// note picker as typing `[[` inline — pick an existing note, or a new name
+// creates it. Own input with an explicit caret right after `[[` (no select-all).
+function geLinkBullet(key){const [si,bi]=key.split(":").map(Number);const b=goalUnits.sections[si]?.bullets[bi];if(!b)return;
+  const sp=document.querySelector(`.ge-t[data-eb="${si}:${bi}"]`);if(!sp)return;
+  const base=geBulletText(b.raw).replace(/\s+$/,""),seed=base+(base?" ":"")+"[[";
+  const input=document.createElement("input");input.className="ge-input";input.value=seed;
+  sp.replaceWith(input);input.focus();input.setSelectionRange(seed.length,seed.length);
+  input.addEventListener("input",()=>onWikiInput(input));
+  let done=false;const finish=async save=>{if(done)return;done=true;hideWiki();
+    if(!save){renderGoalEditor();return}
+    let v=input.value.replace(/\[\[\s*([^\]]*?)\s*$/,(m,n)=>n?"[["+n+"]]":"").replace(/\s+$/,"").trim();
+    const list=await fetchNotes(),norm=s=>s.replace(/\.md$/i,"").toLowerCase();
+    for(const nm of linksOfClient(v)){
+      if(!list.some(n=>norm(n)===nm.toLowerCase()||norm(n.split("/").pop())===nm.toLowerCase())){
+        try{await api("/api/notes/create",{method:"POST",body:JSON.stringify({name:nm})});noteCache=null;showNotice(`Created note “${nm}” in your vault.`,{info:true})}catch(e){handleError(e)}
+      }
+    }
+    b.raw=geBulletPrefix(b.raw)+v;geCommit();
+  };
+  input.onkeydown=e=>{if(wikiKey(e))return;if(e.key==="Enter"){e.preventDefault();finish(true)}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();finish(false)}};
+  input.onblur=()=>setTimeout(()=>finish(true),120);
+  onWikiInput(input);
+}
 function geClearDrop(){$$(".ge-b.drop-before,.ge-b.drop-after,.ge-bullets.drop-zone").forEach(el=>el.classList.remove("drop-before","drop-after","drop-zone"))}
 function geMoveBullet(si,bi,tsi,tbi){const src=goalUnits.sections[si],[b]=src.bullets.splice(bi,1),dst=goalUnits.sections[tsi];let idx=tbi;if(si===tsi&&bi<tbi)idx--;idx=Math.max(0,Math.min(idx,dst.bullets.length));dst.bullets.splice(idx,0,b);geAnnounce(`Moved to ${idx+1} of ${dst.bullets.length} in ${geHeaderText(dst)||"Goals"}`);geCommit()}
 function geMoveKb(si,bi,up){const S=goalUnits.sections,s=S[si];
