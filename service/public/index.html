@@ -31,7 +31,31 @@
   .chat{display:flex;flex-direction:column;position:sticky;top:90px;height:calc(100vh - 112px);background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}.log{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:12px}.msg{padding:8px 11px;border-radius:11px;max-width:92%;font-size:12.5px}.you{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}.bot{align-self:flex-start;background:var(--hover);border:1px solid color-mix(in srgb,var(--line) 75%,transparent);border-bottom-left-radius:4px}.thinking .muse{font-size:11px;color:var(--soft);font-style:italic;margin-bottom:5px;white-space:pre-wrap;overflow-wrap:anywhere}.thinking .muse:empty{display:none}.thinking .steps{display:flex;flex-direction:column;gap:3px;margin-bottom:5px}.thinking .steps:empty{display:none}.thinking .step{font-size:11px;color:var(--soft);display:flex;gap:6px;align-items:baseline}.thinking .step:before{content:"›";color:var(--accent);font-weight:800}.thinking .step.active{animation:br-pulse 1.1s ease-in-out infinite}.thinking .step.done{opacity:.6}.thinking .step.done:before{content:"✓";color:var(--normal)}.thinking .stream{white-space:pre-wrap;overflow-wrap:anywhere}.thinking .stream:empty{display:none}@keyframes br-pulse{0%,100%{opacity:.5}50%{opacity:1}}@media(prefers-reduced-motion:reduce){.thinking .step.active{animation:none}}.bot p{margin:.4em 0}.bot p:first-child{margin-top:0}.bot p:last-child{margin-bottom:0}.bot ul,.bot ol{margin:.45em 0;padding-left:1.35em}.bot li{margin:3px 0}.bot strong{font-weight:700}.bot em{font-style:italic}.bot code{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11.5px;background:color-mix(in srgb,var(--ink) 9%,transparent);padding:1px 4px;border-radius:4px}.bot a{color:var(--accent);text-decoration:underline}.bot h3,.bot h4,.bot h5{margin:.75em 0 .3em;font-weight:750;font-size:12.5px;letter-spacing:-.005em}.bot h3:first-child,.bot h4:first-child{margin-top:0}.memory-view{max-height:60vh;overflow:auto;margin-top:8px;padding:2px 2px 0}.memory-view .empty{padding:8px 2px}.chat form{display:flex;flex-direction:column;gap:7px;padding:9px;border-top:1px solid var(--line);background:var(--surface)}.chat-compose{display:flex;gap:6px}.chat input{flex:1;min-width:0;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;outline:none}.chat input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 10%,transparent)}.chat button{border:0;border-radius:8px;background:var(--accent);color:#fff;padding:8px 12px;font-weight:650}.chat-context{display:flex;align-items:center;gap:7px;min-width:0;padding:6px 8px;border:1px solid color-mix(in srgb,var(--accent) 18%,var(--line));border-radius:8px;background:color-mix(in srgb,var(--accent) 6%,var(--card));font-size:11px}.chat-context[hidden]{display:none}.chat-context .context-label{color:var(--soft);flex:0 0 auto}.chat-context strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.chat-context button{margin-left:auto;padding:0 4px;background:transparent;color:var(--soft);font-size:15px;line-height:1}.chat-context button:hover{color:var(--ink)}
   .gdiff{border:1px solid color-mix(in srgb,var(--goals) 32%,var(--line));border-radius:9px;overflow:hidden;font-size:11.5px;max-width:100%}.msg.gdiff-msg{max-width:100%;padding:0;background:transparent;border:0}.gdiff-t{padding:5px 9px;background:color-mix(in srgb,var(--goals) 13%,var(--card));color:color-mix(in srgb,var(--goals) 82%,var(--ink));font-weight:750;letter-spacing:-.005em}.gdiff-row{padding:3px 9px;font-family:ui-monospace,"SF Mono",Menlo,monospace;line-height:1.5;overflow-wrap:anywhere;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)}.gdiff-r{background:color-mix(in srgb,var(--danger) 9%,transparent);color:color-mix(in srgb,var(--danger) 78%,var(--ink))}.gdiff-a{background:color-mix(in srgb,#2f9461 13%,transparent);color:color-mix(in srgb,#2f9461 76%,var(--ink))}.gdiff-none{padding:6px 9px;color:var(--soft);font-style:italic}
   .modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:#10182878;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}.modal[hidden]{display:none}.dialog{width:min(520px,calc(100vw - 28px));background:var(--card);border:1px solid color-mix(in srgb,var(--line) 82%,transparent);border-radius:16px;padding:20px;box-shadow:0 24px 80px #1018284d}.dialog h2{margin:0 0 5px;letter-spacing:-.015em}.dialog p{color:var(--soft)}.dialog input{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}.dialog .actions{display:flex;justify-content:flex-end;gap:7px;margin-top:12px}.dialog button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 11px}.dialog button:hover{background:var(--hover)}.dialog button.primary{border:0;color:#fff}.dialog button.primary:hover{background:color-mix(in srgb,var(--accent) 88%,#102f70)}.dialog button:disabled{cursor:default;opacity:.55}
-  .goals-dialog{width:min(880px,calc(100vw - 32px));max-height:calc(100vh - 32px);padding:0;overflow:hidden;display:flex;flex-direction:column}.goals-editor-head{display:flex;align-items:center;gap:12px;padding:17px 19px;border-bottom:1px solid var(--line)}.goals-editor-head h2{margin:0;font-size:16px}.goals-editor-head .hint{margin-left:auto;color:var(--soft);font-size:11px}.goals-editor-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);flex:1;min-height:0}.goals-pane{display:flex;flex-direction:column;min-width:0;min-height:0}.goals-pane+.goals-pane{border-left:1px solid var(--line);background:var(--surface)}.pane-label{display:flex;align-items:center;gap:7px;padding:9px 13px;border-bottom:1px solid var(--line);color:var(--soft);font-size:10px;font-weight:750;letter-spacing:.06em;text-transform:uppercase}.pane-label .help{margin-left:auto;font-weight:500;letter-spacing:0;text-transform:none}.goals-editor-text{flex:1;width:100%;min-height:0;overflow:auto;resize:none;border:0!important;border-radius:0!important;background:var(--card)!important;color:var(--ink);padding:14px 16px!important;outline:none;font:12.5px/1.65 ui-monospace,"SF Mono",Menlo,monospace}.goals-editor-text:focus{box-shadow:inset 3px 0 0 color-mix(in srgb,var(--accent) 65%,transparent)}.goals-preview{flex:1;overflow:auto;padding:12px 14px}.goals-preview .goal-group{box-shadow:none;margin-bottom:9px}.goals-editor-foot{display:flex;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid var(--line);background:var(--surface)}.goals-editor-foot .status{color:var(--soft);font-size:11px;flex:1}.goals-editor-foot button{min-width:76px}.kbd{display:inline-block;padding:0 5px;border:1px solid var(--line);border-bottom-color:color-mix(in srgb,var(--soft) 35%,var(--line));border-radius:5px;background:var(--card);font:10px/1.6 ui-monospace,monospace;color:var(--soft);box-shadow:0 1px 1px #1720330d}@media(max-width:700px){.goals-editor-grid{grid-template-columns:1fr;overflow:auto}.goals-pane+.goals-pane{border-left:0;border-top:1px solid var(--line)}.goals-editor-text{min-height:240px}.goals-editor-head .hint{display:none}}
+  .goals-dialog{width:min(620px,calc(100vw - 32px));max-height:calc(100vh - 32px);padding:0;overflow:hidden;display:flex;flex-direction:column}.goals-editor-head{display:flex;align-items:center;gap:12px;padding:17px 19px;border-bottom:1px solid var(--line)}.goals-editor-head h2{margin:0;font-size:16px}.goals-editor-head .hint{margin-left:auto;color:var(--soft);font-size:11px}.goals-editor-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);flex:1;min-height:0}.goals-pane{display:flex;flex-direction:column;min-width:0;min-height:0}.goals-pane+.goals-pane{border-left:1px solid var(--line);background:var(--surface)}.pane-label{display:flex;align-items:center;gap:7px;padding:9px 13px;border-bottom:1px solid var(--line);color:var(--soft);font-size:10px;font-weight:750;letter-spacing:.06em;text-transform:uppercase}.pane-label .help{margin-left:auto;font-weight:500;letter-spacing:0;text-transform:none}.goals-editor-text{flex:1;width:100%;min-height:0;overflow:auto;resize:none;border:0!important;border-radius:0!important;background:var(--card)!important;color:var(--ink);padding:14px 16px!important;outline:none;font:12.5px/1.65 ui-monospace,"SF Mono",Menlo,monospace}.goals-editor-text:focus{box-shadow:inset 3px 0 0 color-mix(in srgb,var(--accent) 65%,transparent)}.goals-preview{flex:1;overflow:auto;padding:12px 14px}.goals-preview .goal-group{box-shadow:none;margin-bottom:9px}.goals-editor-foot{display:flex;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid var(--line);background:var(--surface)}.goals-editor-foot .status{color:var(--soft);font-size:11px;flex:1}.goals-editor-foot button{min-width:76px}
+  .goals-arrange{flex:1;overflow:auto;padding:14px 16px 10px}
+  .ge-group{margin-bottom:15px;border-left:3px solid var(--gc,var(--soft));padding-left:11px}
+  .ge-head{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+  .ge-htext{font-size:13px;font-weight:750;color:var(--gc,var(--ink));cursor:text;border-radius:4px;padding:1px 4px}
+  .ge-htext:hover{background:var(--hover)}.ge-untitled{color:var(--soft);font-weight:600}
+  .ge-hlink{opacity:0}.ge-head:hover .ge-hlink{opacity:1}
+  .ge-bullets{list-style:none;margin:0;padding:0;min-height:6px}
+  .ge-b{display:flex;align-items:flex-start;gap:6px;padding:4px 5px;border:1px solid transparent;border-radius:7px;position:relative}
+  .ge-b:hover{background:var(--hover)}.ge-b:focus-visible{outline:2px solid var(--accent);outline-offset:-1px}
+  .ge-b.dragging{opacity:.35}
+  .ge-b .draghandle{opacity:0;margin-top:3px}.ge-b:hover .draghandle{opacity:1}
+  .ge-t{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px;line-height:1.5;cursor:text;padding:1px 2px;border-radius:4px}
+  .ge-acts{display:none;flex:0 0 auto;gap:1px}.ge-b:hover .ge-acts,.ge-b:focus-within .ge-acts{display:flex}
+  .ge-acts button,.ge-hlink{border:0;background:none;color:var(--soft);font-size:12px;padding:1px 4px;border-radius:5px;cursor:pointer}
+  .ge-acts button:hover,.ge-hlink:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent)}
+  .ge-acts .ge-del:hover{color:var(--danger)}
+  .ge-add,.ge-addsec{display:block;width:100%;text-align:left;border:0;background:none;color:var(--soft);font-size:12px;padding:4px 7px;border-radius:6px;cursor:text}
+  .ge-add:hover,.ge-addsec:hover{background:var(--hover);color:var(--ink)}.ge-addsec{margin-top:8px;font-weight:600}
+  .ge-input{width:100%;border:1px solid var(--accent);border-radius:6px;background:var(--card);color:var(--ink);font:inherit;font-size:13px;padding:2px 6px;outline:none}
+  .ge-live{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .ge-b.drop-before:before,.ge-b.drop-after:after{content:"";position:absolute;left:5px;right:5px;height:2px;background:var(--accent);border-radius:2px;z-index:1}
+  .ge-b.drop-before:before{top:-1px}.ge-b.drop-after:after{bottom:-1px}
+  .ge-bullets.drop-zone{background:color-mix(in srgb,var(--accent) 7%,transparent);border-radius:7px;box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+  .kbd{display:inline-block;padding:0 5px;border:1px solid var(--line);border-bottom-color:color-mix(in srgb,var(--soft) 35%,var(--line));border-radius:5px;background:var(--card);font:10px/1.6 ui-monospace,monospace;color:var(--soft);box-shadow:0 1px 1px #1720330d}@media(max-width:700px){.goals-editor-grid{grid-template-columns:1fr;overflow:auto}.goals-pane+.goals-pane{border-left:0;border-top:1px solid var(--line)}.goals-editor-text{min-height:240px}.goals-editor-head .hint{display:none}}
   .picker-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:16px 0}.picker-actions button{padding:12px 8px}.picker-actions button:first-child{background:var(--accent);border-color:var(--accent);color:#fff}.or{display:flex;align-items:center;gap:8px;font-size:11px}.or:before,.or:after{content:"";height:1px;background:var(--line);flex:1}
   input.edit,input.tagadd{background:var(--card);color:var(--ink);border:1px solid var(--accent);border-radius:5px;padding:2px 5px;outline:none}input.edit{flex:1}input.tagadd{width:75px;margin-left:4px}input.linkadd{width:140px}
 </style>
@@ -65,12 +89,11 @@
   <div class="col"><div class="chat"><div class="log" id="log"><div class="empty">Ask the assistant to triage, reorganize, tag, or clean up. Changes stay in a draft until you apply them.</div></div><form id="chatform"><div class="chat-context" id="chat-context" hidden><span class="context-label">Talking about</span><strong id="chat-context-title"></strong><button type="button" id="chat-context-clear" title="Clear todo context">×</button></div><div class="chat-compose"><input id="chatin" placeholder="Message the assistant…"><button id="chat-send">Send</button><button type="button" id="chat-cancel" class="danger" hidden>Cancel</button></div></form></div></div>
 </main>
 <div class="modal" id="goals-editor-modal" hidden><div class="dialog goals-dialog">
-  <div class="goals-editor-head"><div><h2>Edit Goals</h2><span class="sub">Organize long-term outcomes into clear groups.</span></div><span class="hint"><span class="kbd">⌘ ↵</span> save · <span class="kbd">esc</span> cancel</span></div>
-  <div class="goals-editor-grid">
-    <label class="goals-pane"><span class="pane-label">Markdown <span class="help"><strong>**Heading**</strong> then <strong>- goal</strong></span></span><textarea class="goals-editor-text" id="goals-ta" spellcheck="true" aria-label="Goals Markdown"></textarea></label>
-    <section class="goals-pane"><span class="pane-label">Live preview</span><div class="goals-preview" id="goals-preview"></div></section>
-  </div>
-  <div class="goals-editor-foot"><span class="status" id="goals-editor-status">Changes save directly to your Markdown file.</span><button id="goals-cancel">Cancel</button><button class="primary" id="goals-save">Save goals</button></div>
+  <div class="goals-editor-head"><div><h2>Goals</h2><span class="sub" id="goals-subhead">Drag to reorder · click a goal to edit · ⌥↑ ⌥↓ to move</span></div><span class="hint"><span class="kbd">esc</span> close</span></div>
+  <div class="goals-arrange" id="goals-arrange"></div>
+  <textarea class="goals-editor-text" id="goals-ta" spellcheck="true" aria-label="Goals Markdown" hidden></textarea>
+  <div class="ge-live" id="ge-live" aria-live="polite"></div>
+  <div class="goals-editor-foot"><span class="status" id="goals-editor-status">Changes save as you go.</span><button id="goals-mode" class="mini" title="Edit the raw Markdown instead">Markdown</button><button class="primary" id="goals-done">Done</button></div>
 </div></div>
 <datalist id="note-names"></datalist>
 <div class="modal" id="vault-modal" hidden><div class="dialog"><h2>📁 Vault</h2><p class="sub" id="vault-path"></p><div id="vault-body" class="memory-view"></div><div class="actions"><a id="vault-obsidian" class="mini" style="text-decoration:none" target="_blank" rel="noreferrer" hidden>Open in Obsidian</a><button id="vault-close">Close</button></div></div></div>
@@ -406,11 +429,116 @@ $("#attach-doc").onclick=()=>$("#doc-file").click();
 $("#doc-file").onchange=async e=>{const files=[...e.target.files];e.target.value="";for(const f of files)await uploadDoc(f)};
 (()=>{const dc=$("#docs-card");if(!dc)return;dc.addEventListener("dragover",e=>{e.preventDefault();dc.classList.add("dropping")});dc.addEventListener("dragleave",e=>{if(!dc.contains(e.relatedTarget))dc.classList.remove("dropping")});dc.addEventListener("drop",async e=>{e.preventDefault();dc.classList.remove("dropping");for(const f of[...e.dataTransfer.files])await uploadDoc(f)})})();
 
-function updateGoalsPreview(){const value=$("#goals-ta").value,lines=value.split(/\r?\n/);$("#goals-preview").innerHTML=goalsMarkup(lines);const goals=lines.filter(l=>/^\s*[-*]\s+\S/.test(l)).length,headings=lines.filter(l=>/^\s*\*\*.+?\*\*/.test(l)).length,groups=Math.max(headings,goals?1:0);$("#goals-editor-status").textContent=`${goals} goal${goals===1?"":"s"} in ${groups} group${groups===1?"":"s"}`}
-function openGoalsEditor(){const ta=$("#goals-ta");ta.value=(current?.goals||[]).join("\n");$("#goals-editor-modal").hidden=false;updateGoalsPreview();requestAnimationFrame(()=>{ta.focus();ta.setSelectionRange(0,0)})}
-function closeGoalsEditor(){$("#goals-editor-modal").hidden=true}
-async function saveGoals(){const save=$("#goals-save");save.disabled=true;$("#goals-editor-status").textContent="Saving…";try{const r=await api("/api/goals",{method:"POST",body:JSON.stringify({content:$("#goals-ta").value})});render(r.model);closeGoalsEditor();showNotice("Goals saved to your Markdown file.",{info:true})}catch(e){handleError(e);updateGoalsPreview()}finally{save.disabled=false}}
-$("#edit-goals").onclick=openGoalsEditor;$("#goals-cancel").onclick=closeGoalsEditor;$("#goals-save").onclick=saveGoals;$("#goals-ta").oninput=()=>{updateGoalsPreview();onWikiInput($("#goals-ta"))};$("#goals-ta").onkeydown=e=>{if(wikiKey(e))return;if(e.key==="Escape"){e.preventDefault();closeGoalsEditor()}else if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)){e.preventDefault();saveGoals()}};
+// --- Goals editor v2: direct manipulation over the markdown (one surface) -----
+const GCOLORS=["#3973DC","#2F9461","#2597A0","#D6536D","#795DB5","#C8872F"];
+let goalUnits=null,goalSaveTimer=null,goalMode="visual",geDrag=null;
+const geHeaderText=s=>{if(s.header==null)return"";const m=s.header.match(/^\s*\*\*(.+?)\*\*(.*)$/);return m?(m[1]+m[2]).trim():s.header.trim()};
+const geBulletPrefix=raw=>{const m=raw.match(/^(\s*[-*]\s+)/);return m?m[1]:"- "};
+const geBulletText=raw=>raw.replace(/^(\s*[-*]\s+)/,"");
+const linksOfClient=t=>{const o=[];let m;WIKI.lastIndex=0;while((m=WIKI.exec(t)))o.push(m[1].split("#")[0].trim());return o};
+// Parse the goals rawLines into units (headers, bullets, and "attached" lines —
+// prose/sub-bullets/blanks bound to the bullet above, travelling with it). A
+// no-edit round-trip serializes byte-identical (the safety invariant).
+function parseGoals(lines){
+  const preamble=[],sections=[];let cur=null,b=null;
+  const isH=l=>/^\s*\*\*(.+?)\*\*(.*)$/.test(l),isB=l=>/^\s*[-*]\s+/.test(l);
+  for(const line of lines||[]){
+    if(isH(line)){cur={header:line,pre:[],bullets:[],post:[]};sections.push(cur);b=null}
+    else if(isB(line)){if(!cur){cur={header:null,pre:[],bullets:[],post:[]};sections.push(cur)}b={raw:line,attached:[]};cur.bullets.push(b)}
+    else{if(b)b.attached.push(line);else if(cur)cur.pre.push(line);else preamble.push(line)}
+  }
+  for(const s of sections){const sink=s.bullets.length?s.bullets[s.bullets.length-1].attached:s.pre;while(sink.length&&sink[sink.length-1].trim()==="")s.post.unshift(sink.pop())}
+  return {preamble,sections};
+}
+function serializeGoals(g){const out=[...g.preamble];for(const s of g.sections){if(s.header!=null)out.push(s.header);out.push(...s.pre);for(const b of s.bullets){out.push(b.raw);out.push(...b.attached)}out.push(...s.post)}return out.join("\n")}
+function geStatus(t){$("#goals-editor-status").textContent=t}
+function geAnnounce(m){$("#ge-live").textContent=m}
+function geStats(){let g=0;for(const s of goalUnits.sections)g+=s.bullets.length;return `${g} goal${g===1?"":"s"} in ${goalUnits.sections.length} section${goalUnits.sections.length===1?"":"s"}`}
+function scheduleGoalSave(){geStatus("Saving…");clearTimeout(goalSaveTimer);goalSaveTimer=setTimeout(saveGoalsNow,800)}
+async function saveGoalsNow(){clearTimeout(goalSaveTimer);if(!goalUnits)return;try{const r=await api("/api/goals",{method:"POST",body:JSON.stringify({content:serializeGoals(goalUnits)})});current=r.model;renderGoals(current.goals||[]);renderTags(current.tags||[]);geStatus("Saved ✓")}catch(e){geStatus("Not saved");handleError(e)}}
+function geCommit(){renderGoalEditor();scheduleGoalSave()}
+function renderGoalEditor(){
+  const host=$("#goals-arrange"),ta=$("#goals-ta");
+  if(goalMode==="markdown"){host.hidden=true;ta.hidden=false;ta.value=serializeGoals(goalUnits);$("#goals-mode").textContent="Visual view";$("#goals-subhead").textContent="Raw Markdown — ⌥↑/⌥↓ don't apply here";requestAnimationFrame(()=>ta.focus());return}
+  ta.hidden=true;host.hidden=false;$("#goals-mode").textContent="Markdown";$("#goals-subhead").textContent="Drag to reorder · click a goal to edit · ⌥↑ ⌥↓ to move";
+  host.innerHTML=goalUnits.sections.map((s,si)=>{
+    const head=s.header==null?`<span class="ge-htext ge-untitled">Goals</span>`:`<span class="ge-htext" data-ehead="${si}">${titleLinks(geHeaderText(s),false)||"Untitled"}</span>`;
+    const bullets=s.bullets.map((b,bi)=>`<li class="ge-b" data-sec="${si}" data-bi="${bi}" tabindex="0"><span class="draghandle" draggable="true" title="Drag to reorder"></span><span class="ge-t" data-eb="${si}:${bi}">${titleLinks(geBulletText(b.raw),true)}</span><span class="ge-acts"><button class="ge-link" data-glink="${si}:${bi}" title="Link a note">🔗</button><button class="ge-del" data-gdel="${si}:${bi}" title="Delete goal">×</button></span></li>`).join("");
+    return `<section class="ge-group" data-sec="${si}" style="--gc:${GCOLORS[si%GCOLORS.length]}"><div class="ge-head">${head}</div><ul class="ge-bullets" data-sec="${si}">${bullets}<li class="ge-add" data-gadd="${si}">+ Add a goal…</li></ul></section>`;
+  }).join("")+`<button class="ge-addsec" data-gaddsec>+ New section…</button>`;
+  geStatus(geStats());
+}
+function openGoalsEditor(){
+  if(current?.dirty){showNotice("Apply or discard the assistant's pending draft before editing goals.",{sticky:true});return}
+  goalMode="visual";goalUnits=parseGoals(current?.goals||[]);
+  $("#goals-editor-modal").hidden=false;renderGoalEditor();
+}
+function closeGoalsEditor(){if(goalMode==="markdown")goalUnits=parseGoals($("#goals-ta").value.replace(/\r/g,"").split("\n"));saveGoalsNow();$("#goals-editor-modal").hidden=true}
+function geToggleMode(){if(goalMode==="visual")goalMode="markdown";else{goalUnits=parseGoals($("#goals-ta").value.replace(/\r/g,"").split("\n"));goalMode="visual";scheduleGoalSave()}renderGoalEditor()}
+// One inline input over an anchor element; Enter commits, Esc reverts, blur commits.
+function geInline(anchor,value,withWiki,onCommit,onCancel){
+  const input=document.createElement("input");input.className="ge-input";input.value=value||"";
+  anchor.replaceWith(input);input.focus();try{input.setSelectionRange(0,input.value.length)}catch{}
+  if(withWiki)input.addEventListener("input",()=>onWikiInput(input));
+  let done=false;const finish=save=>{if(done)return;done=true;hideWiki();if(save)onCommit(input.value);else{(onCancel||renderGoalEditor)()}};
+  input.onkeydown=e=>{if(withWiki&&wikiKey(e))return;if(e.key==="Enter"){e.preventDefault();finish(true)}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();finish(false)}};
+  input.onblur=()=>setTimeout(()=>finish(true),120);
+  return input;
+}
+function geEditBullet(key){const [si,bi]=key.split(":").map(Number);const b=goalUnits.sections[si]?.bullets[bi];if(!b)return;const sp=document.querySelector(`.ge-t[data-eb="${si}:${bi}"]`);if(!sp)return;
+  geInline(sp,geBulletText(b.raw),true,v=>{v=v.trim();if(!v){goalUnits.sections[si].bullets.splice(bi,1);geAnnounce("Deleted goal")}else b.raw=geBulletPrefix(b.raw)+v;geCommit()});}
+function geEditHeader(si){const s=goalUnits.sections[si];if(!s||s.header==null)return;const sp=document.querySelector(`.ge-htext[data-ehead="${si}"]`);if(!sp)return;
+  geInline(sp,geHeaderText(s),false,v=>{v=v.trim();if(v)s.header="**"+v+"**";geCommit()});}
+function geDelBullet(key){const [si,bi]=key.split(":").map(Number);if(!goalUnits.sections[si]?.bullets[bi])return;goalUnits.sections[si].bullets.splice(bi,1);geAnnounce("Deleted goal");geCommit()}
+function geUnlink(li,name){if(!li)return;const si=+li.dataset.sec,bi=+li.dataset.bi,b=goalUnits.sections[si]?.bullets[bi];if(!b)return;const re=new RegExp("\\s*\\[\\["+name.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(?:\\|[^\\]]*)?(?:#[^\\]]*)?\\]\\]","i");b.raw=b.raw.replace(re,"").replace(/\s+$/,"");geCommit()}
+function geAddBullet(si){const ghost=document.querySelector(`.ge-add[data-gadd="${si}"]`);if(!ghost)return;
+  const input=document.createElement("input");input.className="ge-input";input.placeholder="New goal…";ghost.replaceWith(input);input.focus();
+  input.addEventListener("input",()=>onWikiInput(input));
+  let done=false;const close=()=>{if(done)return;done=true;hideWiki();renderGoalEditor()};
+  input.onkeydown=e=>{if(wikiKey(e))return;if(e.key==="Enter"){e.preventDefault();const v=input.value.trim();hideWiki();if(!v){close();return}done=true;goalUnits.sections[si].bullets.push({raw:"- "+v,attached:[]});geAnnounce("Added goal");renderGoalEditor();scheduleGoalSave();geAddBullet(si)}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();close()}};
+  input.onblur=()=>setTimeout(close,120);}
+function geAddSection(){const ghost=document.querySelector(".ge-addsec");if(!ghost)return;
+  const input=document.createElement("input");input.className="ge-input";input.placeholder="New section name…";ghost.replaceWith(input);input.focus();
+  let done=false;const close=()=>{if(done)return;done=true;renderGoalEditor()};
+  input.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();const v=input.value.trim();if(v){goalUnits.sections.push({header:"**"+v+"**",pre:[],bullets:[],post:[]});geAnnounce("Added section");geCommit()}else close()}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();close()}};
+  input.onblur=()=>setTimeout(close,120);}
+async function geLinkBullet(key){const [si,bi]=key.split(":").map(Number);const b=goalUnits.sections[si]?.bullets[bi];if(!b)return;
+  const li=document.querySelector(`.ge-b[data-sec="${si}"][data-bi="${bi}"]`),t=li&&li.querySelector(".ge-t");if(!t)return;
+  const input=document.createElement("input");input.className="ge-input";input.setAttribute("list","note-names");input.placeholder="link / create a note…";input.value=geBulletText(b.raw).replace(WIKI,"").trim();
+  t.replaceWith(input);input.focus();input.select();
+  const notes=await fetchNotes();$("#note-names").innerHTML=notes.map(n=>`<option value="${esc(n.replace(/\.md$/i,""))}"></option>`).join("");
+  let done=false;const finish=async save=>{if(done)return;done=true;const v=input.value.trim().replace(/^\[\[|\]\]$/g,"").replace(/\.md$/i,"");renderGoalEditor();if(!save||!v)return;
+    const list=await fetchNotes(),norm=s=>s.replace(/\.md$/i,"").toLowerCase(),exists=list.some(n=>norm(n)===v.toLowerCase()||norm(n.split("/").pop())===v.toLowerCase());
+    if(!exists){try{await api("/api/notes/create",{method:"POST",body:JSON.stringify({name:v})});noteCache=null;showNotice(`Created note “${v}” in your vault.`,{info:true})}catch(e){handleError(e)}}
+    if(!linksOfClient(b.raw).some(n=>n.toLowerCase()===v.toLowerCase())){b.raw=b.raw.replace(/\s+$/,"")+" [["+v+"]]";geAnnounce("Linked "+v)}
+    geCommit();};
+  input.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();finish(true)}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();finish(false)}};
+  input.onblur=()=>finish(true);}
+function geClearDrop(){$$(".ge-b.drop-before,.ge-b.drop-after,.ge-bullets.drop-zone").forEach(el=>el.classList.remove("drop-before","drop-after","drop-zone"))}
+function geMoveBullet(si,bi,tsi,tbi){const src=goalUnits.sections[si],[b]=src.bullets.splice(bi,1),dst=goalUnits.sections[tsi];let idx=tbi;if(si===tsi&&bi<tbi)idx--;idx=Math.max(0,Math.min(idx,dst.bullets.length));dst.bullets.splice(idx,0,b);geAnnounce(`Moved to ${idx+1} of ${dst.bullets.length} in ${geHeaderText(dst)||"Goals"}`);geCommit()}
+function geMoveKb(si,bi,up){const S=goalUnits.sections,s=S[si];
+  if(up){if(bi>0){[s.bullets[bi-1],s.bullets[bi]]=[s.bullets[bi],s.bullets[bi-1]];geCommit();return{si,bi:bi-1}}if(si>0){const[b]=s.bullets.splice(bi,1);S[si-1].bullets.push(b);geCommit();return{si:si-1,bi:S[si-1].bullets.length-1}}return null}
+  if(bi<s.bullets.length-1){[s.bullets[bi+1],s.bullets[bi]]=[s.bullets[bi],s.bullets[bi+1]];geCommit();return{si,bi:bi+1}}if(si<S.length-1){const[b]=s.bullets.splice(bi,1);S[si+1].bullets.unshift(b);geCommit();return{si:si+1,bi:0}}return null}
+const ge=$("#goals-arrange");
+ge.addEventListener("click",e=>{let el;
+  if((el=e.target.closest(".linkx"))){e.stopPropagation();geUnlink(el.closest(".ge-b"),el.dataset.link);return}
+  if((el=e.target.closest("[data-glink]"))){geLinkBullet(el.dataset.glink);return}
+  if((el=e.target.closest("[data-gdel]"))){geDelBullet(el.dataset.gdel);return}
+  if((el=e.target.closest("[data-gadd]"))){geAddBullet(+el.dataset.gadd);return}
+  if((el=e.target.closest("[data-gaddsec]"))){geAddSection();return}
+  if((el=e.target.closest("[data-ehead]"))){geEditHeader(+el.dataset.ehead);return}
+  if((el=e.target.closest("[data-eb]"))){geEditBullet(el.dataset.eb);return}});
+ge.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&!e.target.closest("input")){e.preventDefault();closeGoalsEditor();return}
+  if(!e.altKey||(e.key!=="ArrowUp"&&e.key!=="ArrowDown"))return;const li=e.target.closest(".ge-b");if(!li)return;e.preventDefault();
+  const r=geMoveKb(+li.dataset.sec,+li.dataset.bi,e.key==="ArrowUp");if(r)requestAnimationFrame(()=>document.querySelector(`.ge-b[data-sec="${r.si}"][data-bi="${r.bi}"]`)?.focus())});
+ge.addEventListener("dragstart",e=>{const h=e.target.closest(".draghandle");if(!h)return;const li=h.closest(".ge-b");geDrag={si:+li.dataset.sec,bi:+li.dataset.bi};li.classList.add("dragging");e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain","g")});
+ge.addEventListener("dragover",e=>{if(!geDrag)return;const li=e.target.closest(".ge-b"),ul=e.target.closest(".ge-bullets");if(!ul)return;e.preventDefault();geClearDrop();if(li&&!(+li.dataset.sec===geDrag.si&&+li.dataset.bi===geDrag.bi)){const r=li.getBoundingClientRect();li.classList.add(e.clientY<r.top+r.height/2?"drop-before":"drop-after")}else if(!li)ul.classList.add("drop-zone");e.dataTransfer.dropEffect="move"});
+ge.addEventListener("drop",e=>{if(!geDrag)return;const li=e.target.closest(".ge-b"),ul=e.target.closest(".ge-bullets");if(!ul){geClearDrop();geDrag=null;return}e.preventDefault();const tsi=+ul.dataset.sec;let tbi;if(li){const r=li.getBoundingClientRect();tbi=+li.dataset.bi+(e.clientY<r.top+r.height/2?0:1)}else tbi=goalUnits.sections[tsi].bullets.length;const d=geDrag;geClearDrop();geDrag=null;geMoveBullet(d.si,d.bi,tsi,tbi)});
+ge.addEventListener("dragend",()=>{geClearDrop();document.querySelector(".ge-b.dragging")?.classList.remove("dragging");geDrag=null});
+$("#edit-goals").onclick=openGoalsEditor;$("#goals-done").onclick=closeGoalsEditor;$("#goals-mode").onclick=geToggleMode;
+$("#goals-ta").oninput=()=>{if(goalMode==="markdown"){goalUnits=parseGoals($("#goals-ta").value.replace(/\r/g,"").split("\n"));scheduleGoalSave()}onWikiInput($("#goals-ta"))};
+$("#goals-ta").onkeydown=e=>{if(wikiKey(e))return;if(e.key==="Escape"){e.preventDefault();closeGoalsEditor()}};
 async function openMemory(){try{const r=await api("/api/memory");$("#memory-view").innerHTML=(r.content&&r.content.trim())?mdRender(r.content):'<div class="empty">No memory yet — it fills in as you chat. Tell the assistant a lasting preference (e.g. "always keep my replies short") to seed it.</div>';$("#memory-path").textContent=r.path||"";$("#memory-modal").hidden=false}catch(e){handleError(e)}}
 $("#mem-btn").onclick=openMemory;$("#memory-close").onclick=()=>{$("#memory-modal").hidden=true};
 async function openVault(){try{const r=await api("/api/notes"),notes=r.notes||[],dir=r.dir||current?.vaultDir||"",name=dir.split("/").filter(Boolean).pop()||"";$("#vault-path").textContent=dir?"Vault folder: "+dir:"";let body;if(notes.length)body=`<p><strong>${notes.length}</strong> note${notes.length===1?"":"s"} the assistant can read (read-only):</p><ul>${notes.slice(0,500).map(n=>`<li>${esc(n)}</li>`).join("")}${notes.length>500?`<li>…and ${notes.length-500} more</li>`:""}</ul>`;else if(r.rootEntries>0)body=`<div class="empty"><strong>0 readable notes</strong>, but this folder has ${r.rootEntries} item${r.rootEntries===1?"":"s"}${r.subdirs?` (${r.subdirs} subfolder${r.subdirs===1?"":"s"})`:""}.<br><br>That usually means this folder <strong>isn't your Obsidian vault root</strong> — or the notes live here but aren't downloaded/synced yet (cloud "online-only"). Put your todo file in the vault's <strong>root folder</strong> and re-open it via File….</div>`;else if(r.dirError==="EPERM"||r.dirError==="EACCES")body=`<div class="empty">macOS is <strong>blocking access</strong> to this folder (${esc(r.dirError)}). Cloud folders like OneDrive/Dropbox under ~/Library/CloudStorage need permission: grant your <strong>Terminal Full Disk Access</strong> (System Settings → Privacy &amp; Security → Full Disk Access → add Terminal), then restart the app (Ctrl-C, sh run.sh).</div>`;else if(r.dirError==="ENOENT")body=`<div class="empty">That folder <strong>doesn't exist</strong> at this path (${esc(r.dirError)}) — the todo file isn't actually inside the vault, or the path differs. Re-open the todo file from the real vault root via File….</div>`;else body=`<div class="empty">This folder looks empty or unreadable${r.dirError?` (${esc(r.dirError)})`:""}. Move your todo file into your Obsidian vault's <strong>root folder</strong> and re-open it via File….</div>`;$("#vault-body").innerHTML=body;const link=$("#vault-obsidian");if(name){link.href="obsidian://open?vault="+encodeURIComponent(name);link.hidden=false}else link.hidden=true;$("#vault-modal").hidden=false}catch(e){handleError(e)}}
