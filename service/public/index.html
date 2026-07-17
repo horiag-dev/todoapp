@@ -41,7 +41,7 @@
 <div class="notice" id="notice" hidden><span id="notice-text"></span><button class="mini" id="notice-action" hidden></button><button class="mini" id="notice-close">×</button></div>
 <main>
   <div class="col">
-    <section class="card goals-card"><h2>◎ Goals <span class="hacts"><button class="mini" id="edit-goals">✎ Edit</button></span></h2><div class="body goals" id="goals"></div></section>
+    <section class="card goals-card"><h2>◎ Goals <span class="hacts"><button class="mini" id="goals-check-btn" title="A quick reprioritization within your goals — the assistant proposes reorders you approve">◎ Check</button><button class="mini" id="edit-goals">✎ Edit</button></span></h2><div class="body goals" id="goals"></div></section>
     <section class="card read-card"><h2><span class="section-icon">▤</span> To Read <span class="badge" id="b-read"></span></h2><div class="body" id="toread"></div><form class="inlineform" data-add="addToRead"><input placeholder="Add a link or reference…"><button>Add</button></form></section>
     <section class="card docs-card" id="docs-card"><h2><span class="section-icon">❏</span> Documents <span class="badge" id="b-docs"></span><span class="hacts"><button class="mini" id="attach-doc">Attach…</button></span></h2><div class="body" id="documents"></div><input type="file" id="doc-file" multiple hidden></section>
   </div>
@@ -403,9 +403,24 @@ const PLAN_PROMPT=(day)=>`It's ${day}. Help me plan today — propose which item
 - Pick a realistic few, not the whole list. One line per pick on why.
 - Propose first; after I confirm, set them as Today.
 Keep it tight.`;
+const GOALS_CHECK_PROMPT=`Let's do a goals check — a quick reprioritization WITHIN my goals (reordering the bullets inside each section like "High level" or "Coworker Chat"), NOT re-ranking the sections against each other. Go conversationally; propose, don't bulk-change; wait for my go-ahead before applying.
+
+1. Read my Goals notepad (read_goals) and my active work — this week's Top 5 and my Urgent/Today items (list_items for "top5" and "urgent").
+2. Map each active todo to the specific goal BULLET it advances, by meaning (a shared #tag is a strong hint; otherwise infer; skip anything genuinely ambiguous — don't guess). Each bullet's "pull" = how much active work is behind it right now.
+3. Surface only what's OUT OF SYNC — at most 3–4 observations across all sections, each as a QUESTION, never a verdict:
+   • a bullet sitting LOW in its section but pulling a lot of active work → "move it up?"
+   • a bullet HIGH with ~no active work → it's likely a north-star; "keep it on top on purpose, or let it drift down?"
+   • a bullet that looks DONE or absorbed → offer to strike it.
+   Don't flag healthy bullets (right position, matching pull, or deliberately aspirational).
+4. Show your read compactly: for each section you're flagging, list its bullets in current order with a light indicator of each bullet's pull (e.g. "Top 5 +2 today", or "— nothing active"), then your ≤3–4 questions.
+5. When I decide, use write_goals to REORDER bullets WITHIN their section and prune done ones — preserve everything you're not intentionally changing, and leave the section order alone unless I ask. Changes go to my pending review to Apply.
+6. If I say "walk me through <section>", go deep on just that one section's ordering.
+
+Keep it light — this is a check from time to time, not an audit. The healthy outcome is usually a couple of reorders and a pruned line or two.`;
 const weekday=()=>{try{return new Date().toLocaleDateString(undefined,{weekday:"long"})}catch{return"today"}};
 const today=()=>{try{return new Date().toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric",year:"numeric"})}catch{return"today"}};
 $("#review-btn").onclick=()=>{if(!current?.configured)return;chat(REVIEW_PROMPT(today()),"Let's do my weekly review")};
+$("#goals-check-btn").onclick=()=>{if(!current?.configured)return;chat(GOALS_CHECK_PROMPT,"Let's do a goals check")};
 $("#tidy-btn").onclick=()=>{if(!current?.configured)return;clearChatContext();const i=$("#chatin");i.value="Help me clean up my vault";i.focus()};
 $("#undo-cleanup").onclick=async()=>{if(!current?.configured)return;try{const r=await api("/api/cleanup/undo",{method:"POST"});render(r.model);noteCache=null;addMsg("bot","↶ "+(r.done?`Cleanup undone — restored ${r.restored} note${r.restored===1?"":"s"} to where they were.`:`Undid ${r.restored}, but ${r.skipped} couldn't be restored automatically.`));if(!r.done)showNotice("Some notes couldn't be restored — they may have been edited or moved since. They're still in .bigrocks/trash and .bigrocks/cleanup.",{sticky:true})}catch(e){handleError(e)}};
 $("#plan-btn").onclick=()=>{if(!current?.configured)return;chat(PLAN_PROMPT(weekday()),"Plan my day")};
