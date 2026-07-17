@@ -1,7 +1,7 @@
 // Helpers for the in-memory working model the agent mutates. Ids are ephemeral
 // (assigned per load, never serialized) so tools can reference items stably
 // within a session.
-import { tagsOf } from "./parse.mjs";
+import { tagsOf, linksOf } from "./parse.mjs";
 
 let counter = 0;
 const BUCKETS = ["urgent", "normal", "top5", "completed", "deleted", "parked"];
@@ -33,7 +33,7 @@ export function newItem(title, { starred = false, checked = false } = {}) {
 
 // A compact, id-bearing view for the agent's read tools and the web UI.
 export function itemView(it) {
-  return { id: it.id, title: it.title, today: !!it.starred, done: !!it.checked, tags: tagsOf(it.title) };
+  return { id: it.id, title: it.title, today: !!it.starred, done: !!it.checked, tags: tagsOf(it.title), links: linksOf(it.title) };
 }
 
 // Server-side near-duplicate detection (mirrors the client quick-add check) —

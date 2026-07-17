@@ -118,11 +118,17 @@ export function tagsOf(title) {
   return out;
 }
 
-// Derived, read-only wikilink view.
+// Derived, read-only wikilink view. Normalizes `[[Name|alias]]` and
+// `[[Name#heading]]` down to the note name, de-duplicated (case-insensitive).
 export function linksOf(title) {
   const out = [];
+  const seen = new Set();
   const re = /\[\[([^\]]+)\]\]/g;
   let m;
-  while ((m = re.exec(title)) !== null) out.push(m[1]);
+  while ((m = re.exec(title)) !== null) {
+    const name = m[1].split("|")[0].split("#")[0].trim();
+    const key = name.toLowerCase();
+    if (name && !seen.has(key)) { seen.add(key); out.push(name); }
+  }
   return out;
 }

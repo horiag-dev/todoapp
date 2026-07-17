@@ -16,6 +16,7 @@ import { applyAction } from "./ops.mjs";
 import { createMemory } from "./memory.mjs";
 import { createNotes } from "./notes.mjs";
 import { createCleanup } from "./cleanup.mjs";
+import { createActivity } from "./activity.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const APP_VERSION = (() => {
@@ -274,6 +275,31 @@ export function createBigRocksServer({
   let chatMessages = [];
   let busy = false;
   let activeAbort = null;
+  let lastActivity = null; // the most recent batch of activity-log appends (for the toast Undo)
+
+  // Titles that just moved into Completed in this commit (by id — completing
+  // preserves the item's id). Only linked ones are worth logging.
+  function newlyCompleted(before, after) {
+    const had = new Set((before?.completed || []).map((it) => it.id));
+    return (after?.completed || []).filter((it) => !had.has(it.id)).map((it) => it.title).filter((t) => t.includes("[["));
+  }
+  // Deterministic, code-driven activity logging for the completions in a commit.
+  // Returns { logged:[note names], suggest:[{note,line}] } for the client toast,
+  // or null. Auto-appends only to notes that already have a `## Log` section.
+  function applyActivityLog(before, after) {
+    const titles = newlyCompleted(before, after);
+    if (!titles.length) return null;
+    const act = createActivity(vault);
+    const logged = [], suggest = [], undo = [];
+    for (const title of titles) {
+      const r = act.logCompletion(title);
+      for (const l of r.logged) logged.push(l.note);
+      for (const s of r.suggest) suggest.push(s);
+      undo.push(...r.undo);
+    }
+    if (undo.length) lastActivity = { undo };
+    return logged.length || suggest.length ? { logged, suggest } : null;
+  }
 
   function configured() {
     return !!vault;
@@ -402,13 +428,15 @@ export function createBigRocksServer({
       reloadBase();
       throw new VaultConflictError();
     }
+    const before = base;
     const working = clone(base);
     const description = mutator(working);
-    if (!description) return;
+    if (!description) return null;
     const saved = vault.save(working, { op, expectedVersion: baseVersion });
     base = assignIds(working);
     baseVersion = saved.version;
     seen = touch(vault, base);
+    return applyActivityLog(before, base);
   }
 
   const json = (res, status, obj) => {
@@ -517,6 +545,27 @@ export function createBigRocksServer({
         return json(res, 200, { ok: true, model: modelView(), restored: r.restored, skipped: r.skipped, done: r.done });
       }
 
+      // Start an activity log in linked notes that don't have one yet (the toast's
+      // "Start log" — creates the `## Log` section, opting those notes in), and
+      // append the pending entries.
+      if (req.method === "POST" && p === "/api/activity/enable") {
+        requireConfigured();
+        const { items } = await readBody(req);
+        if (!Array.isArray(items) || !items.length) return json(res, 400, { error: "Nothing to log." });
+        const r = createActivity(vault).enable(items);
+        if (r.undo.length) lastActivity = { undo: r.undo };
+        return json(res, 200, { ok: true, logged: r.logged.map((l) => l.note), model: modelView() });
+      }
+
+      // Undo the most recent batch of activity-log appends (the toast's Undo).
+      if (req.method === "POST" && p === "/api/activity/undo") {
+        requireConfigured();
+        if (!lastActivity?.undo?.length) return json(res, 400, { error: "Nothing to undo." });
+        const r = createActivity(vault).undo(lastActivity.undo);
+        lastActivity = null;
+        return json(res, 200, { ok: true, removed: r.removed, model: modelView() });
+      }
+
       if (req.method === "POST" && p === "/api/chat") {
         requireConfigured();
         if (busy) return json(res, 409, { error: "The assistant is already working.", code: "BUSY" });
@@ -553,16 +602,18 @@ export function createBigRocksServer({
           // Small todo-only change sets apply straight to the file; larger ones —
           // or anything touching a note — are held for review (note writes never
           // auto-apply, guardrail).
-          let flash = null, applied = false;
+          let flash = null, applied = false, activity = null;
           const changes = candidateOps.length ? diffModels(base, candidate) : [];
           const anyNote = noteEdits.length > 0;
           if (changes.length && !hadPending && !anyNote && isSmallChangeSet(base, candidate, changes)) {
+            const beforeAuto = base;
             const saved = vault.save(candidate, { op: "agent", expectedVersion: baseVersion });
             base = assignIds(candidate);
             baseVersion = saved.version;
             seen = touch(vault, base);
             flash = flashInfo(changes);
             applied = true;
+            activity = applyActivityLog(beforeAuto, base);
           } else if (changes.length || anyNote) {
             if (changes.length) {
               draft = candidate;
@@ -571,7 +622,7 @@ export function createBigRocksServer({
             }
             draftNoteEdits = noteEdits;
           }
-          const payload = { reply: result.reply, model: modelView(), newOps: candidateOps.slice(before), applied, flash };
+          const payload = { reply: result.reply, model: modelView(), newOps: candidateOps.slice(before), applied, flash, activity };
           if (stream) { sse("done", payload); return res.end(); }
           return json(res, 200, payload);
         } catch (err) {
@@ -631,8 +682,8 @@ export function createBigRocksServer({
       if (req.method === "POST" && p === "/api/act") {
         const { action, ...args } = await readBody(req);
         if (action === "addToRead") args.text = await unfurlUrl(args.text);
-        saveDirect((working) => applyAction(working, action, args));
-        return json(res, 200, { ok: true, model: modelView() });
+        const activity = saveDirect((working) => applyAction(working, action, args));
+        return json(res, 200, { ok: true, model: modelView(), activity });
       }
 
       // Dumb, agent-free capture path (share sheet, Shortcut, curl): title in,
@@ -666,13 +717,15 @@ export function createBigRocksServer({
           externalConflict = true;
           return json(res, 409, conflictBody("The file changed after this draft started. Reload and ask the assistant again."));
         }
-        let flash = null;
+        let flash = null, activity = null;
         if (draft) {
           flash = flashInfo(diffModels(base, draft));
+          const beforeApply = base;
           const saved = vault.save(draft, { op: "agent", expectedVersion: draftBaseVersion });
           base = assignIds(draft);
           baseVersion = saved.version;
           seen = touch(vault, base);
+          activity = applyActivityLog(beforeApply, base);
         }
         const { results, keep } = executeIntents(draftNoteEdits);
         // A move/trash whose file changed on disk is skipped and kept staged so
@@ -680,7 +733,7 @@ export function createBigRocksServer({
         draft = null; draftOps = []; draftBaseVersion = null;
         draftNoteEdits = keep;
         externalConflict = false;
-        return json(res, 200, { ok: true, model: modelView(), flash, notes: results });
+        return json(res, 200, { ok: true, model: modelView(), flash, notes: results, activity });
       }
 
       if (req.method === "POST" && p === "/api/approve-change") {
@@ -703,15 +756,17 @@ export function createBigRocksServer({
           externalConflict = true;
           return json(res, 409, conflictBody("The file changed after this draft started. Reload and ask again."));
         }
+        const beforeApprove = base;
         const next = applyChangeToBase(base, draft, key);
         const saved = vault.save(next, { op: "agent", expectedVersion: baseVersion });
         base = assignIds(next);
         baseVersion = saved.version;
         draftBaseVersion = baseVersion;
         seen = touch(vault, base);
+        const activity = applyActivityLog(beforeApprove, base);
         if (!diffModels(base, draft).length) { draft = null; draftOps = []; draftBaseVersion = null; }
         const flash = { items: key.startsWith("item:") ? [key.slice(5)] : [], goals: key === "goals", toread: key === "toread" };
-        return json(res, 200, { ok: true, model: modelView(), flash });
+        return json(res, 200, { ok: true, model: modelView(), flash, activity });
       }
 
       if (req.method === "POST" && p === "/api/reject-change") {

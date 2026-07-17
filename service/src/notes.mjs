@@ -109,6 +109,44 @@ export function createNotes(vault) {
       writeFileAtomic(path, String(content ?? "").replace(/\s+$/, "") + "\n");
       return { path: relative(root, path) };
     },
+    // --- Activity log (## Log section) — the vault activity ledger ------------
+    // Append a line to a note's existing `## Log` section. If the note doesn't
+    // exist or has no `## Log`, returns { noLog: true } (the caller offers to
+    // start one) — never creates the section implicitly.
+    appendToLog(name, line) {
+      const r = resolveNote(name);
+      if (r && r.ambiguous) return { error: `"${name}" matches several notes — use the full path.` };
+      if (!r) return { noLog: true };
+      const spliced = spliceIntoLog(readFileSync(r, "utf8"), line, { create: false });
+      if (!spliced) return { noLog: true };
+      snapshotNote(r);
+      writeFileAtomic(r, spliced);
+      return { path: relative(root, r) };
+    },
+    // Turn a note into a logging note: create it if missing, add a `## Log`
+    // section if absent, and append the line. This is the explicit opt-in.
+    ensureLog(name, line) {
+      const r = resolveNote(name);
+      const path = r && !r.ambiguous ? r : safeNewPath(name);
+      if (!path) return { error: `Invalid note name "${name}".` };
+      const created = !existsSync(path);
+      const raw = created ? `# ${basename(path).replace(/\.md$/i, "")}\n` : readFileSync(path, "utf8");
+      const spliced = spliceIntoLog(raw, line, { create: true });
+      mkdirSync(dirname(path), { recursive: true });
+      snapshotNote(path);
+      writeFileAtomic(path, spliced);
+      return { path: relative(root, path), created };
+    },
+    // Undo one log append: remove the last matching line from the `## Log` section.
+    removeLogLine(name, line) {
+      const r = resolveNote(name);
+      if (!r || r.ambiguous) return { error: "note not found" };
+      const out = removeLastLogLine(readFileSync(r, "utf8"), line);
+      if (out == null) return { error: "line not found" };
+      snapshotNote(r);
+      writeFileAtomic(r, out);
+      return { path: relative(root, r) };
+    },
   };
 
   function safeNewPath(name) {
@@ -125,4 +163,35 @@ export function createNotes(vault) {
     copyFileSync(path, join(dir, `${ts}__${basename(path)}`));
     try { for (const old of readdirSync(dir).filter((f) => f.endsWith(".md")).sort().slice(0, -40)) rmSync(join(dir, old), { force: true }); } catch {}
   }
+}
+
+// Append `line` into a note's `## Log` section, preserving everything else
+// (Obsidian-safe, newest-last). With { create:true } a missing section (or note
+// body) grows one; with { create:false } a missing section returns null so the
+// caller can offer to start it. Bounds the section end at the next `##` header.
+const LOG_RE = /^##\s+log\s*$/i;
+function spliceIntoLog(raw, line, { create }) {
+  const lines = String(raw ?? "").replace(/\r/g, "").split("\n");
+  const idx = lines.findIndex((l) => LOG_RE.test(l));
+  if (idx === -1) {
+    if (!create) return null;
+    while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
+    lines.push("", "## Log", "", line);
+    return lines.join("\n").replace(/\n*$/, "\n");
+  }
+  let end = lines.length;
+  for (let i = idx + 1; i < lines.length; i++) if (/^##\s+/.test(lines[i])) { end = i; break; }
+  let at = idx + 1;
+  for (let i = idx + 1; i < end; i++) if (lines[i].trim() !== "") at = i + 1;
+  lines.splice(at, 0, line);
+  return lines.join("\n").replace(/\n*$/, "\n");
+}
+function removeLastLogLine(raw, line) {
+  const lines = String(raw ?? "").replace(/\r/g, "").split("\n");
+  const idx = lines.findIndex((l) => LOG_RE.test(l));
+  if (idx === -1) return null;
+  let end = lines.length;
+  for (let i = idx + 1; i < lines.length; i++) if (/^##\s+/.test(lines[i])) { end = i; break; }
+  for (let i = end - 1; i > idx; i--) if (lines[i] === line) { lines.splice(i, 1); return lines.join("\n").replace(/\n*$/, "\n"); }
+  return null;
 }

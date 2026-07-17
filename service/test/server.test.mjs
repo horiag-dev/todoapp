@@ -514,3 +514,43 @@ test("HTTP: a cleanup op whose file changed on disk is skipped and kept in the p
     rmSync(f.dir, { recursive: true, force: true });
   }
 });
+
+test("HTTP: completing a linked todo appends to the note's ## Log", async () => {
+  const f = await fixture();
+  try {
+    writeFileSync(join(f.dir, "Sergey.md"), "# Sergey\n\n## Log\n\n- 2026-07-01 ✓ intro\n", "utf8");
+    let { body } = await f.request("/api/act", { action: "add", title: "Ping Sergey [[Sergey]]", bucket: "urgent" });
+    const item = body.model.urgent.find((it) => it.title.includes("Ping Sergey"));
+    assert.ok(item, "todo added");
+    assert.deepEqual(item.links, ["Sergey"], "itemView carries links");
+    ({ body } = await f.request("/api/act", { action: "complete", id: item.id }));
+    assert.deepEqual(body.activity?.logged, ["Sergey"], "logged to the opted-in note");
+    assert.match(readFileSync(join(f.dir, "Sergey.md"), "utf8"), /intro[\s\S]*✓ Ping Sergey/);
+  } finally {
+    await new Promise((r) => f.server.close(r));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("HTTP: a linked note with no ## Log is suggested, then enable + undo work", async () => {
+  const f = await fixture();
+  try {
+    writeFileSync(join(f.dir, "Krystina.md"), "# Krystina\n\nNotes.\n", "utf8");
+    let { body } = await f.request("/api/act", { action: "add", title: "Sync with Krystina [[Krystina]]", bucket: "urgent" });
+    const item = body.model.urgent.find((it) => it.title.includes("Krystina"));
+    ({ body } = await f.request("/api/act", { action: "complete", id: item.id }));
+    assert.equal((body.activity?.logged || []).length, 0, "nothing auto-logged");
+    assert.deepEqual((body.activity?.suggest || []).map((s) => s.note), ["Krystina"], "suggested");
+    assert.ok(!/## Log/.test(readFileSync(join(f.dir, "Krystina.md"), "utf8")), "not written until enabled");
+    const suggest = body.activity.suggest;
+    ({ body } = await f.request("/api/activity/enable", { items: suggest }));
+    assert.deepEqual(body.logged, ["Krystina"]);
+    assert.match(readFileSync(join(f.dir, "Krystina.md"), "utf8"), /## Log[\s\S]*✓ Sync with Krystina/);
+    ({ body } = await f.request("/api/activity/undo", {}));
+    assert.equal(body.removed, 1);
+    assert.ok(!/Sync with Krystina/.test(readFileSync(join(f.dir, "Krystina.md"), "utf8")), "undo removed the line");
+  } finally {
+    await new Promise((r) => f.server.close(r));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
