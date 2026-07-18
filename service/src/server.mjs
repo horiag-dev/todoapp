@@ -586,7 +586,7 @@ export function createBigRocksServer({
         const noteEdits = [...draftNoteEdits];
         busy = true;
         activeAbort = new AbortController();
-        const timeout = setTimeout(() => activeAbort?.abort("Assistant request timed out."), 120_000);
+        const timeout = setTimeout(() => activeAbort?.abort("Assistant request timed out."), 300_000);
         let sse = null;
         if (stream) {
           res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
