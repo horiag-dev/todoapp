@@ -249,7 +249,7 @@ const toolLabel = (name) => {
   return TOOL_LABELS[bare] || bare.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 };
 
-export async function runAgent({ model, ops, seen, message, sessionId, abortController, onEvent, docs, mem, notes, cleanup, noteEdits }) {
+export async function runAgent({ model, ops, seen, message, sessionId, abortController, onEvent, docs, mem, notes, cleanup, noteEdits, llmModel, effort }) {
   const emit = (event) => { try { onEvent?.(event); } catch {} };
   const server = buildServer({ model, ops, seen, docs, mem, notes, cleanup, noteEdits });
   const memText = mem?.injectionText?.() || "";
@@ -269,6 +269,8 @@ export async function runAgent({ model, ops, seen, message, sessionId, abortCont
         settingSources: [],
         mcpServers: { todo: server },
         maxTurns: 24,
+        ...(llmModel ? { model: llmModel } : {}),
+        ...(effort ? { effort } : {}),
         ...(abortController ? { abortController } : {}),
         ...(resumeId ? { resume: resumeId } : {}),
         canUseTool: async (name) =>

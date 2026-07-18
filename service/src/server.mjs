@@ -571,8 +571,11 @@ export function createBigRocksServer({
         if (busy) return json(res, 409, { error: "The assistant is already working.", code: "BUSY" });
         refreshFromDisk();
         if (externalConflict) return json(res, 409, conflictBody("The file changed externally. Reload before continuing the draft."));
-        const { message } = await readBody(req);
+        const { message, model: reqModel, effort: reqEffort } = await readBody(req);
         if (!message?.trim()) return json(res, 400, { error: "Enter a message." });
+        // Optional per-message model + effort from the picker (whitelisted).
+        const llmModel = ["opus", "sonnet", "haiku"].includes(reqModel) ? reqModel : undefined;
+        const effort = ["low", "medium", "high", "xhigh", "max"].includes(reqEffort) ? reqEffort : undefined;
         // Stream the agent's steps (SSE) when the client asks; otherwise plain JSON.
         const stream = (req.headers.accept || "").includes("text/event-stream");
         const hadPending = !!draft || draftNoteEdits.length > 0;
@@ -597,7 +600,7 @@ export function createBigRocksServer({
           const mem = createMemory(vault);
           const notes = createNotes(vault);
           const cleanup = createCleanup(vault);
-          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort, onEvent, docs, mem, notes, cleanup, noteEdits });
+          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort, onEvent, docs, mem, notes, cleanup, noteEdits, llmModel, effort });
           sessionId = result.sessionId;
           chatMessages.push({ role: "you", text: message }, { role: "bot", text: result.reply });
           saveChat(vault.todoDocPath, { sessionId, messages: chatMessages });
