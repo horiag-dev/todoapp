@@ -107,6 +107,45 @@ function buildServer(ctx) {
       ops.push(`added "${title}" to Top 5`);
       return ok("Added to Top 5.");
     }),
+    tool("reorder_top5", "Reorder this week's Top 5. Pass the item ids top-to-bottom in the new order (ids from list_items \"top5\"); any ids you omit keep their relative order at the end.", { order: z.array(z.string()) }, async ({ order }) => {
+      const byId = new Map(model.top5.map((it) => [it.id, it]));
+      const next = [], seen = new Set();
+      for (const id of order) { const it = byId.get(id); if (it && !seen.has(id)) { next.push(it); seen.add(id); } }
+      for (const it of model.top5) if (!seen.has(it.id)) next.push(it);
+      model.top5 = next;
+      ops.push("reordered Top 5");
+      return ok("Top 5 reordered.");
+    }),
+    tool("clear_top5", "Clear all items from this week's Top 5 (e.g. to start a fresh week). Removes them from Top 5 only — it doesn't delete anything elsewhere.", {}, async () => {
+      const n = model.top5.length;
+      model.top5 = [];
+      ops.push(`cleared Top 5${n ? ` (${n})` : ""}`);
+      return ok(n ? `Cleared ${n} from Top 5.` : "Top 5 was already empty.");
+    }),
+    tool("reorder", "Reorder an item within its bucket (Urgent or Normal) to prioritize it — place it at the top or bottom, or just above/below another item by id. In Urgent, Today items always stay above the rest.", { id: z.string(), position: z.enum(["top", "bottom"]).optional(), before: z.string().optional(), after: z.string().optional() }, async ({ id, position, before, after }) => {
+      const f = need(id);
+      if (!["urgent", "normal"].includes(f.bucket)) return ok("Only Urgent or Normal items can be reordered.");
+      const arr = f.arr; arr.splice(f.idx, 1);
+      let idx = 0;
+      if (position === "bottom") idx = arr.length;
+      else if (before) { const t = arr.findIndex((it) => it.id === before); idx = t === -1 ? arr.length : t; }
+      else if (after) { const t = arr.findIndex((it) => it.id === after); idx = t === -1 ? arr.length : t + 1; }
+      arr.splice(idx, 0, f.item);
+      if (f.bucket === "urgent") reflowUrgent(model);
+      ops.push(`reordered "${f.item.title}"`);
+      return ok("Reordered.");
+    }),
+    tool("rename_tag", "Rename a #tag everywhere it appears in item titles — use to tidy or merge tags (e.g. #ai → #AI). Give the tags without the leading #.", { from: z.string(), to: z.string() }, async ({ from, to }) => {
+      const a = String(from).replace(/^#/, "").trim(), b = String(to).replace(/^#/, "").trim();
+      if (!a || !b) return ok("Give both the current and the new tag.");
+      const re = new RegExp(`(^|\\s)#${a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w/-])`, "g");
+      let count = 0;
+      for (const bucket of ["urgent", "normal", "top5", "completed", "parked"]) for (const it of model[bucket] ?? []) {
+        if (re.test(it.title)) { it.title = it.title.replace(re, `$1#${b}`); count++; } re.lastIndex = 0;
+      }
+      ops.push(`renamed #${a} → #${b} (${count})`);
+      return ok(count ? `Renamed #${a} → #${b} on ${count} item${count === 1 ? "" : "s"}.` : `No items use #${a}.`);
+    }),
     tool("add_to_read", "Add a link or reference to the To Read list. Bare URLs are unfurled to a [Title](url) link automatically.", { url: z.string() }, async ({ url }) => {
       if (!model.toread) model.toread = { headerLine: "## 📚 To Read", rawLines: [] };
       const entry = await unfurlUrl(url);
@@ -233,6 +272,7 @@ const TOOL_LABELS = {
   add_todo: "Adding a todo", set_priority: "Changing a priority",
   set_today: "Marking something Today", clear_today: "Clearing Today",
   move_to_goals: "Moving to Goals", add_to_top5: "Updating Top 5",
+  reorder_top5: "Reordering Top 5", clear_top5: "Clearing Top 5", reorder: "Reordering", rename_tag: "Renaming a tag",
   add_to_read: "Adding to To Read", remove_from_read: "Pruning To Read",
   complete: "Completing an item", edit_title: "Editing an item", delete: "Deleting an item",
   park: "Parking an item", unpark: "Un-parking an item",
