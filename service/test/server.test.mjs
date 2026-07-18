@@ -554,3 +554,28 @@ test("HTTP: a linked note with no ## Log is suggested, then enable + undo work",
     rmSync(f.dir, { recursive: true, force: true });
   }
 });
+
+test("HTTP: completing a todo while the assistant is working does not reopen it", async () => {
+  let f;
+  const stub = async ({ model, ops }) => {
+    // Mid-chat, a direct edit lands (the user checks a todo off) …
+    const before = await f.request("/api/model");
+    const existing = before.body.urgent.find((it) => it.title === "Existing");
+    await f.request("/api/act", { action: "complete", id: existing.id });
+    // … and the agent also adds one to its (now-stale) candidate.
+    model.urgent.push({ id: "iAgentAdded", title: "Agent added this", checked: false, starred: false });
+    ops.push("added Agent added this");
+    return { reply: "worked on it", sessionId: "s" };
+  };
+  f = await fixture(stub);
+  try {
+    const { body } = await f.request("/api/chat", { message: "do something" });
+    const titles = (b) => (b || []).map((it) => it.title);
+    assert.ok(!titles(body.model.urgent).includes("Existing"), "the checked-off todo is NOT back in Urgent");
+    assert.ok(titles(body.model.completed).includes("Existing"), "it stayed completed");
+    assert.ok(titles(body.model.urgent).includes("Agent added this"), "the assistant's own change still applied");
+  } finally {
+    await new Promise((r) => f.server.close(r));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});

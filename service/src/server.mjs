@@ -576,7 +576,9 @@ export function createBigRocksServer({
         // Stream the agent's steps (SSE) when the client asks; otherwise plain JSON.
         const stream = (req.headers.accept || "").includes("text/event-stream");
         const hadPending = !!draft || draftNoteEdits.length > 0;
-        const candidate = clone(draft ?? base);
+        let candidate = clone(draft ?? base);
+        const startBase = clone(base);      // base as it was when the agent started
+        const startVersion = baseVersion;
         const candidateOps = [...draftOps];
         const noteEdits = [...draftNoteEdits];
         busy = true;
@@ -599,6 +601,12 @@ export function createBigRocksServer({
           sessionId = result.sessionId;
           chatMessages.push({ role: "you", text: message }, { role: "bot", text: result.reply });
           saveChat(vault.todoDocPath, { sessionId, messages: chatMessages });
+          // If a direct edit landed while the assistant was working (e.g. you
+          // checked off a todo mid-chat), fold it into the candidate so the
+          // assistant's result doesn't revert it.
+          if (!hadPending && baseVersion !== startVersion) {
+            for (const ch of diffModels(startBase, base)) candidate = applyChangeToBase(candidate, base, ch.key);
+          }
           // Small todo-only change sets apply straight to the file; larger ones —
           // or anything touching a note — are held for review (note writes never
           // auto-apply, guardrail).

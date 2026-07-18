@@ -49,6 +49,13 @@ export function applyAction(model, action, a = {}) {
       move(model, f, "completed");
       return `completed "${f.item.title}"`;
     }
+    // Top 5 are weekly commitments, not ordinary todos — checking one strikes it
+    // in place (stays in Top 5) rather than moving it to Completed.
+    case "toggleDone": {
+      const f = need(model, a.id);
+      f.item.checked = !f.item.checked;
+      return `${f.item.checked ? "checked off" : "un-checked"} "${f.item.title}"`;
+    }
     case "delete": {
       const f = need(model, a.id);
       f.item.checked = true;
