@@ -122,6 +122,26 @@ export function applyAction(model, action, a = {}) {
       }
       return `moved "${f.item.title}" to ${to}`;
     }
+    // Bulk sibling of setPriority — moves several selected items to Urgent or
+    // Normal at once (clearing Today on each) so a multi-select is one activity
+    // entry / one undo step. Missing ids are skipped rather than fatal.
+    case "setPriorityMany": {
+      const to = a.bucket === "normal" ? "normal" : "urgent";
+      const ids = Array.isArray(a.ids) ? a.ids : [];
+      let count = 0;
+      let last = "";
+      for (const id of ids) {
+        const f = findById(model, id);
+        if (!f) continue;
+        f.item.starred = false;
+        if (f.bucket !== to) move(model, f, to);
+        count++;
+        last = f.item.title;
+      }
+      if (to === "urgent") reflowUrgent(model);
+      if (!count) return null;
+      return count === 1 ? `moved "${last}" to ${to}` : `moved ${count} items to ${to}`;
+    }
     case "editTitle": {
       const f = need(model, a.id);
       const t = (a.title || "").trim();

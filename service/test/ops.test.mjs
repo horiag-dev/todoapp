@@ -66,6 +66,30 @@ test("setPriority: moves an item between Normal and Urgent", () => {
   assert.ok(!m.normal.find((i) => i.title === "Read the docs"));
 });
 
+test("setPriorityMany: bulk-moves selected Today items to Urgent (drop star) or Normal", () => {
+  const m = model(`# Todo List
+
+### 🔴 Urgent
+
+- [ ] ⭐ A
+- [ ] ⭐ B
+- [ ] ⭐ C
+- [ ] Plain
+`);
+  const [a, b, c] = ["A", "B", "C"].map((t) => idOf(m, "urgent", t));
+  // A, B → Urgent (stay in the bucket, but lose Today); C → Normal
+  assert.equal(applyAction(m, "setPriorityMany", { ids: [a, b], bucket: "urgent" }), "moved 2 items to urgent");
+  assert.deepEqual(m.urgent.filter((i) => i.starred).map((i) => i.title), ["C"]);
+  assert.ok(m.urgent.find((i) => i.title === "A" && !i.starred));
+
+  assert.equal(applyAction(m, "setPriorityMany", { ids: [c], bucket: "normal" }), 'moved "C" to normal');
+  assert.ok(!m.urgent.find((i) => i.title === "C"));
+  assert.ok(m.normal.find((i) => i.title === "C" && !i.starred));
+
+  // Missing ids are skipped; an all-missing call is a no-op
+  assert.equal(applyAction(m, "setPriorityMany", { ids: ["nope"], bucket: "normal" }), null);
+});
+
 test("reorder: swaps within the same Today group, never across it", () => {
   const m = model(`# Todo List
 
