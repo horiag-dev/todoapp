@@ -619,7 +619,7 @@ export function createBigRocksServer({
           const mem = createMemory(vault);
           const notes = createNotes(vault);
           const cleanup = createCleanup(vault);
-          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort, onEvent, docs, mem, notes, cleanup, noteEdits, llmModel, effort, maxTurns, fallbackModel });
+          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort, onEvent, docs, mem, notes, cleanup, noteEdits, llmModel, effort, maxTurns, fallbackModel, recentChat: chatMessages.slice(-6) });
           sessionId = result.sessionId;
           chatMessages.push({ role: "you", text: message }, { role: "bot", text: result.reply });
           saveChat(vault.todoDocPath, { sessionId, messages: chatMessages, lastTier });

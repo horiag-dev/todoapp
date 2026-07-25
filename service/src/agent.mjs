@@ -24,7 +24,7 @@ The model is categorical, never temporal — there are NO due dates, calendars, 
 
 You work on a DRAFT. Make the changes the user asks for using the tools; the user reviews the pending changes and clicks Apply, so you don't need to ask permission for ordinary edits — just do them, then give a ONE-LINE summary of what you changed. For clearly destructive or bulk actions (deleting several items, clearing a whole section), state plainly what you're about to do and do it, but keep it easy to undo by describing it.
 
-Reference items by their id. Default new captures to Urgent. Tags (#like_this, written into the title) keep things organized — when you add or capture a todo that fits a tag already in use (see "Tags in use" in the board), include that #tag in its title. Prefer reusing an existing tag over inventing a new one, and don't over-tag (one or two is plenty).
+Reference items by their id. You keep the recent conversation, and ids are stable within it — so when the user refers to something you just listed or discussed ("delete it", "that one", "move the second"), act on the id you already have. Don't search again for an item you just showed them. Default new captures to Urgent. Tags (#like_this, written into the title) keep things organized — when you add or capture a todo that fits a tag already in use (see "Tags in use" in the board), include that #tag in its title. Prefer reusing an existing tag over inventing a new one, and don't over-tag (one or two is plenty).
 
 Items and To Read entries carry age_days — how many days they've sat untouched. When asked to tidy, de-stale, or clean up, use it: propose removing old, low-value To Read links (and stale items), and always name exactly what you're removing so it's easy to review before Apply. Be concise and act rather than over-explaining.
 
@@ -244,15 +244,22 @@ function buildServer(ctx) {
   return createSdkMcpServer({ name: "todo", version: "0.1.0", tools });
 }
 
-function snapshot(model, docs) {
+const NORMAL_CAP = 40; // list this many Normal ids inline; the rest via list_items/search
+export function snapshot(model, docs) {
   const u = model.urgent.map((it) => `  ${it.id}${it.starred ? " ·Today" : ""} — ${it.title}`).join("\n");
   const tags = [...new Set(model.normal.flatMap((it) => tagsOf(it.title)))];
   const subs = (model.goals?.rawLines ?? []).filter((l) => /^\*\*.+\*\*$/.test(l.trim())).map((l) => l.trim());
   const top5 = model.top5.map((it) => `  ${it.id} — ${it.title}`).join("\n");
+  // Normal carries ids too (capped) so "delete it" / "move that" resolve without a
+  // search round-trip. Overflow beyond the cap is reachable via list_items/search.
+  const nShown = model.normal.slice(0, NORMAL_CAP);
+  const n = nShown.map((it) => `  ${it.id} — ${it.title}`).join("\n");
+  const nMore = model.normal.length > NORMAL_CAP ? `\n  …and ${model.normal.length - NORMAL_CAP} more (use list_items "normal")` : "";
   const documents = docs?.list?.() ?? [];
   return [
     `Urgent (${model.urgent.length}):`, u || "  (none)",
-    `Normal: ${model.normal.length} items. Tags in use: ${tags.length ? tags.map((t) => "#" + t).join(" ") : "(none)"}`,
+    `Normal (${model.normal.length}). Tags in use: ${tags.length ? tags.map((t) => "#" + t).join(" ") : "(none)"}`,
+    (n || "  (none)") + nMore,
     `Top 5 (${model.top5.length}):`, top5 || "  (none)",
     `Goals subsections: ${subs.join(", ") || "(none)"}`,
     `To Read: ${model.toread?.rawLines?.length ?? 0} lines · Completed: ${model.completed.length} · Deleted: ${model.deleted.length}`,
@@ -289,18 +296,27 @@ const toolLabel = (name) => {
   return TOOL_LABELS[bare] || bare.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 };
 
-export async function runAgent({ model, ops, seen, message, sessionId, abortController, onEvent, docs, mem, notes, cleanup, noteEdits, llmModel, effort, maxTurns = 24, fallbackModel }) {
+export async function runAgent({ model, ops, seen, message, sessionId, abortController, onEvent, docs, mem, notes, cleanup, noteEdits, llmModel, effort, maxTurns = 24, fallbackModel, recentChat = [] }) {
   const emit = (event) => { try { onEvent?.(event); } catch {} };
   const server = buildServer({ model, ops, seen, docs, mem, notes, cleanup, noteEdits });
   const memText = mem?.injectionText?.() || "";
-  const prompt =
-    (memText ? `Assistant Memory (background — the user's current message always wins):\n${memText}\n\n` : "") +
-    `Current board:\n${snapshot(model, docs)}\n\nUser: ${message}`;
+  const board = `Current board:\n${snapshot(model, docs)}\n\nUser: ${message}`;
+  // A compact recap of the last few turns — folded in only when we start a FRESH
+  // session (first message, or after recovering from an overflow), so continuity
+  // survives without replaying the whole transcript.
+  const recentBlock = recentChat.length
+    ? `Recent conversation (most recent last):\n${recentChat.map((m) => `${m.role === "you" ? "User" : "Assistant"}: ${String(m.text || "").slice(0, 600)}`).join("\n")}\n\n`
+    : "";
+  const memBlock = memText ? `Assistant Memory (background — the user's current message always wins):\n${memText}\n\n` : "";
+  // On resume the model already has the memory and history from earlier turns —
+  // re-sending them every message is what grows the prompt until it overflows.
+  const promptFor = (resumeId) => (resumeId ? board : memBlock + recentBlock + board);
 
   const opsBaseline = ops.length;
 
   const attempt = async (resumeId, modelOverride) => {
     const usedModel = modelOverride || llmModel;
+    const prompt = promptFor(resumeId);
     let reply = "";
     let session = resumeId;
     let subtype = null;
@@ -356,16 +372,36 @@ export async function runAgent({ model, ops, seen, message, sessionId, abortCont
     return first;
   };
 
+  // A resumed conversation can outgrow the context window ("prompt is too long").
+  // Recover once by dropping the transcript and starting a FRESH session — the
+  // prompt then carries the current board plus a compact recap of recent turns
+  // (promptFor), so the model keeps continuity without the full history.
+  const OVERFLOW = /prompt is too long|too many tokens|context (?:window|length|limit)|exceed[^.]*(?:context|token)|input (?:is )?too long|maximum context/i;
+  let recovered = false;
+
   try {
-    return await withEscalation(sessionId);
-  } catch (e) {
-    // A saved session can vanish (history cleared, a different machine, an
-    // expired id). Don't fail the whole chat — retry once as a fresh session.
-    const stale = sessionId && /no conversation found|conversation not found|session id|invalid session|session not found/i.test(String(e?.message || e));
-    if (stale) {
+    const r = await withEscalation(sessionId);
+    // Some overflows arrive as an error *result* (empty reply) rather than a throw.
+    if (sessionId && !recovered && !r.reply && OVERFLOW.test(r.subtype || "")) {
+      recovered = true;
       ops.length = opsBaseline;
+      emit({ kind: "tool", label: "Conversation got long — starting fresh…" });
       return await withEscalation(undefined);
     }
+    return r;
+  } catch (e) {
+    const m = String(e?.message || e);
+    // A saved session can vanish (history cleared, a different machine, an expired
+    // id) — retry fresh. Same recovery covers a context overflow on resume.
+    const stale = sessionId && /no conversation found|conversation not found|session id|invalid session|session not found/i.test(m);
+    const overflow = OVERFLOW.test(m);
+    if (!recovered && (stale || (overflow && sessionId))) {
+      recovered = true;
+      ops.length = opsBaseline;
+      if (overflow) emit({ kind: "tool", label: "Conversation got long — starting fresh…" });
+      return await withEscalation(undefined);
+    }
+    if (overflow) throw new Error("This conversation got too long to continue. Click “Clear chat” and ask again — for a big weekly review, tackle one section at a time.");
     throw e;
   }
 }
