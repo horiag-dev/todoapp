@@ -675,8 +675,11 @@ $$('[data-pick]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{rememberAnd
 $("#setup-manual").onclick=async()=>{try{rememberAndRender(await api("/api/config",{method:"POST",body:JSON.stringify({path:$("#setup-path").value,mode:"open"})}))}catch(e){handleError(e)}};
 function resizer(id,name,def,min,max,invert){const g=$("#"+id),saved=localStorage.getItem(name);if(saved)document.documentElement.style.setProperty(name,saved);g.onmousedown=e=>{e.preventDefault();const x=e.clientX,w=parseInt(getComputedStyle(document.documentElement).getPropertyValue(name))||def;const move=ev=>document.documentElement.style.setProperty(name,Math.max(min,Math.min(max,w+(invert?x-ev.clientX:ev.clientX-x)))+"px");const up=()=>{document.removeEventListener("mousemove",move);document.removeEventListener("mouseup",up);localStorage.setItem(name,getComputedStyle(document.documentElement).getPropertyValue(name).trim())};document.addEventListener("mousemove",move);document.addEventListener("mouseup",up)}}resizer("gl","--c1",300,210,620,false);resizer("gr","--c2",360,260,680,true);
 attachWiki($("#chatin"));attachWiki($("#qa-input"));
-// Model + effort picker — remembered between sessions.
-(()=>{const m=$("#model-select"),e=$("#effort-select");if(!m||!e)return;m.value=localStorage.getItem("brf-model")||"";e.value=localStorage.getItem("brf-effort")||"";m.onchange=()=>localStorage.setItem("brf-model",m.value);e.onchange=()=>localStorage.setItem("brf-effort",e.value)})();
+// Model + effort picker — remembered between sessions. Defaults to Haiku so
+// everyday edits ("delete this", "rename that") come back fast; bump to Opus in
+// the picker when you want deep reasoning (e.g. the weekly review). One-time
+// migration flips an older saved default to Haiku; after that your pick sticks.
+(()=>{const m=$("#model-select"),e=$("#effort-select");if(!m||!e)return;if(!localStorage.getItem("brf-model-default-v2")){localStorage.setItem("brf-model","haiku");localStorage.setItem("brf-model-default-v2","1")}m.value=localStorage.getItem("brf-model")||"haiku";e.value=localStorage.getItem("brf-effort")||"";m.onchange=()=>localStorage.setItem("brf-model",m.value);e.onchange=()=>localStorage.setItem("brf-effort",e.value)})();
 load();restoreChat();setInterval(()=>load(true),3000);
 </script>
 </body>
