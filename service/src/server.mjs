@@ -11,6 +11,7 @@ import { Vault, VaultConflictError } from "./vault.mjs";
 import { assignIds, itemView, findById, reflowUrgent, findDuplicate } from "./model.mjs";
 import { unfurlUrl } from "./unfurl.mjs";
 import { runAgent } from "./agent.mjs";
+import { routeTier } from "./router.mjs";
 import { touch, ageDays } from "./ledger.mjs";
 import { applyAction } from "./ops.mjs";
 import { createMemory } from "./memory.mjs";
@@ -272,6 +273,7 @@ export function createBigRocksServer({
     return { results, keep };
   }
   let sessionId;
+  let lastTier; // last Auto-routed tier — a short follow-up ("ok do it") inherits it
   let chatMessages = [];
   let busy = false;
   let activeAbort = null;
@@ -312,6 +314,7 @@ export function createBigRocksServer({
     externalConflict = false;
     const savedChat = loadChat(vault.todoDocPath);
     sessionId = savedChat.sessionId;
+    lastTier = savedChat.lastTier;
     chatMessages = savedChat.messages || [];
     rememberFile(vault.todoDocPath);
   }
@@ -352,6 +355,7 @@ export function createBigRocksServer({
     } else {
       reloadBase();
       sessionId = undefined;
+      lastTier = undefined;
     }
   }
 
@@ -519,6 +523,7 @@ export function createBigRocksServer({
         externalConflict = false;
         reloadBase();
         sessionId = undefined;
+        lastTier = undefined;
         return json(res, 200, { ok: true, model: modelView() });
       }
 
@@ -571,11 +576,25 @@ export function createBigRocksServer({
         if (busy) return json(res, 409, { error: "The assistant is already working.", code: "BUSY" });
         refreshFromDisk();
         if (externalConflict) return json(res, 409, conflictBody("The file changed externally. Reload before continuing the draft."));
-        const { message, model: reqModel, effort: reqEffort } = await readBody(req);
+        const { message, model: reqModel, effort: reqEffort, context: reqContext, intent: reqIntent } = await readBody(req);
         if (!message?.trim()) return json(res, 400, { error: "Enter a message." });
-        // Optional per-message model + effort from the picker (whitelisted).
-        const llmModel = ["opus", "sonnet", "haiku"].includes(reqModel) ? reqModel : undefined;
-        const effort = ["low", "medium", "high", "xhigh", "max"].includes(reqEffort) ? reqEffort : undefined;
+        // Model + effort + turn budget. An explicit pick in the picker wins; otherwise
+        // "Auto" routes by structural signals (see router.mjs). Effort never rides on
+        // Haiku (the API rejects it); an explicit effort pick still overrides the routed
+        // effort on the larger models.
+        const manualModel = ["opus", "sonnet", "haiku"].includes(reqModel) ? reqModel : null;
+        const pickedEffort = ["low", "medium", "high", "xhigh", "max"].includes(reqEffort) ? reqEffort : undefined;
+        let llmModel, effort, maxTurns = 24, fallbackModel, tier = null, routeReason = null;
+        if (manualModel) {
+          llmModel = manualModel;
+          effort = manualModel === "haiku" ? undefined : pickedEffort;
+        } else {
+          const routed = routeTier({ message, context: reqContext, intent: reqIntent, prevTier: lastTier });
+          ({ model: llmModel, effort, maxTurns, tier, reason: routeReason } = routed);
+          if (pickedEffort && llmModel !== "haiku") effort = pickedEffort;
+          if (tier === "fast") fallbackModel = "sonnet"; // escalate a flailing Haiku run once
+          lastTier = tier;
+        }
         // Stream the agent's steps (SSE) when the client asks; otherwise plain JSON.
         const stream = (req.headers.accept || "").includes("text/event-stream");
         const hadPending = !!draft || draftNoteEdits.length > 0;
@@ -591,7 +610,7 @@ export function createBigRocksServer({
         if (stream) {
           res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
           sse = (event, data) => { try { res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); } catch {} };
-          sse("start", { ok: true });
+          sse("start", { ok: true, tier, model: llmModel, reason: routeReason });
         }
         try {
           const before = candidateOps.length;
@@ -600,10 +619,10 @@ export function createBigRocksServer({
           const mem = createMemory(vault);
           const notes = createNotes(vault);
           const cleanup = createCleanup(vault);
-          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort, onEvent, docs, mem, notes, cleanup, noteEdits, llmModel, effort });
+          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort, onEvent, docs, mem, notes, cleanup, noteEdits, llmModel, effort, maxTurns, fallbackModel });
           sessionId = result.sessionId;
           chatMessages.push({ role: "you", text: message }, { role: "bot", text: result.reply });
-          saveChat(vault.todoDocPath, { sessionId, messages: chatMessages });
+          saveChat(vault.todoDocPath, { sessionId, messages: chatMessages, lastTier });
           // If a direct edit landed while the assistant was working (e.g. you
           // checked off a todo mid-chat), fold it into the candidate so the
           // assistant's result doesn't revert it.
@@ -633,7 +652,7 @@ export function createBigRocksServer({
             }
             draftNoteEdits = noteEdits;
           }
-          const payload = { reply: result.reply, model: modelView(), newOps: candidateOps.slice(before), applied, flash, activity };
+          const payload = { reply: result.reply, model: modelView(), newOps: candidateOps.slice(before), applied, flash, activity, tier, routedModel: result.model || llmModel, routeReason };
           if (stream) { sse("done", payload); return res.end(); }
           return json(res, 200, payload);
         } catch (err) {
@@ -652,6 +671,7 @@ export function createBigRocksServer({
       if (req.method === "POST" && p === "/api/chat-clear") {
         chatMessages = [];
         sessionId = undefined;
+        lastTier = undefined;
         if (configured()) saveChat(vault.todoDocPath, { sessionId: undefined, messages: [] });
         return json(res, 200, { ok: true });
       }

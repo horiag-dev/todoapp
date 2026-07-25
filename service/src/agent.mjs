@@ -289,7 +289,7 @@ const toolLabel = (name) => {
   return TOOL_LABELS[bare] || bare.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 };
 
-export async function runAgent({ model, ops, seen, message, sessionId, abortController, onEvent, docs, mem, notes, cleanup, noteEdits, llmModel, effort }) {
+export async function runAgent({ model, ops, seen, message, sessionId, abortController, onEvent, docs, mem, notes, cleanup, noteEdits, llmModel, effort, maxTurns = 24, fallbackModel }) {
   const emit = (event) => { try { onEvent?.(event); } catch {} };
   const server = buildServer({ model, ops, seen, docs, mem, notes, cleanup, noteEdits });
   const memText = mem?.injectionText?.() || "";
@@ -299,18 +299,21 @@ export async function runAgent({ model, ops, seen, message, sessionId, abortCont
 
   const opsBaseline = ops.length;
 
-  const attempt = async (resumeId) => {
+  const attempt = async (resumeId, modelOverride) => {
+    const usedModel = modelOverride || llmModel;
     let reply = "";
     let session = resumeId;
+    let subtype = null;
     const q = query({
       prompt,
       options: {
         systemPrompt: SYSTEM,
         settingSources: [],
         mcpServers: { todo: server },
-        maxTurns: 24,
-        ...(llmModel ? { model: llmModel } : {}),
-        ...(effort ? { effort } : {}),
+        maxTurns,
+        ...(usedModel ? { model: usedModel } : {}),
+        // Effort never rides on Haiku — the API rejects it.
+        ...(effort && usedModel !== "haiku" ? { effort } : {}),
         ...(abortController ? { abortController } : {}),
         ...(resumeId ? { resume: resumeId } : {}),
         canUseTool: async (name) =>
@@ -331,22 +334,37 @@ export async function runAgent({ model, ops, seen, message, sessionId, abortCont
         }
         // Separate narration emitted across turns (text · tool · text) with a blank line.
         if (msgText.trim()) reply += (reply ? "\n\n" : "") + msgText;
-      } else if (msg.type === "result" && msg.result && !reply) {
-        reply = msg.result;
+      } else if (msg.type === "result") {
+        subtype = msg.subtype || null;
+        if (msg.result && !reply) reply = msg.result;
       }
     }
-    return { reply: reply.trim(), sessionId: session };
+    return { reply: reply.trim(), sessionId: session, subtype, model: usedModel };
+  };
+
+  // A fast-tier (Haiku, low turn budget) run that ends in max_turns / an execution
+  // error rolls back its ops and retries once on a stronger model. Hard signals
+  // only — no parsing the reply for "uncertainty".
+  const withEscalation = async (resumeId) => {
+    const first = await attempt(resumeId, llmModel);
+    const flailed = /max_turns|error/i.test(first.subtype || "");
+    if (fallbackModel && fallbackModel !== first.model && flailed) {
+      ops.length = opsBaseline;
+      emit({ kind: "tool", label: `Escalating to ${fallbackModel}…` });
+      return await attempt(resumeId, fallbackModel);
+    }
+    return first;
   };
 
   try {
-    return await attempt(sessionId);
+    return await withEscalation(sessionId);
   } catch (e) {
     // A saved session can vanish (history cleared, a different machine, an
     // expired id). Don't fail the whole chat — retry once as a fresh session.
     const stale = sessionId && /no conversation found|conversation not found|session id|invalid session|session not found/i.test(String(e?.message || e));
     if (stale) {
       ops.length = opsBaseline;
-      return await attempt(undefined);
+      return await withEscalation(undefined);
     }
     throw e;
   }

@@ -87,6 +87,46 @@ test("assistant drafts block direct edits and conflict after an external write",
   }
 });
 
+test("Auto routing picks model + turn budget per message; manual pick overrides", async () => {
+  const seen = [];
+  const fakeAgent = async (args) => {
+    seen.push({ llmModel: args.llmModel, maxTurns: args.maxTurns, fallbackModel: args.fallbackModel, effort: args.effort });
+    return { reply: "ok", sessionId: "s" };
+  };
+  const f = await fixture(fakeAgent);
+  const last = () => seen.at(-1);
+  try {
+    // Trivial single-item edit → Haiku, tight turn budget, Sonnet fallback, no effort.
+    await f.request("/api/chat", { message: "delete the milk todo" });
+    assert.equal(last().llmModel, "haiku");
+    assert.equal(last().maxTurns, 8);
+    assert.equal(last().fallbackModel, "sonnet");
+    assert.equal(last().effort, undefined);
+
+    // Weekly-review intent from the button → Opus, full turns, high effort, no fallback.
+    await f.request("/api/chat", { message: "let's review my week", intent: "review" });
+    assert.equal(last().llmModel, "opus");
+    assert.equal(last().maxTurns, 24);
+    assert.equal(last().effort, "high");
+    assert.equal(last().fallbackModel, undefined);
+
+    // A pinned single todo (💬 bar) with a short instruction → Haiku.
+    await f.request("/api/chat", { message: "get rid of it", context: { id: "i1", title: "X", bucket: "normal" } });
+    assert.equal(last().llmModel, "haiku");
+
+    // A manual pick in the picker overrides the router entirely.
+    await f.request("/api/chat", { message: "delete the milk todo", model: "opus" });
+    assert.equal(last().llmModel, "opus");
+
+    // Uncertain / conversational → Sonnet (the safe default).
+    await f.request("/api/chat", { message: "what should I focus on this afternoon?" });
+    assert.equal(last().llmModel, "sonnet");
+  } finally {
+    await new Promise((resolve) => f.server.close(resolve));
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
 test("capture adds to Urgent and reports a near-duplicate", async () => {
   const f = await fixture();
   try {
