@@ -15,8 +15,16 @@ Claude Agent SDK assistant. Human edits save immediately. Assistant changes are
 isolated in a reviewable draft and require Apply; external file changes are
 detected with content versions so stale drafts cannot overwrite the vault.
 
-- **Model** — Goals (notepad) · Urgent (with a `⭐` star = "very urgent") · Normal ·
-  Top 5. Order within Urgent is line position. New captures will default to Urgent.
+- **Model** — Goals (notepad) · Urgent · Normal · Top 5. New captures default to Urgent.
+- **The commitment ladder** — Urgent (could do) → `⭐` Today (intends to) → `‼️` Must
+  (has committed to). Both live in Urgent and float to the top, Must above Today.
+  Must is **capped at 3** and the cap is enforced, not advisory — it's what stops
+  Must from quietly becoming a second Today. A Must is always also a Today; demoting
+  one drops it back to Today rather than off the list. Musts never expire on a clock
+  and never auto-roll-over: they're re-decided at the next plan-my-day. How long
+  something has been a Must is kept in a private sidecar (`.bigrocks/must-since.json`),
+  never as a date in the markdown, so the assistant can flag an item that's been
+  "must do today" for a week.
 - **Obsidian-safe writer** — preserve-and-splice: YAML frontmatter, `[[wikilinks]]`,
   and `#tags` round-trip byte-identical; only the bucket sections we own are
   regenerated. Titles are stored verbatim (tags/links are a derived read-only view).

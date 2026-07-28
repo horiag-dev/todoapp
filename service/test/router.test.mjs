@@ -63,3 +63,37 @@ test("uncertain / conversational messages default to standard (Sonnet)", () => {
   assert.equal(tierOf({ message: "what should I focus on this afternoon?" }), "standard");
   assert.equal(routeTier({ message: "hmm" }).model, "sonnet");
 });
+
+// --- tool scope (progressive loading) ---------------------------------------
+const scopeOf = (args) => routeTier(args).scope;
+
+test("everyday capture and edit stay on the core tool set", () => {
+  for (const m of ["add call the dentist", "add milk", "mark i3 today", "complete i7", "delete i4"])
+    assert.equal(scopeOf({ message: m }), "core", m);
+});
+
+test("reaching past the todo list loads every tool up front", () => {
+  for (const m of [
+    "what are my goals?", "rewrite my goals", "read my notes on Raj",
+    "summarize the attached pdf", "remember I prefer short replies",
+    "add a [[Project]] link to i2", "prune my to read list",
+  ]) assert.equal(scopeOf({ message: m }), "full", m);
+});
+
+test("stems match plurals and inflections, not just bare words", () => {
+  // "goal\b" would miss "goals" — the miss costs a whole extra round trip.
+  assert.equal(scopeOf({ message: "what are my goals" }), "full");
+  assert.equal(scopeOf({ message: "check the attachments" }), "full");
+  assert.equal(scopeOf({ message: "summarize that" }), "full");
+});
+
+test("deep requests skip the guess and load everything", () => {
+  assert.equal(scopeOf({ message: "weekly review" }), "full");
+  assert.equal(scopeOf({ intent: "plan", message: "" }), "full");
+});
+
+test("a short follow-up keeps the scope its thread was running at", () => {
+  assert.equal(scopeOf({ message: "ok do it", prevTier: "standard", prevScope: "full" }), "full");
+  // ...but a plain follow-up on a core thread stays core
+  assert.equal(scopeOf({ message: "ok do it", prevTier: "standard", prevScope: "core" }), "core");
+});

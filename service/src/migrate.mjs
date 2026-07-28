@@ -42,11 +42,12 @@ function asUrgent(item) {
   return item;
 }
 
-// Stable partition: starred items first (keeping their order), then the rest.
+// Stable partition matching reflowUrgent: Must, then the rest of Today, then the
+// rest. Legacy files have no Must marker, so this only matters on the identity
+// pass over an already-migrated file.
 function starFirst(items) {
-  const starred = items.filter((i) => i.starred);
-  const rest = items.filter((i) => !i.starred);
-  return [...starred, ...rest];
+  const rank = (i) => (i.must ? 0 : i.starred ? 1 : 2);
+  return [0, 1, 2].flatMap((r) => items.filter((i) => rank(i) === r));
 }
 
 function collect(sections, kind) {

@@ -8,11 +8,11 @@ import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { Vault, VaultConflictError } from "./vault.mjs";
-import { assignIds, itemView, findById, reflowUrgent, findDuplicate } from "./model.mjs";
+import { assignIds, itemView, findById, reflowUrgent, findDuplicate, MUST_CAP } from "./model.mjs";
 import { unfurlUrl } from "./unfurl.mjs";
 import { runAgent } from "./agent.mjs";
 import { routeTier } from "./router.mjs";
-import { touch, ageDays } from "./ledger.mjs";
+import { touch, touchMust, ageDays, mustDays } from "./ledger.mjs";
 import { applyAction } from "./ops.mjs";
 import { createMemory } from "./memory.mjs";
 import { createNotes } from "./notes.mjs";
@@ -126,6 +126,10 @@ function diffModels(base, draft) {
       changes.push(d.item.starred
         ? { key: `item:${id}`, kind: "today", label: `Marked “${d.item.title}” Today` }
         : { key: `item:${id}`, kind: "untoday", label: `Cleared Today on “${d.item.title}”` });
+    } else if (!!b.item.must !== !!d.item.must) {
+      changes.push(d.item.must
+        ? { key: `item:${id}`, kind: "must", label: `Committed to “${d.item.title}” as a Must` }
+        : { key: `item:${id}`, kind: "unmust", label: `Cleared Must on “${d.item.title}” (still Today)` });
     }
   }
   for (const [id, b] of B) if (!D.has(id)) changes.push({ key: `item:${id}`, kind: "removed", label: `Removed “${b.item.title}”` });
@@ -145,6 +149,7 @@ function rejectChangeOn(base, draft, key) {
   if (bInfo && dInfo) {
     dInfo.item.title = bInfo.item.title;
     dInfo.item.starred = bInfo.item.starred;
+    dInfo.item.must = bInfo.item.must;
     dInfo.item.checked = bInfo.item.checked;
     if (dInfo.bucket !== bInfo.bucket) { dInfo.arr.splice(dInfo.idx, 1); draft[bInfo.bucket].push(dInfo.item); }
   } else if (bInfo && !dInfo) {
@@ -230,6 +235,7 @@ export function createBigRocksServer({
   let base = null;
   let baseVersion = null;
   let seen = {};
+  let mustSince = {}; // when each current Must was promoted (private sidecar, no dates in the .md)
   let draft = null;
   let draftOps = [];
   let draftBaseVersion = null;
@@ -274,6 +280,7 @@ export function createBigRocksServer({
   }
   let sessionId;
   let lastTier; // last Auto-routed tier — a short follow-up ("ok do it") inherits it
+  let lastScope; // …and the tool scope it ran with, so a follow-up need not re-widen
   let chatMessages = [];
   let busy = false;
   let activeAbort = null;
@@ -315,6 +322,7 @@ export function createBigRocksServer({
     const savedChat = loadChat(vault.todoDocPath);
     sessionId = savedChat.sessionId;
     lastTier = savedChat.lastTier;
+    lastScope = savedChat.lastScope;
     chatMessages = savedChat.messages || [];
     rememberFile(vault.todoDocPath);
   }
@@ -344,6 +352,7 @@ export function createBigRocksServer({
     base = assignIds(loaded.model);
     baseVersion = loaded.version;
     seen = touch(vault, base);
+    mustSince = touchMust(vault, base);
   }
 
   function refreshFromDisk() {
@@ -356,6 +365,7 @@ export function createBigRocksServer({
       reloadBase();
       sessionId = undefined;
       lastTier = undefined;
+      lastScope = undefined;
     }
   }
 
@@ -368,7 +378,7 @@ export function createBigRocksServer({
     refreshFromDisk();
     const model = currentModel();
     const ageOf = (text) => { const a = ageDays(seen, text); return a != null && a >= 7 ? a : null; };
-    const view = (it) => ({ ...itemView(it), age: ageOf(it.title) });
+    const view = (it) => ({ ...itemView(it), age: ageOf(it.title), ...(it.must ? { mustDays: mustDays(mustSince, it.title) } : {}) });
     const readLines = (section, prefix) => (section?.rawLines ?? [])
       .map((line, index) => ({ line, index, text: line.replace(prefix, "").trim() }))
       .filter((entry) => entry.text);
@@ -381,6 +391,7 @@ export function createBigRocksServer({
     return {
       configured: true,
       appVersion: APP_VERSION,
+      mustCap: MUST_CAP,
       todoDocPath: vault.todoDocPath,
       vaultDir: dirname(vault.todoDocPath),
       version: baseVersion,
@@ -440,6 +451,7 @@ export function createBigRocksServer({
     base = assignIds(working);
     baseVersion = saved.version;
     seen = touch(vault, base);
+    mustSince = touchMust(vault, base);
     return applyActivityLog(before, base);
   }
 
@@ -524,6 +536,7 @@ export function createBigRocksServer({
         reloadBase();
         sessionId = undefined;
         lastTier = undefined;
+        lastScope = undefined;
         return json(res, 200, { ok: true, model: modelView() });
       }
 
@@ -584,16 +597,20 @@ export function createBigRocksServer({
         // effort on the larger models.
         const manualModel = ["opus", "sonnet", "haiku"].includes(reqModel) ? reqModel : null;
         const pickedEffort = ["low", "medium", "high", "xhigh", "max"].includes(reqEffort) ? reqEffort : undefined;
-        let llmModel, effort, maxTurns = 24, fallbackModel, tier = null, routeReason = null;
+        let llmModel, effort, maxTurns = 24, fallbackModel, tier = null, routeReason = null, toolScope = "full";
         if (manualModel) {
           llmModel = manualModel;
           effort = manualModel === "haiku" ? undefined : pickedEffort;
+          // An explicit pick says which model, not which tools — still scope by the
+          // shape of the request so a manual Haiku edit stays as cheap as a routed one.
+          toolScope = routeTier({ message, context: reqContext, intent: reqIntent }).scope;
         } else {
-          const routed = routeTier({ message, context: reqContext, intent: reqIntent, prevTier: lastTier });
-          ({ model: llmModel, effort, maxTurns, tier, reason: routeReason } = routed);
+          const routed = routeTier({ message, context: reqContext, intent: reqIntent, prevTier: lastTier, prevScope: lastScope });
+          ({ model: llmModel, effort, maxTurns, tier, reason: routeReason, scope: toolScope } = routed);
           if (pickedEffort && llmModel !== "haiku") effort = pickedEffort;
           if (tier === "fast") fallbackModel = "sonnet"; // escalate a flailing Haiku run once
           lastTier = tier;
+          lastScope = toolScope;
         }
         // Stream the agent's steps (SSE) when the client asks; otherwise plain JSON.
         const stream = (req.headers.accept || "").includes("text/event-stream");
@@ -619,10 +636,10 @@ export function createBigRocksServer({
           const mem = createMemory(vault);
           const notes = createNotes(vault);
           const cleanup = createCleanup(vault);
-          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, message, sessionId, abortController: activeAbort, onEvent, docs, mem, notes, cleanup, noteEdits, llmModel, effort, maxTurns, fallbackModel, recentChat: chatMessages.slice(-6) });
+          const result = await agentRunner({ model: candidate, ops: candidateOps, seen, mustSince, message, sessionId, abortController: activeAbort, onEvent, docs, mem, notes, cleanup, noteEdits, llmModel, effort, maxTurns, fallbackModel, toolScope, recentChat: chatMessages.slice(-6) });
           sessionId = result.sessionId;
           chatMessages.push({ role: "you", text: message }, { role: "bot", text: result.reply });
-          saveChat(vault.todoDocPath, { sessionId, messages: chatMessages, lastTier });
+          saveChat(vault.todoDocPath, { sessionId, messages: chatMessages, lastTier, lastScope });
           // If a direct edit landed while the assistant was working (e.g. you
           // checked off a todo mid-chat), fold it into the candidate so the
           // assistant's result doesn't revert it.
@@ -641,6 +658,7 @@ export function createBigRocksServer({
             base = assignIds(candidate);
             baseVersion = saved.version;
             seen = touch(vault, base);
+            mustSince = touchMust(vault, base);
             flash = flashInfo(changes);
             applied = true;
             activity = applyActivityLog(beforeAuto, base);
@@ -672,6 +690,7 @@ export function createBigRocksServer({
         chatMessages = [];
         sessionId = undefined;
         lastTier = undefined;
+        lastScope = undefined;
         if (configured()) saveChat(vault.todoDocPath, { sessionId: undefined, messages: [] });
         return json(res, 200, { ok: true });
       }
@@ -756,6 +775,7 @@ export function createBigRocksServer({
           base = assignIds(draft);
           baseVersion = saved.version;
           seen = touch(vault, base);
+          mustSince = touchMust(vault, base);
           activity = applyActivityLog(beforeApply, base);
         }
         const { results, keep } = executeIntents(draftNoteEdits);
@@ -794,6 +814,7 @@ export function createBigRocksServer({
         baseVersion = saved.version;
         draftBaseVersion = baseVersion;
         seen = touch(vault, base);
+        mustSince = touchMust(vault, base);
         const activity = applyActivityLog(beforeApprove, base);
         if (!diffModels(base, draft).length) { draft = null; draftOps = []; draftBaseVersion = null; }
         const flash = { items: key.startsWith("item:") ? [key.slice(5)] : [], goals: key === "goals", toread: key === "toread" };

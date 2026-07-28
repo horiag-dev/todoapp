@@ -16,8 +16,10 @@ const HEADERS = {
 
 function renderItem(it) {
   const box = it.checked ? "x" : " ";
-  const star = it.starred ? "⭐ " : "";
-  return `- [${box}] ${star}${it.title}`;
+  // One marker only: `‼️ ` (Must) already implies Today, so it replaces the star
+  // rather than stacking with it.
+  const mark = it.must ? "‼️ " : it.starred ? "⭐ " : "";
+  return `- [${box}] ${mark}${it.title}`;
 }
 
 // A section is `header`, a blank line, then the body — or just the header when

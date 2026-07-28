@@ -45,3 +45,34 @@ export function ageDays(seen, text, nowMs) {
   if (!iso) return null;
   return Math.floor(((nowMs || Date.now()) - Date.parse(iso)) / 86400000);
 }
+
+// --- Must ledger -------------------------------------------------------------
+// When each current Must became one. Same guardrail as above: the date lives in a
+// private sidecar, never in the user's markdown. This is what lets the assistant
+// catch re-commit theater — the same item promised every morning for a week.
+const mustPath = (vault) => join(vault.machineDir, "must-since.json");
+
+export function loadMustSince(vault) {
+  const p = mustPath(vault);
+  if (!existsSync(p)) return {};
+  try { return JSON.parse(readFileSync(p, "utf8")); } catch { return {}; }
+}
+
+// Stamp newly-promoted Musts, drop anything no longer a Must — so demoting and
+// re-promoting restarts the clock rather than resurrecting an old streak.
+export function touchMust(vault, model, nowIso) {
+  const prev = loadMustSince(vault);
+  const now = nowIso || new Date().toISOString();
+  const next = {};
+  for (const it of model.urgent ?? []) if (it.must) { const k = keyOf(it.title); next[k] = prev[k] || now; }
+  if (JSON.stringify(prev) !== JSON.stringify(next)) {
+    try { mkdirSync(vault.machineDir, { recursive: true }); writeFileSync(mustPath(vault), JSON.stringify(next), "utf8"); } catch {}
+  }
+  return next;
+}
+
+export function mustDays(mustSince, text, nowMs) {
+  const iso = mustSince?.[keyOf(text)];
+  if (!iso) return null;
+  return Math.floor(((nowMs || Date.now()) - Date.parse(iso)) / 86400000);
+}

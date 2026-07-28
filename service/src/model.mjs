@@ -20,20 +20,26 @@ export function findById(model, id) {
   return null;
 }
 
-// Stable star-first ordering: "Today" (starred) items float to the top of Urgent.
+// The commitment ladder: Urgent (could do) → Today (intend to) → Must (committed).
+// Must is deliberately capped — the cap is the feature. Without it Today became a
+// second Urgent, which is exactly what Must exists to fix.
+export const MUST_CAP = 3;
+export const countMusts = (model) => model.urgent.filter((i) => i.must).length;
+
+// Stable rank ordering within Urgent: Must first, then the rest of Today, then
+// everything else. Order *within* each group is preserved.
+const rank = (i) => (i.must ? 0 : i.starred ? 1 : 2);
 export function reflowUrgent(model) {
-  const starred = model.urgent.filter((i) => i.starred);
-  const rest = model.urgent.filter((i) => !i.starred);
-  model.urgent = [...starred, ...rest];
+  model.urgent = [0, 1, 2].flatMap((r) => model.urgent.filter((i) => rank(i) === r));
 }
 
-export function newItem(title, { starred = false, checked = false } = {}) {
-  return { checked, starred, title, id: "i" + ++counter };
+export function newItem(title, { starred = false, checked = false, must = false } = {}) {
+  return { checked, must, starred: starred || must, title, id: "i" + ++counter };
 }
 
 // A compact, id-bearing view for the agent's read tools and the web UI.
 export function itemView(it) {
-  return { id: it.id, title: it.title, today: !!it.starred, done: !!it.checked, tags: tagsOf(it.title), links: linksOf(it.title) };
+  return { id: it.id, title: it.title, today: !!it.starred, must: !!it.must, done: !!it.checked, tags: tagsOf(it.title), links: linksOf(it.title) };
 }
 
 // Server-side near-duplicate detection (mirrors the client quick-add check) —

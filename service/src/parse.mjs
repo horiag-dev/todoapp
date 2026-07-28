@@ -1,7 +1,7 @@
 // Parse a Big Rocks markdown todo document into a structured model.
 //
 // Design contract (Obsidian-safe): titles are stored VERBATIM — anything after
-// the checkbox and the optional `⭐ ` star prefix is kept byte-for-byte, so
+// the checkbox and the optional `‼️ ` / `⭐ ` marker prefix is kept byte-for-byte, so
 // `[[wikilinks]]`, `#tags`, and URLs round-trip losslessly. Tags are a derived
 // read-only view (see tagsOf), never mutated out of the title.
 //
@@ -10,6 +10,7 @@
 // serializer. Only the bucket sections we own are regenerated.
 
 const STAR_RE = /^⭐️?[ \t]*/; // ⭐ optionally with a variation selector, then spaces
+const MUST_RE = /^‼️?[ \t]*/; // ‼ (U+203C), same variation-selector tolerance
 const TODO_RE = /^([ \t]*)- \[([ xX])\][ \t]*(.*)$/;
 const HEADER_RE = /^(#{1,6})[ \t]+(.*\S)[ \t]*$/;
 
@@ -59,9 +60,17 @@ function parseItems(bodyLines) {
     }
     const checked = m[2].toLowerCase() === "x";
     let rest = m[3];
-    const starred = STAR_RE.test(rest);
-    if (starred) rest = rest.replace(STAR_RE, "");
-    items.push({ checked, starred, title: rest });
+    // `‼️ ` (Must) and `⭐ ` (Today) are both stripped, in whichever order they were
+    // hand-written — the serializer only ever emits one, but a human editing the file
+    // in Obsidian might type both. A Must is by definition also a Today.
+    let must = false;
+    let starred = false;
+    for (let stripped = true; stripped; ) {
+      stripped = false;
+      if (MUST_RE.test(rest)) { must = true; rest = rest.replace(MUST_RE, ""); stripped = true; }
+      if (STAR_RE.test(rest)) { starred = true; rest = rest.replace(STAR_RE, ""); stripped = true; }
+    }
+    items.push({ checked, must, starred: starred || must, title: rest });
   }
   return { items, strays };
 }

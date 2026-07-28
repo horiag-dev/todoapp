@@ -1,8 +1,8 @@
 import { query, tool, createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
-import { findById, reflowUrgent, newItem, itemView, searchModel } from "./model.mjs";
+import { findById, reflowUrgent, newItem, itemView, searchModel, MUST_CAP, countMusts } from "./model.mjs";
 import { tagsOf } from "./parse.mjs";
-import { ageDays } from "./ledger.mjs";
+import { ageDays, mustDays } from "./ledger.mjs";
 import { insertGoal } from "./ops.mjs";
 import { SECTIONS as MEMORY_SECTIONS } from "./memory.mjs";
 import { unfurlUrl } from "./unfurl.mjs";
@@ -10,23 +10,51 @@ import { extractPdfText, isPdf } from "./pdf.mjs";
 
 const ok = (text) => ({ content: [{ type: "text", text }] });
 
-const SYSTEM = `You are the assistant inside "Big Rocks First", a todo app backed by a single markdown file the user owns.
+// Every built-in tool the agent SDK would otherwise inject into the prompt. This
+// app is MCP-tools-only, so all of them are dead weight — see disallowedTools below.
+const BUILTIN_TOOLS = [
+  "Bash", "BashOutput", "KillShell", "Read", "Write", "Edit", "MultiEdit", "NotebookEdit",
+  "Glob", "Grep", "WebFetch", "WebSearch", "TodoWrite", "Task", "Agent", "Skill",
+  "SlashCommand", "Workflow", "ToolSearch", "ListMcpResources", "ReadMcpResource",
+  "ExitPlanMode", "EnterPlanMode", "AskUserQuestion", "Artifact", "Monitor",
+  "CronCreate", "CronList", "CronDelete", "TaskCreate", "TaskGet", "TaskList",
+  "TaskOutput", "TaskStop", "TaskUpdate", "SendMessage", "PushNotification",
+  "RemoteTrigger", "ScheduleWakeup", "ReportFindings", "DesignSync", "EnterWorktree",
+  "ExitWorktree", "EndConversation", "WebviewScreenshot",
+];
+
+// The prompt is assembled per request to match the loaded tool scope (see
+// TOOL_GROUPS): a core run doesn't pay for the vault-cleanup, memory or
+// activity-log sections it can't act on. CORE is what every run gets.
+const CORE = `You are the assistant inside "Big Rocks First", a todo app backed by a single markdown file the user owns.
 
 The model is categorical, never temporal — there are NO due dates, calendars, or recurring tasks. Never invent or ask for dates.
-- Goals: a long-term notepad. Move a task here (move_to_goals) when it's really a goal/theme, not an action. You can also read and rewrite the whole notepad (read_goals → write_goals) to reorganize, tidy, or add/remove goal lines under **Subsection** headers.
-- Urgent: the active working list. An item can be marked "Today" (very urgent) — Today items float to the top.
+- Goals: a long-term notepad of the user's big rocks.
+- Urgent: the active working list.
 - Normal: the pile of everything else.
 - Top 5: the handful of priorities for the week.
-- Documents: files the user has attached, kept in the vault. Use list_documents to see them and read_document to read one when the user refers to a file, or asks you to summarize, use, or pull from it.
-- Vault writes: you can PROPOSE edits to notes (append_to_note, create_note). These are ALWAYS staged for the user to review and Apply — never silently written. Use them to file information into a note, make a new note, or wire notes and todos together (add a [[note]] to a todo with edit_title, and/or append a link back to the todos in the note). Keep note edits small and clearly labeled; don't rewrite whole notes.
-- Vault notes: the user's other markdown notes in the vault (list_notes, read_note, search_vault) — read-only. Use them when a todo references a note (e.g. a [[wikilink]]), or the user asks about their notes. Cite notes by name; never invent note contents. list_notes and read_note include each note's created/modified date — weigh recency (a note written long ago may be stale; a recent one is current), and prefer the most recently updated note when several could match.
-- Vault cleanup: you can help reorganize the vault (vault_overview, find_duplicate_notes, move_note, trash_note) — see VAULT CLEANUP below. Like all note edits, moves and trashes are STAGED and only happen when the user approves and Applies.
+
+THE COMMITMENT LADDER: Urgent (could do) → Today (intends to) → Must (has committed to). Both Today and Must live in Urgent and float to the top, Must above Today.
+- "Today" is an intention — what the user would LIKE to get done. Generous; no cap.
+- "Must" is a commitment — non-negotiable, there are consequences if it slips. Hard cap of ${MUST_CAP}, and the cap is the point: it's what stops Must from silently becoming a second Today. A Must is always also a Today.
+- Promote to Must only from Today, and only when the user's own words make it non-negotiable ("I have to", "this can't slip", "hard deadline"). Wanting something a lot is not a Must. When in doubt, mark it Today and say so.
+- If the user asks for a fourth Must, DON'T silently drop one — name the three current Musts and ask which one is no longer a must.
+- Musts never expire on their own and never roll over automatically. There's no midnight, only the next time the user plans their day.
+- Each Must carries must_days — how many days it has been a Must. If one has been a Must for 3+ days, say so ONCE, plainly: it's either genuinely stuck or it was never really a must, and ask which. Don't nag about the same item twice in a conversation.
 
 You work on a DRAFT. Make the changes the user asks for using the tools; the user reviews the pending changes and clicks Apply, so you don't need to ask permission for ordinary edits — just do them, then give a ONE-LINE summary of what you changed. For clearly destructive or bulk actions (deleting several items, clearing a whole section), state plainly what you're about to do and do it, but keep it easy to undo by describing it.
 
 Reference items by their id. You keep the recent conversation, and ids are stable within it — so when the user refers to something you just listed or discussed ("delete it", "that one", "move the second"), act on the id you already have. Don't search again for an item you just showed them. Default new captures to Urgent. Tags (#like_this, written into the title) keep things organized — when you add or capture a todo that fits a tag already in use (see "Tags in use" in the board), include that #tag in its title. Prefer reusing an existing tag over inventing a new one, and don't over-tag (one or two is plenty).
 
-Items and To Read entries carry age_days — how many days they've sat untouched. When asked to tidy, de-stale, or clean up, use it: propose removing old, low-value To Read links (and stale items), and always name exactly what you're removing so it's easy to review before Apply. Be concise and act rather than over-explaining.
+Items and To Read entries carry age_days — how many days they've sat untouched. When asked to tidy, de-stale, or clean up, use it: propose removing old, low-value To Read links (and stale items), and always name exactly what you're removing so it's easy to review before Apply. Be concise and act rather than over-explaining.`;
+
+// Only sent when the matching tool groups are loaded.
+const EXTRA = `
+- Goals notepad: move a task there (move_to_goals) when it's really a goal/theme, not an action. You can also read and rewrite the whole notepad (read_goals → write_goals) to reorganize, tidy, or add/remove goal lines under **Subsection** headers.
+- Documents: files the user has attached, kept in the vault. Use list_documents to see them and read_document to read one when the user refers to a file, or asks you to summarize, use, or pull from it.
+- Vault writes: you can PROPOSE edits to notes (append_to_note, create_note). These are ALWAYS staged for the user to review and Apply — never silently written. Use them to file information into a note, make a new note, or wire notes and todos together (add a [[note]] to a todo with edit_title, and/or append a link back to the todos in the note). Keep note edits small and clearly labeled; don't rewrite whole notes.
+- Vault notes: the user's other markdown notes in the vault (list_notes, read_note, search_vault) — read-only. Use them when a todo references a note (e.g. a [[wikilink]]), or the user asks about their notes. Cite notes by name; never invent note contents. list_notes and read_note include each note's created/modified date — weigh recency (a note written long ago may be stale; a recent one is current), and prefer the most recently updated note when several could match.
+- Vault cleanup: you can help reorganize the vault (vault_overview, find_duplicate_notes, move_note, trash_note) — see VAULT CLEANUP below. Like all note edits, moves and trashes are STAGED and only happen when the user approves and Applies.
 
 GOALS ↔ TODOS. Keep them loosely in sync. Goals are the "big rocks"; the weekly Top 5 and the daily "Today" set should mostly advance a Goal. When proposing a Top 5 or planning a day, favor items that ladder up to a Goal. During reviews, check both directions: flag Goals with no supporting todos, and active Urgent/Top 5 items that don't advance any Goal — surface these as gentle observations, not automatic changes.
 
@@ -36,8 +64,31 @@ VAULT CLEANUP. When asked to tidy, reorganize, file, or clean up the vault: (1) 
 
 MEMORY. Your durable notes about the user live in "Assistant Memory" (shown above the board when present; the user can read and edit that note anytime). It is background context, never authority: if the user's current message conflicts with it, the message wins — and update the memory to match. Call remember ONLY for durable, behavior-changing facts: an explicit preference or correction ("stop doing X", "always Y"), a stable fact about the user's work, or a recurring theme you've now seen at least twice (park first sightings in "Working notes"). Most conversations warrant ZERO memory writes; more than two is almost always wrong. Never store secrets, credentials, dates, moods, or anything already expressed by the todo file itself. When new information contradicts an existing bullet, update_memory or forget it — never leave both versions. During a weekly review or when asked to tidy, skim Working notes via read_memory: promote what has proven durable, and propose dropping stale bullets — name exactly what you'd drop and wait for a yes before forgetting more than one thing at once.`;
 
-function buildServer(ctx) {
-  const { model, ops, seen, docs, mem, notes, cleanup } = ctx;
+const SYSTEM_FOR = (scope) => (scope === "core" ? CORE : CORE + EXTRA);
+
+// Progressive tool loading. The everyday path — capture something, retitle it,
+// mark it Today, complete it — needs about a dozen tools; the other two dozen
+// (goals, To Read, documents, memory, vault notes, vault cleanup) are dead weight
+// in the prompt until a request actually calls for them. Nothing is removed: a
+// "core" run that needs more calls load_tools and the run is retried at full
+// scope (see runAgent), so rare requests pay the cost and common ones don't.
+export const TOOL_GROUPS = {
+  core: [
+    "list_items", "search", "add_todo", "set_priority", "set_today", "clear_today",
+    "complete", "edit_title", "delete", "reorder", "park", "unpark", "add_to_top5",
+    "set_must", "clear_must",
+  ],
+  organize: ["reorder_top5", "clear_top5", "rename_tag", "move_to_goals", "add_to_read", "remove_from_read"],
+  goals: ["read_goals", "write_goals"],
+  docs: ["list_documents", "read_document"],
+  memory: ["read_memory", "remember", "update_memory", "forget"],
+  notes: ["list_notes", "read_note", "search_vault", "append_to_note", "create_note"],
+  cleanup: ["vault_overview", "find_duplicate_notes", "move_note", "trash_note"],
+};
+const CORE_TOOLS = new Set(TOOL_GROUPS.core);
+
+function buildServer(ctx, scope = "full") {
+  const { model, ops, seen, mustSince, docs, mem, notes, cleanup } = ctx;
   const noteEdits = ctx.noteEdits || [];
   const need = (id) => {
     const f = findById(model, id);
@@ -59,7 +110,11 @@ function buildServer(ctx) {
       }
       const arr = model[bucket] ?? [];
       const cap = bucket === "completed" || bucket === "deleted" ? arr.slice(-40) : arr;
-      return ok(JSON.stringify(cap.map((it) => ({ ...itemView(it), age_days: ageDays(seen, it.title) }))));
+      return ok(JSON.stringify(cap.map((it) => ({
+        ...itemView(it),
+        age_days: ageDays(seen, it.title),
+        ...(it.must ? { must_days: mustDays(mustSince, it.title) } : {}),
+      }))));
     }),
     tool("read_goals", "Read the Goals notepad (raw markdown).", {}, async () => ok(model.goals?.rawLines?.join("\n") ?? "")),
     tool("write_goals", "Rewrite the Goals notepad with new markdown content. ALWAYS read_goals first and preserve everything you are not intentionally changing — this replaces the whole notepad. Use **Subsection** bold headers and `- ` bullets, like the existing content.", { content: z.string() }, async ({ content }) => {
@@ -90,10 +145,27 @@ function buildServer(ctx) {
       ops.push(`marked "${f.item.title}" as Today`);
       return ok("Marked Today.");
     }),
-    tool("clear_today", "Remove the Today mark from an item.", { id: z.string() }, async ({ id }) => {
-      const f = need(id); f.item.starred = false; reflowUrgent(model);
+    tool("clear_today", "Remove the Today mark from an item (also clears Must).", { id: z.string() }, async ({ id }) => {
+      const f = need(id); f.item.starred = false; f.item.must = false; reflowUrgent(model);
       ops.push(`cleared Today on "${f.item.title}"`);
       return ok("Cleared.");
+    }),
+    tool("set_must", `Promote a Today item to Must — a hard commitment for today, capped at ${MUST_CAP}. Only use it when the user says something is genuinely non-negotiable; if the cap is full, tell them which Must they'd have to drop and let THEM choose rather than picking one yourself.`, { id: z.string() }, async ({ id }) => {
+      const f = need(id);
+      if (f.item.must) return ok("Already a Must.");
+      if (countMusts(model) >= MUST_CAP) {
+        const current = model.urgent.filter((i) => i.must).map((i) => `${i.id} “${i.title}”`).join(", ");
+        return ok(`Can't — Must is full at ${MUST_CAP}: ${current}. Ask the user which one to clear first; do NOT clear one on your own.`);
+      }
+      if (f.bucket !== "urgent") move(f, "urgent");
+      f.item.must = true; f.item.starred = true; reflowUrgent(model);
+      ops.push(`marked "${f.item.title}" as Must`);
+      return ok("Marked Must.");
+    }),
+    tool("clear_must", "Demote a Must back to an ordinary Today item. Use this when the user says something is no longer a hard commitment, or when they re-scope the day.", { id: z.string() }, async ({ id }) => {
+      const f = need(id); f.item.must = false; reflowUrgent(model);
+      ops.push(`cleared Must on "${f.item.title}"`);
+      return ok("Cleared — still Today.");
     }),
     tool("move_to_goals", "Move an item into the Goals notepad (optionally under a **subsection**).", { id: z.string(), subsection: z.string().optional() }, async ({ id, subsection }) => {
       const f = need(id);
@@ -241,12 +313,32 @@ function buildServer(ctx) {
     }),
   ];
 
-  return createSdkMcpServer({ name: "todo", version: "0.1.0", tools });
+  if (scope !== "core") return createSdkMcpServer({ name: "todo", version: "0.1.0", tools });
+
+  // Core scope: the everyday tools, plus one escape hatch. load_tools doesn't load
+  // anything itself — it records the need and lets the turn end, and runAgent then
+  // replays the request at full scope (ops are rolled back first, so nothing is
+  // applied twice).
+  const core = tools.filter((t) => CORE_TOOLS.has(t.name));
+  core.push(tool(
+    "load_tools",
+    "Load the rest of your tools. The tools you can see cover capturing, editing, reprioritising, completing, parking and Top 5. Call this FIRST — before answering — if the request needs anything else: the Goals notepad, To Read, attached documents, your memory, or the user's vault notes (reading, searching, editing, or reorganising them). Say nothing else in that turn; the request is re-run with every tool available.",
+    { reason: z.string().describe("What you need that the current tools don't cover, in a few words.") },
+    async ({ reason }) => { ctx.requestWiden?.(reason); return ok("Reloading with the full tool set…"); },
+  ));
+  return createSdkMcpServer({ name: "todo", version: "0.1.0", tools: core });
 }
 
 const NORMAL_CAP = 40; // list this many Normal ids inline; the rest via list_items/search
-export function snapshot(model, docs) {
-  const u = model.urgent.map((it) => `  ${it.id}${it.starred ? " ·Today" : ""} — ${it.title}`).join("\n");
+export function snapshot(model, docs, mustSince) {
+  // Must is called out with its streak so the assistant can spot re-commit theater
+  // (the same item promised every morning) without another tool call.
+  const mark = (it) => {
+    if (!it.must) return it.starred ? " ·Today" : "";
+    const d = mustDays(mustSince, it.title);
+    return d === null || d < 1 ? " ·MUST" : ` ·MUST (${d}d)`;
+  };
+  const u = model.urgent.map((it) => `  ${it.id}${mark(it)} — ${it.title}`).join("\n");
   const tags = [...new Set(model.normal.flatMap((it) => tagsOf(it.title)))];
   const subs = (model.goals?.rawLines ?? []).filter((l) => /^\*\*.+\*\*$/.test(l.trim())).map((l) => l.trim());
   const top5 = model.top5.map((it) => `  ${it.id} — ${it.title}`).join("\n");
@@ -257,7 +349,7 @@ export function snapshot(model, docs) {
   const nMore = model.normal.length > NORMAL_CAP ? `\n  …and ${model.normal.length - NORMAL_CAP} more (use list_items "normal")` : "";
   const documents = docs?.list?.() ?? [];
   return [
-    `Urgent (${model.urgent.length}):`, u || "  (none)",
+    `Urgent (${model.urgent.length}) — ${countMusts(model)}/${MUST_CAP} Must:`, u || "  (none)",
     `Normal (${model.normal.length}). Tags in use: ${tags.length ? tags.map((t) => "#" + t).join(" ") : "(none)"}`,
     (n || "  (none)") + nMore,
     `Top 5 (${model.top5.length}):`, top5 || "  (none)",
@@ -278,6 +370,7 @@ const TOOL_LABELS = {
   write_goals: "Rewriting your goals", search: "Searching your todos",
   add_todo: "Adding a todo", set_priority: "Changing a priority",
   set_today: "Marking something Today", clear_today: "Clearing Today",
+  set_must: "Committing to a Must", clear_must: "Clearing a Must",
   move_to_goals: "Moving to Goals", add_to_top5: "Updating Top 5",
   reorder_top5: "Reordering Top 5", clear_top5: "Clearing Top 5", reorder: "Reordering", rename_tag: "Renaming a tag",
   add_to_read: "Adding to To Read", remove_from_read: "Pruning To Read",
@@ -290,17 +383,22 @@ const TOOL_LABELS = {
   append_to_note: "Drafting a note edit", create_note: "Drafting a new note",
   vault_overview: "Surveying your vault", find_duplicate_notes: "Looking for duplicates",
   move_note: "Proposing a move", trash_note: "Proposing to trash",
+  load_tools: "Getting more tools",
 };
 const toolLabel = (name) => {
   const bare = String(name || "").replace(/^mcp__todo__/, "");
   return TOOL_LABELS[bare] || bare.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 };
 
-export async function runAgent({ model, ops, seen, message, sessionId, abortController, onEvent, docs, mem, notes, cleanup, noteEdits, llmModel, effort, maxTurns = 24, fallbackModel, recentChat = [] }) {
+export async function runAgent({ model, ops, seen, mustSince, message, sessionId, abortController, onEvent, docs, mem, notes, cleanup, noteEdits, llmModel, effort, maxTurns = 24, fallbackModel, toolScope = "full", recentChat = [] }) {
   const emit = (event) => { try { onEvent?.(event); } catch {} };
-  const server = buildServer({ model, ops, seen, docs, mem, notes, cleanup, noteEdits });
+  // Set by the core-scope load_tools tool when the model finds it needs more than
+  // the everyday set; consumed by withWidening below.
+  let widenReason = null;
+  const ctx = { model, ops, seen, mustSince, docs, mem, notes, cleanup, noteEdits, requestWiden: (reason) => { widenReason = reason || "more tools"; } };
+  const serverFor = (scope) => buildServer(ctx, scope);
   const memText = mem?.injectionText?.() || "";
-  const board = `Current board:\n${snapshot(model, docs)}\n\nUser: ${message}`;
+  const board = `Current board:\n${snapshot(model, docs, mustSince)}\n\nUser: ${message}`;
   // A compact recap of the last few turns — folded in only when we start a FRESH
   // session (first message, or after recovering from an overflow), so continuity
   // survives without replaying the whole transcript.
@@ -313,8 +411,9 @@ export async function runAgent({ model, ops, seen, message, sessionId, abortCont
   const promptFor = (resumeId) => (resumeId ? board : memBlock + recentBlock + board);
 
   const opsBaseline = ops.length;
+  const noteEditsBaseline = noteEdits.length; // note edits staged before this message
 
-  const attempt = async (resumeId, modelOverride) => {
+  const attempt = async (resumeId, modelOverride, scope = toolScope) => {
     const usedModel = modelOverride || llmModel;
     const prompt = promptFor(resumeId);
     let reply = "";
@@ -323,9 +422,16 @@ export async function runAgent({ model, ops, seen, message, sessionId, abortCont
     const q = query({
       prompt,
       options: {
-        systemPrompt: SYSTEM,
+        systemPrompt: SYSTEM_FOR(scope),
         settingSources: [],
-        mcpServers: { todo: server },
+        mcpServers: { todo: serverFor(scope) },
+        // The SDK ships every built-in Claude Code tool (Bash, Edit, WebFetch, …)
+        // in the prompt by default — ~17.5k tokens this app can never use, paid on
+        // every message. canUseTool only denies them at *call* time, and allowedTools
+        // doesn't remove them either; disallowedTools is what keeps them out of the
+        // prompt entirely. Keep this list in sync-ish with the SDK: an unknown name
+        // here is harmless, a missing one just costs tokens.
+        disallowedTools: BUILTIN_TOOLS,
         maxTurns,
         ...(usedModel ? { model: usedModel } : {}),
         // Effort never rides on Haiku — the API rejects it.
@@ -361,15 +467,29 @@ export async function runAgent({ model, ops, seen, message, sessionId, abortCont
   // A fast-tier (Haiku, low turn budget) run that ends in max_turns / an execution
   // error rolls back its ops and retries once on a stronger model. Hard signals
   // only — no parsing the reply for "uncertainty".
-  const withEscalation = async (resumeId) => {
-    const first = await attempt(resumeId, llmModel);
+  const withEscalation = async (resumeId, scope) => {
+    const first = await attempt(resumeId, llmModel, scope);
     const flailed = /max_turns|error/i.test(first.subtype || "");
     if (fallbackModel && fallbackModel !== first.model && flailed) {
       ops.length = opsBaseline;
       emit({ kind: "tool", label: `Escalating to ${fallbackModel}…` });
-      return await attempt(resumeId, fallbackModel);
+      return await attempt(resumeId, fallbackModel, scope);
     }
     return first;
+  };
+
+  // Progressive tool loading. A core-scope run that calls load_tools is replayed
+  // once at full scope — ops rolled back first, and starting a FRESH session so the
+  // model doesn't re-read a transcript where it lacked the tools. Only ever widens
+  // once per message: a second load_tools at full scope has nothing left to load.
+  const withWidening = async (resumeId) => {
+    widenReason = null;
+    const first = await withEscalation(resumeId, toolScope);
+    if (toolScope !== "core" || !widenReason) return first;
+    ops.length = opsBaseline;
+    noteEdits.length = noteEditsBaseline;
+    emit({ kind: "tool", label: "Loading the rest of my tools…" });
+    return await withEscalation(undefined, "full");
   };
 
   // A resumed conversation can outgrow the context window ("prompt is too long").
@@ -380,13 +500,13 @@ export async function runAgent({ model, ops, seen, message, sessionId, abortCont
   let recovered = false;
 
   try {
-    const r = await withEscalation(sessionId);
+    const r = await withWidening(sessionId);
     // Some overflows arrive as an error *result* (empty reply) rather than a throw.
     if (sessionId && !recovered && !r.reply && OVERFLOW.test(r.subtype || "")) {
       recovered = true;
       ops.length = opsBaseline;
       emit({ kind: "tool", label: "Conversation got long — starting fresh…" });
-      return await withEscalation(undefined);
+      return await withWidening(undefined);
     }
     return r;
   } catch (e) {
@@ -399,7 +519,7 @@ export async function runAgent({ model, ops, seen, message, sessionId, abortCont
       recovered = true;
       ops.length = opsBaseline;
       if (overflow) emit({ kind: "tool", label: "Conversation got long — starting fresh…" });
-      return await withEscalation(undefined);
+      return await withWidening(undefined);
     }
     if (overflow) throw new Error("This conversation got too long to continue. Click “Clear chat” and ask again — for a big weekly review, tackle one section at a time.");
     throw e;

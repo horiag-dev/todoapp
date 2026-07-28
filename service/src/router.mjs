@@ -11,10 +11,16 @@
 // fast tier leaves it undefined. Default-when-uncertain is Sonnet, not Haiku:
 // misrouting *up* costs ~2s and pennies; misrouting a real task *down* to Haiku
 // costs quality.
+//
+// `scope` picks how many tools get loaded (see TOOL_GROUPS in agent.mjs). Everyday
+// traffic — capture, edit, reprioritise — only needs the core dozen, so fast and
+// standard start there and widen via load_tools on the rare miss. Deep requests are
+// the ones that reach for goals, notes and memory by definition, so they skip the
+// guess and load everything up front.
 export const TIERS = {
-  fast: { tier: "fast", model: "haiku", effort: undefined, maxTurns: 8 },
-  standard: { tier: "standard", model: "sonnet", effort: undefined, maxTurns: 24 },
-  deep: { tier: "deep", model: "opus", effort: "high", maxTurns: 24 },
+  fast: { tier: "fast", model: "haiku", effort: undefined, maxTurns: 8, scope: "core" },
+  standard: { tier: "standard", model: "sonnet", effort: undefined, maxTurns: 24, scope: "core" },
+  deep: { tier: "deep", model: "opus", effort: "high", maxTurns: 24, scope: "full" },
 };
 
 // Short imperative that maps to one deterministic mutation.
@@ -23,38 +29,55 @@ const TRIVIAL_VERB = /^(add|capture|delete|remove|drop|rename|complete|finish|ma
 const CHAINED = /\b(and|then|also|plus)\b|[;,]|\n/i;
 // Heavy reasoning / reorganization keywords.
 const HEAVY = /\b(review|reorganiz|reorganise|clean\s?up|declutter|tidy|triage|re?prioriti[sz]e|top\s?5|weekly|audit|overhaul|restructur|consolidat)|\bplan (my|the) (day|week)\b/i;
+// Anything reaching past the everyday tool set — goals, To Read, documents, memory,
+// vault notes. Deliberately generous: a false positive costs a few hundred tokens of
+// tool schema, a false negative costs a whole extra round trip through load_tools.
+// Stems, not whole words — "goal" has to catch "goals", "attach" has to catch
+// "attachment", "summar" has to catch "summarize".
+const NEEDS_FULL = /\b(goal|note|vault|obsidian|remember|memory|forget|document|attach|pdf|summar|to.?read|reading list)|\[\[/i;
 
-const withReason = (tier, reason) => ({ ...TIERS[tier], reason });
+// Scope is decided by what the message *reaches for*, independent of how hard it is
+// to think about: "add milk" and "rewrite my goals" can both be one-liners, but only
+// the second needs the full tool set loaded up front.
+const withReason = (tier, reason, text = "") => {
+  const t = TIERS[tier];
+  return { ...t, reason, scope: t.scope === "full" || NEEDS_FULL.test(text) ? "full" : "core" };
+};
 
-// → { tier, model, effort, maxTurns, reason }
-export function routeTier({ message = "", context = null, intent = null, prevTier = null } = {}) {
+// → { tier, model, effort, maxTurns, reason, scope }
+export function routeTier({ message = "", context = null, intent = null, prevTier = null, prevScope = null } = {}) {
   const text = String(message || "").trim();
 
   // 1. Explicit heavy intent from a button (weekly review / plan my day / tidy).
-  if (["review", "plan", "tidy"].includes(intent)) return withReason("deep", `${intent} intent`);
+  if (["review", "plan", "tidy"].includes(intent)) return withReason("deep", `${intent} intent`, text);
 
   // 2. A single todo is pinned via the 💬 bar — the item is already resolved, so the
   //    model only has to interpret the verb. Fast, unless the instruction itself is
   //    heavy or long (then let Sonnet handle it).
   if (context && context.id) {
-    if (HEAVY.test(text) || text.length > 300) return withReason("standard", "pinned, non-trivial");
-    return withReason("fast", "pinned single-item");
+    if (HEAVY.test(text) || text.length > 300) return withReason("standard", "pinned, non-trivial", text);
+    return withReason("fast", "pinned single-item", text);
   }
 
   // 3. Trivial single-item edit — short, imperative, no chaining. Checked before the
   //    heavy shape so an incidental keyword ("delete the review notes") stays fast.
-  if (text.length <= 120 && TRIVIAL_VERB.test(text) && !CHAINED.test(text)) return withReason("fast", "trivial edit");
+  if (text.length <= 120 && TRIVIAL_VERB.test(text) && !CHAINED.test(text)) return withReason("fast", "trivial edit", text);
 
   // 4. Heavy shape — reasoning keywords, or a lot of pasted text.
-  if (HEAVY.test(text) || text.length > 400) return withReason("deep", "heavy request");
+  if (HEAVY.test(text) || text.length > 400) return withReason("deep", "heavy request", text);
 
   // 5. Deep-session continuation — a short follow-up ("ok do it", "the second one")
   //    that matched nothing above inherits the ongoing conversation's tier, so the
   //    judgment stays with the model that started the thread. Only inherits *up*
   //    (deep/standard): a short follow-up after a fast edit shouldn't keep Haiku for
   //    what might be a fresh, non-trivial question — fall through to the default.
-  if ((prevTier === "deep" || prevTier === "standard") && text.length < 40) return withReason(prevTier, `continues ${prevTier}`);
+  //    Scope is inherited too: "ok, do it" after a turn that loaded the vault tools
+  //    almost certainly still needs them, and re-widening costs a whole round trip.
+  if ((prevTier === "deep" || prevTier === "standard") && text.length < 40) {
+    const r = withReason(prevTier, `continues ${prevTier}`, text);
+    return prevScope === "full" ? { ...r, scope: "full" } : r;
+  }
 
   // 6. Default when uncertain: Sonnet.
-  return withReason("standard", "default");
+  return withReason("standard", "default", text);
 }

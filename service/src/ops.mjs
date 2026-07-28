@@ -1,7 +1,7 @@
 // Direct (non-agent) mutations on the working draft. Same semantics the agent
 // tools use, invoked straight from the UI (click a checkbox, quick-add, delete).
 // These add to the draft like agent edits — nothing persists until Apply.
-import { findById, reflowUrgent, newItem } from "./model.mjs";
+import { findById, reflowUrgent, newItem, MUST_CAP, countMusts } from "./model.mjs";
 
 const need = (model, id) => {
   const f = findById(model, id);
@@ -46,6 +46,7 @@ export function applyAction(model, action, a = {}) {
     case "complete": {
       const f = need(model, a.id);
       f.item.checked = true;
+      f.item.must = false;
       move(model, f, "completed");
       return `completed "${f.item.title}"`;
     }
@@ -59,6 +60,7 @@ export function applyAction(model, action, a = {}) {
     case "delete": {
       const f = need(model, a.id);
       f.item.checked = true;
+      f.item.must = false;
       move(model, f, "deleted");
       return `deleted "${f.item.title}"`;
     }
@@ -78,7 +80,7 @@ export function applyAction(model, action, a = {}) {
     case "park": {
       const f = need(model, a.id);
       if (f.bucket === "parked") return null;
-      f.item.checked = false; f.item.starred = false;
+      f.item.checked = false; f.item.starred = false; f.item.must = false;
       move(model, f, "parked");
       return `parked "${f.item.title}"`;
     }
@@ -105,6 +107,7 @@ export function applyAction(model, action, a = {}) {
       const f = need(model, a.id);
       if (f.item.starred) {
         f.item.starred = false;
+        f.item.must = false; // dropping the intention drops the commitment with it
       } else {
         if (f.bucket !== "urgent") move(model, f, "urgent");
         f.item.starred = true;
@@ -112,10 +115,30 @@ export function applyAction(model, action, a = {}) {
       reflowUrgent(model);
       return `${f.item.starred ? "marked" : "cleared"} Today on "${f.item.title}"`;
     }
+    // Must is promoted FROM Today, not from anywhere: a commitment is an intention
+    // you escalated. Toggling off demotes back to Today rather than off the list.
+    case "toggleMust": {
+      const f = need(model, a.id);
+      if (f.item.must) {
+        f.item.must = false;
+        reflowUrgent(model);
+        return `cleared Must on "${f.item.title}" (still Today)`;
+      }
+      if (countMusts(model) >= MUST_CAP) {
+        const current = model.urgent.filter((i) => i.must).map((i) => `“${i.title}”`).join(", ");
+        throw new Error(`Must is capped at ${MUST_CAP}. Clear one first — right now it's ${current}.`);
+      }
+      if (f.bucket !== "urgent") move(model, f, "urgent");
+      f.item.must = true;
+      f.item.starred = true;
+      reflowUrgent(model);
+      return `marked "${f.item.title}" Must`;
+    }
     case "setPriority": {
       const f = need(model, a.id);
       const to = a.bucket === "normal" ? "normal" : "urgent";
       f.item.starred = false;
+      f.item.must = false;
       if (f.bucket !== to) {
         move(model, f, to);
         if (to === "urgent") reflowUrgent(model);
@@ -134,6 +157,7 @@ export function applyAction(model, action, a = {}) {
         const f = findById(model, id);
         if (!f) continue;
         f.item.starred = false;
+        f.item.must = false;
         if (f.bucket !== to) move(model, f, to);
         count++;
         last = f.item.title;
@@ -162,7 +186,10 @@ export function applyAction(model, action, a = {}) {
       if (idx < 0) throw new Error("not an urgent item");
       const it = arr[idx];
       const j = idx + (a.dir === "up" ? -1 : 1);
-      if (j < 0 || j >= arr.length || arr[j].starred !== it.starred) return null; // edge / would cross the Today group
+      // Must / Today / rest are three ordered groups — a manual nudge may not cross
+      // a group boundary (use toggleMust / toggleToday for that).
+      const grp = (i) => (i.must ? 0 : i.starred ? 1 : 2);
+      if (j < 0 || j >= arr.length || grp(arr[j]) !== grp(it)) return null;
       [arr[idx], arr[j]] = [arr[j], arr[idx]];
       return `moved "${it.title}" ${a.dir}`;
     }
@@ -202,6 +229,7 @@ export function applyAction(model, action, a = {}) {
       const wasBucket = source.bucket === "urgent" ? (item.starred ? "today" : "urgent") : source.bucket;
       source.arr.splice(source.idx, 1);
       item.starred = destination === "today";
+      if (destination !== "today") item.must = false;
       const arr = model[destinationBucket];
       let insertAt;
       if (targetItem) {
