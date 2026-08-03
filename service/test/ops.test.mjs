@@ -245,3 +245,50 @@ test("renameTag changes matching tags across active and Top 5 items", () => {
   assert.equal(m.top5[0].title, "Plan #new");
   assert.equal(m.normal.at(-1).title, "Build #new");
 });
+
+// --- bulk park (multi-select in Urgent) --------------------------------------
+
+const PARK_BASE = `# Todo List
+
+### 🔴 Urgent
+
+- [ ] ‼️ Ship the deck
+- [ ] ⭐ Fix the build
+- [ ] Review the PR
+
+### 🔵 Normal
+
+- [ ] Read the docs
+`;
+
+test("parkMany shelves several items as one step, clearing Today and Must", () => {
+  const m = model(PARK_BASE);
+  const ids = m.urgent.map((i) => i.id);
+  assert.equal(applyAction(m, "parkMany", { ids }), "parked 3 items");
+  assert.equal(m.urgent.length, 0);
+  assert.equal(m.parked.length, 3);
+  for (const it of m.parked) {
+    assert.equal(!!it.must, false, it.title);
+    assert.equal(!!it.starred, false, it.title);
+  }
+  // and no marker is stranded in the Parked section
+  assert.doesNotMatch(serialize(m), /‼️|⭐/);
+});
+
+test("parkMany skips missing and already-parked ids instead of throwing", () => {
+  const m = model(PARK_BASE);
+  const id = idOf(m, "urgent", "Review the PR");
+  applyAction(m, "parkMany", { ids: [id] });
+  assert.equal(m.parked.length, 1);
+  // second pass: that id is now parked, plus one that never existed → no-op
+  assert.equal(applyAction(m, "parkMany", { ids: [id, "nope"] }), null);
+  assert.equal(m.parked.length, 1);
+});
+
+test("parking a single item via parkMany names it", () => {
+  const m = model(PARK_BASE);
+  assert.equal(
+    applyAction(m, "parkMany", { ids: [idOf(m, "urgent", "Review the PR")] }),
+    'parked "Review the PR"',
+  );
+});

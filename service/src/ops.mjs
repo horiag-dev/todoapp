@@ -166,6 +166,26 @@ export function applyAction(model, action, a = {}) {
       if (!count) return null;
       return count === 1 ? `moved "${last}" to ${to}` : `moved ${count} items to ${to}`;
     }
+    // Bulk sibling of park — shelve several selected items at once, so a multi-select
+    // is one activity entry / one undo step. Already-parked and missing ids are
+    // skipped rather than fatal.
+    case "parkMany": {
+      const ids = Array.isArray(a.ids) ? a.ids : [];
+      let count = 0;
+      let last = "";
+      for (const id of ids) {
+        const f = findById(model, id);
+        if (!f || f.bucket === "parked") continue;
+        f.item.checked = false;
+        f.item.starred = false;
+        f.item.must = false;
+        move(model, f, "parked");
+        count++;
+        last = f.item.title;
+      }
+      if (!count) return null;
+      return count === 1 ? `parked "${last}"` : `parked ${count} items`;
+    }
     case "editTitle": {
       const f = need(model, a.id);
       const t = (a.title || "").trim();
