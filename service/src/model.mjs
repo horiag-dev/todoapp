@@ -51,10 +51,11 @@ export function normalizeChains(model) {
   for (const b of ["completed", "deleted"]) for (const it of model[b] ?? []) it.blocked = false;
 }
 
-// The item a blocked item is waiting on: the nearest unblocked line above it.
+// The item a blocked item is waiting on: simply the line above it. In a chain
+// A → B → C, C waits on B (not on the head A) — that's what "sequential" means,
+// and it's the same item releaseFollower promotes when B leaves.
 export function blockerOf(arr, idx) {
-  for (let i = idx - 1; i >= 0; i--) if (!arr[i].blocked) return arr[i];
-  return null;
+  return idx > 0 ? arr[idx - 1] : null;
 }
 
 // Call BEFORE removing arr[idx]: whatever was queued directly behind it is

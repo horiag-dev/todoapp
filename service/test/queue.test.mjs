@@ -165,10 +165,13 @@ test("a queued item reports what it is waiting for", () => {
   assert.equal(v[1].waitingFor, "Book the venue");
 });
 
-test("the second follower waits on the head, not on the item above it", () => {
-  const m = load(["- [ ] Head", "- [ ] ↳ A", "- [ ] ↳ B"]);
+test("each step waits on the one directly before it, not on the head", () => {
+  // A → B → C: C is waiting on B. Reporting "waiting for A" would be misleading
+  // for any chain longer than two, and wouldn't match what completing B does.
+  const m = load(["- [ ] A", "- [ ] ↳ B", "- [ ] ↳ C"]);
   const v = m.urgent.map((it, i) => itemView(it, m.urgent, i));
-  assert.equal(v[2].waitingFor, "Head");
+  assert.equal(v[1].waitingFor, "A");
+  assert.equal(v[2].waitingFor, "B");
 });
 
 // --- un-complete -------------------------------------------------------------
