@@ -1,12 +1,12 @@
 {
   "name": "bigrocks-service",
-  "version": "0.28.1",
+  "version": "0.29.0",
   "private": true,
   "type": "module",
   "description": "Big Rocks First — a local, agent-assisted service over a markdown/Obsidian todo file.",
   "scripts": {
     "start": "node src/server.mjs",
-    "test": "node --test test/*.test.mjs",
+    "test": "BIGROCKS_STATE_DIR=\"$(mktemp -d)\" node --test test/*.test.mjs",
     "validate": "node scripts/validate-real-file.mjs"
   },
   "dependencies": {

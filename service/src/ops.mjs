@@ -36,6 +36,44 @@ export function insertGoal(model, title, subsection) {
   lines.push(line);
 }
 
+// Split one jammed row into several real todos, in place. Shared by the direct
+// action and the agent's split_todo tool so both behave identically.
+//
+// Tag handling is the subtle part: tags are this file's main organizing axis, so
+// a split that drops them loses more than it gains. If the caller distributed the
+// original's tags across the parts, that was deliberate and we leave it alone; any
+// tag that survives in NO part is restored to every part.
+const TAG_RE = /(?:^|\s)#([A-Za-z0-9_/-]+)/g;
+export function splitItem(model, id, parts, { sequential = false } = {}) {
+  const f = findById(model, id);
+  if (!f) throw new Error(`No item ${id}`);
+  if (!["urgent", "normal", "top5"].includes(f.bucket)) throw new Error("only Urgent, Normal and Top 5 items can be split");
+  const clean = (parts ?? []).map((p) => String(p ?? "").trim()).filter(Boolean);
+  if (clean.length < 2) throw new Error("a split needs at least two parts");
+  if (clean.length > 8) throw new Error("that's too many parts — split into at most 8");
+
+  const original = f.item;
+  const origTags = [...original.title.matchAll(TAG_RE)].map((m) => m[1]);
+  const inParts = new Set(clean.flatMap((p) => [...p.matchAll(TAG_RE)].map((m) => m[1].toLowerCase())));
+  const dropped = origTags.filter((t) => !inParts.has(t.toLowerCase()));
+  const titled = clean.map((p) => (dropped.length ? `${p} ${dropped.map((t) => "#" + t).join(" ")}` : p));
+
+  // Only the head inherits Today/Must — otherwise splitting a Must would mint
+  // three of them and blow the cap. Followers are queued when order matters.
+  const made = titled.map((title, i) => newItem(title, {
+    starred: i === 0 && !!original.starred,
+    must: i === 0 && !!original.must,
+    blocked: sequential && i > 0,
+  }));
+  f.arr.splice(f.idx, 1, ...made);
+  if (f.bucket === "urgent") reflowUrgent(model);
+  normalizeChains(model);
+  return {
+    ids: made.map((m) => m.id),
+    op: `split "${original.title}" into ${made.length}${sequential ? " sequential steps" : " todos"}`,
+  };
+}
+
 // Returns a human-readable op description, or null if the action was a no-op.
 export function applyAction(model, action, a = {}) {
   switch (action) {
@@ -223,6 +261,10 @@ export function applyAction(model, action, a = {}) {
       }
       if (!count) return null;
       return count === 1 ? `parked "${last}"` : `parked ${count} items`;
+    }
+    case "split": {
+      const { op } = splitItem(model, a.id, a.parts, { sequential: !!a.sequential });
+      return op;
     }
     case "editTitle": {
       const f = need(model, a.id);

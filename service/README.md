@@ -32,6 +32,13 @@ detected with content versions so stale drafts cannot overwrite the vault.
   either releases it), a queue moves as a unit when reordered or reflowed, and
   completing/deleting/parking a head promotes its direct follower — the rest of
   the chain stays queued behind it.
+- **Split a jammed row** — a todo that bundles several tasks can never be ticked
+  off, so it sits in Urgent forever (16 of 64 active items in the real file look
+  like this). `split_todo` breaks one row into 2–8 real todos in place, optionally
+  as a `↳` queue when order matters. Tags are preserved: any tag the parts drop
+  entirely is restored to all of them, while tags deliberately distributed across
+  parts are left alone. Only the head inherits Today/Must, so splitting a Must
+  can't mint extra ones past the cap.
 - **Un-complete** — a mis-clicked checkbox goes back to Urgent unchecked
   (`uncomplete`). Distinct from Restore, which pulls an item out of the trash into
   Normal: that's reconsidering a decision, not undoing an accident.

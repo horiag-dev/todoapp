@@ -3,7 +3,7 @@ import { z } from "zod";
 import { findById, reflowUrgent, newItem, itemView, searchModel, MUST_CAP, countMusts, blockerOf, releaseFollower, normalizeChains } from "./model.mjs";
 import { tagsOf } from "./parse.mjs";
 import { ageDays, mustDays } from "./ledger.mjs";
-import { insertGoal } from "./ops.mjs";
+import { insertGoal, splitItem } from "./ops.mjs";
 import { SECTIONS as MEMORY_SECTIONS } from "./memory.mjs";
 import { unfurlUrl } from "./unfurl.mjs";
 import { extractPdfText, isPdf } from "./pdf.mjs";
@@ -33,6 +33,8 @@ The model is categorical, never temporal — there are NO due dates, calendars, 
 - Urgent: the active working list.
 - Normal: the pile of everything else.
 - Top 5: the handful of priorities for the week.
+
+SPLITTING. A row that is really several tasks can never be ticked off, so it sits there forever. When a todo bundles separable deliverables — joined by "and", "+", ";", ", also", or an em-dash list — use split_todo to break it into short, action-shaped todos. Rules: keep each part something you could finish in one sitting; set sequential=true only when order genuinely matters (that makes them a queue); distribute person/topic tags to the parts they belong to; and DON'T split a row that is one action with detail in parentheses, or merely long. When the user asks to tidy a tag or a section, look for these and propose the splits — say what you'd split into and let them see it in the draft; don't ask permission item by item.
 
 QUEUES. Items can be sequential: queue_after marks an item as waiting on the one directly ABOVE it in the same section (shown as ·after↑ in the board). A queue is just consecutive lines, so ordering IS the dependency — to queue B behind A, B must sit directly below A (reorder first if not). A queued item isn't startable: it can't be Today or Must, and marking it either releases it. Completing/deleting/parking the head automatically releases the next one. Use this only for real sequencing ("can't send invites before booking the venue"), never for things that are merely related — that's what tags are for.
 
@@ -78,7 +80,7 @@ export const TOOL_GROUPS = {
   core: [
     "list_items", "search", "add_todo", "set_priority", "set_today", "clear_today",
     "complete", "edit_title", "delete", "reorder", "park", "unpark", "add_to_top5",
-    "set_must", "clear_must", "queue_after", "unqueue", "uncomplete",
+    "set_must", "clear_must", "queue_after", "unqueue", "uncomplete", "split_todo",
   ],
   organize: ["reorder_top5", "clear_top5", "rename_tag", "move_to_goals", "add_to_read", "remove_from_read"],
   goals: ["read_goals", "write_goals"],
@@ -171,6 +173,17 @@ function buildServer(ctx, scope = "full") {
       const f = need(id); f.item.must = false; reflowUrgent(model);
       ops.push(`cleared Must on "${f.item.title}"`);
       return ok("Cleared — still Today.");
+    }),
+    tool("split_todo", "Split one todo that is really several tasks into separate todos, in place. Pass the id and 2-8 short action-shaped parts. Set sequential=true ONLY when the parts genuinely have to happen in order (they become a queue); leave it false when they're just separate things. Tags from the original are preserved automatically — distribute them across the parts yourself when they clearly belong to different parts (e.g. a person tag).", {
+      id: z.string(),
+      parts: z.array(z.string()).min(2).max(8),
+      sequential: z.boolean().optional(),
+    }, async ({ id, parts, sequential }) => {
+      try {
+        const r = splitItem(model, id, parts, { sequential: !!sequential });
+        ops.push(r.op);
+        return ok(`Split into ${r.ids.length}: ${r.ids.join(", ")}.`);
+      } catch (e) { return ok(String(e?.message || e)); }
     }),
     tool("queue_after", "Queue an item to happen AFTER the item directly above it in the same section — for steps that genuinely must happen in order. A queued item is not startable, so this clears Today/Must on it. If the item isn't already directly below the one it should follow, use `reorder` first. Don't queue things that merely feel related; only real sequencing.", { id: z.string() }, async ({ id }) => {
       const f = need(id);
@@ -408,6 +421,7 @@ const TOOL_LABELS = {
   set_today: "Marking something Today", clear_today: "Clearing Today",
   set_must: "Committing to a Must", clear_must: "Clearing a Must",
   queue_after: "Queuing a step", unqueue: "Releasing from a queue", uncomplete: "Putting it back",
+  split_todo: "Splitting into steps",
   move_to_goals: "Moving to Goals", add_to_top5: "Updating Top 5",
   reorder_top5: "Reordering Top 5", clear_top5: "Clearing Top 5", reorder: "Reordering", rename_tag: "Renaming a tag",
   add_to_read: "Adding to To Read", remove_from_read: "Pruning To Read",
