@@ -11,6 +11,11 @@
 
 const STAR_RE = /^⭐️?[ \t]*/; // ⭐ optionally with a variation selector, then spaces
 const MUST_RE = /^‼️?[ \t]*/; // ‼ (U+203C), same variation-selector tolerance
+// `↳ ` (U+21B3) = "do this after the item directly above me, in this same section".
+// Purely positional: no ids, no dependency graph, so cycles and orphans are
+// impossible by construction and a human editing the file in Obsidian can chain
+// or unchain things just by typing (or deleting) one character.
+const CHAIN_RE = /^↳[ \t]*/;
 const TODO_RE = /^([ \t]*)- \[([ xX])\][ \t]*(.*)$/;
 const HEADER_RE = /^(#{1,6})[ \t]+(.*\S)[ \t]*$/;
 
@@ -65,12 +70,17 @@ function parseItems(bodyLines) {
     // in Obsidian might type both. A Must is by definition also a Today.
     let must = false;
     let starred = false;
+    let blocked = false;
     for (let stripped = true; stripped; ) {
       stripped = false;
       if (MUST_RE.test(rest)) { must = true; rest = rest.replace(MUST_RE, ""); stripped = true; }
       if (STAR_RE.test(rest)) { starred = true; rest = rest.replace(STAR_RE, ""); stripped = true; }
+      if (CHAIN_RE.test(rest)) { blocked = true; rest = rest.replace(CHAIN_RE, ""); stripped = true; }
     }
-    items.push({ checked, must, starred: starred || must, title: rest });
+    // Queued behind something means not yet startable, so it can't also be an
+    // intention or a commitment for today — the chain marker wins.
+    if (blocked) { must = false; starred = false; }
+    items.push({ checked, must, starred: starred || must, blocked, title: rest });
   }
   return { items, strays };
 }

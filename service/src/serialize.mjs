@@ -16,9 +16,10 @@ const HEADERS = {
 
 function renderItem(it) {
   const box = it.checked ? "x" : " ";
-  // One marker only: `‼️ ` (Must) already implies Today, so it replaces the star
-  // rather than stacking with it.
-  const mark = it.must ? "‼️ " : it.starred ? "⭐ " : "";
+  // One marker only. `↳ ` (queued behind the line above) outranks both, since a
+  // blocked item can't be an intention; `‼️ ` (Must) already implies Today, so it
+  // replaces the star rather than stacking with it.
+  const mark = it.blocked ? "↳ " : it.must ? "‼️ " : it.starred ? "⭐ " : "";
   return `- [${box}] ${mark}${it.title}`;
 }
 

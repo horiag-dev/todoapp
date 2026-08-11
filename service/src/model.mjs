@@ -26,20 +26,72 @@ export function findById(model, id) {
 export const MUST_CAP = 3;
 export const countMusts = (model) => model.urgent.filter((i) => i.must).length;
 
-// Stable rank ordering within Urgent: Must first, then the rest of Today, then
-// everything else. Order *within* each group is preserved.
-const rank = (i) => (i.must ? 0 : i.starred ? 1 : 2);
-export function reflowUrgent(model) {
-  model.urgent = [0, 1, 2].flatMap((r) => model.urgent.filter((i) => rank(i) === r));
+// --- queues ------------------------------------------------------------------
+// A queue is a head item followed by consecutive `blocked` items. It's positional,
+// not a graph: "blocked" just means "waits for the line above me". Split an array
+// into chains so ordering can move a whole queue as one unit.
+export function chainsOf(items) {
+  const out = [];
+  for (const it of items) {
+    if (it.blocked && out.length) out[out.length - 1].push(it);
+    else out.push([it]);
+  }
+  return out;
 }
 
-export function newItem(title, { starred = false, checked = false, must = false } = {}) {
-  return { checked, must, starred: starred || must, title, id: "i" + ++counter };
+// The head of a queue can never itself be blocked — nothing sits above it to wait
+// for. Runs after any structural change (complete, move, reorder, delete) so a
+// queue whose head left is simply promoted rather than left dangling.
+export function normalizeChains(model) {
+  for (const b of ["urgent", "normal", "top5", "parked"]) {
+    const arr = model[b];
+    if (arr?.length && arr[0].blocked) arr[0].blocked = false;
+  }
+  // Completed/Deleted are archives — a stale marker there would be noise.
+  for (const b of ["completed", "deleted"]) for (const it of model[b] ?? []) it.blocked = false;
+}
+
+// The item a blocked item is waiting on: the nearest unblocked line above it.
+export function blockerOf(arr, idx) {
+  for (let i = idx - 1; i >= 0; i--) if (!arr[i].blocked) return arr[i];
+  return null;
+}
+
+// Call BEFORE removing arr[idx]: whatever was queued directly behind it is
+// released. Without this, "waits for the line above" would silently re-point the
+// follower at an unrelated item that happened to sit above the one you removed —
+// so finishing a queue head would leave the next step blocked on a stranger.
+// Only the direct follower is promoted; the rest of the chain stays behind it.
+export function releaseFollower(arr, idx) {
+  const next = arr[idx + 1];
+  if (next?.blocked) next.blocked = false;
+}
+
+// Stable rank ordering within Urgent: Must first, then the rest of Today, then
+// everything else. Order *within* each group is preserved. Queues move as a unit
+// and are ranked by their head, so a chain never gets torn apart by a reflow.
+const rank = (i) => (i.must ? 0 : i.starred ? 1 : 2);
+export function reflowUrgent(model) {
+  normalizeChains(model);
+  const chains = chainsOf(model.urgent);
+  model.urgent = [0, 1, 2].flatMap((r) => chains.filter((c) => rank(c[0]) === r)).flat();
+}
+
+export function newItem(title, { starred = false, checked = false, must = false, blocked = false } = {}) {
+  return { checked, must, blocked, starred: !blocked && (starred || must), title, id: "i" + ++counter };
 }
 
 // A compact, id-bearing view for the agent's read tools and the web UI.
-export function itemView(it) {
-  return { id: it.id, title: it.title, today: !!it.starred, must: !!it.must, done: !!it.checked, tags: tagsOf(it.title), links: linksOf(it.title) };
+// `waitingFor` is resolved here rather than left to the caller, so a blocked item
+// is self-describing wherever it renders — the Today/Urgent split can separate it
+// from its head on screen while the file keeps them adjacent.
+export function itemView(it, arr, idx) {
+  const blocker = it.blocked && arr ? blockerOf(arr, idx) : null;
+  return {
+    id: it.id, title: it.title, today: !!it.starred, must: !!it.must, done: !!it.checked,
+    ...(it.blocked ? { blocked: true, waitingFor: blocker?.title ?? null } : {}),
+    tags: tagsOf(it.title), links: linksOf(it.title),
+  };
 }
 
 // Server-side near-duplicate detection (mirrors the client quick-add check) —

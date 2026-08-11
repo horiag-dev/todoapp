@@ -1,7 +1,7 @@
 // Direct (non-agent) mutations on the working draft. Same semantics the agent
 // tools use, invoked straight from the UI (click a checkbox, quick-add, delete).
 // These add to the draft like agent edits — nothing persists until Apply.
-import { findById, reflowUrgent, newItem, MUST_CAP, countMusts } from "./model.mjs";
+import { findById, reflowUrgent, newItem, MUST_CAP, countMusts, normalizeChains, chainsOf, blockerOf, releaseFollower } from "./model.mjs";
 
 const need = (model, id) => {
   const f = findById(model, id);
@@ -9,8 +9,13 @@ const need = (model, id) => {
   return f;
 };
 const move = (model, f, to) => {
+  // Moving a queue head out promotes whatever was waiting on it; moving a blocked
+  // item out detaches it, since its blocker no longer sits above it.
+  releaseFollower(f.arr, f.idx);
   f.arr.splice(f.idx, 1);
+  f.item.blocked = false;
   model[to].push(f.item);
+  normalizeChains(model);
 };
 
 // Append a bullet to the Goals notepad — under a **subsection** header if given
@@ -71,9 +76,22 @@ export function applyAction(model, action, a = {}) {
       move(model, f, "normal");
       return `restored "${f.item.title}" to normal`;
     }
+    // Un-complete: the fix for a mis-clicked checkbox. Goes back to Urgent rather
+    // than Normal — you only reach for this when the work is still live. (Restore,
+    // from the trash, still lands in Normal: that's an older decision being
+    // reconsidered, not an accident being undone.)
+    case "uncomplete": {
+      const f = need(model, a.id);
+      if (f.bucket !== "completed") throw new Error("only completed items can be un-completed");
+      f.item.checked = false;
+      move(model, f, "urgent");
+      reflowUrgent(model);
+      return `un-completed "${f.item.title}" — back in Urgent`;
+    }
     case "permanentDelete": {
       const f = need(model, a.id);
       if (f.bucket !== "deleted") throw new Error("only deleted items can be permanently removed");
+      releaseFollower(f.arr, f.idx);
       f.arr.splice(f.idx, 1);
       return `permanently removed "${f.item.title}"`;
     }
@@ -111,6 +129,7 @@ export function applyAction(model, action, a = {}) {
       } else {
         if (f.bucket !== "urgent") move(model, f, "urgent");
         f.item.starred = true;
+        f.item.blocked = false; // intending to do it today releases it from its queue
       }
       reflowUrgent(model);
       return `${f.item.starred ? "marked" : "cleared"} Today on "${f.item.title}"`;
@@ -131,8 +150,27 @@ export function applyAction(model, action, a = {}) {
       if (f.bucket !== "urgent") move(model, f, "urgent");
       f.item.must = true;
       f.item.starred = true;
+      f.item.blocked = false; // committing to it releases it from its queue
       reflowUrgent(model);
       return `marked "${f.item.title}" Must`;
+    }
+    // Queue an item behind the one directly above it, or release it. Positional, so
+    // there's nothing to point at and nothing to corrupt: the first line in a
+    // section can't be queued (nothing above it to wait for).
+    case "toggleQueued": {
+      const f = need(model, a.id);
+      if (f.item.blocked) {
+        f.item.blocked = false;
+        return `released "${f.item.title}" — no longer waiting`;
+      }
+      if (!["urgent", "normal"].includes(f.bucket)) throw new Error("only Urgent and Normal items can be queued");
+      if (f.idx === 0) throw new Error("nothing above this to queue behind — move it below another item first");
+      f.item.blocked = true;
+      f.item.starred = false;
+      f.item.must = false;
+      if (f.bucket === "urgent") reflowUrgent(model);
+      const after = blockerOf(f.arr, f.arr.indexOf(f.item));
+      return `queued "${f.item.title}" after "${after?.title ?? "the item above"}"`;
     }
     case "setPriority": {
       const f = need(model, a.id);
@@ -197,20 +235,27 @@ export function applyAction(model, action, a = {}) {
     case "moveToGoals": {
       const f = need(model, a.id);
       insertGoal(model, f.item.title, a.subsection);
+      releaseFollower(f.arr, f.idx);
       f.arr.splice(f.idx, 1);
       return `moved "${f.item.title}" to Goals`;
     }
+    // Nudge up/down. Operates on whole queues: a blocked item is positioned by the
+    // queue it belongs to, so it has no independent up/down of its own.
     case "reorder": {
       const arr = model.urgent;
       const idx = arr.findIndex((i) => i.id === a.id);
       if (idx < 0) throw new Error("not an urgent item");
       const it = arr[idx];
-      const j = idx + (a.dir === "up" ? -1 : 1);
+      if (it.blocked) return null; // moves with its head, not on its own
+      const chains = chainsOf(arr);
+      const c = chains.findIndex((chain) => chain[0] === it);
+      const j = c + (a.dir === "up" ? -1 : 1);
       // Must / Today / rest are three ordered groups — a manual nudge may not cross
       // a group boundary (use toggleMust / toggleToday for that).
       const grp = (i) => (i.must ? 0 : i.starred ? 1 : 2);
-      if (j < 0 || j >= arr.length || grp(arr[j]) !== grp(it)) return null;
-      [arr[idx], arr[j]] = [arr[j], arr[idx]];
+      if (j < 0 || j >= chains.length || grp(chains[j][0]) !== grp(it)) return null;
+      [chains[c], chains[j]] = [chains[j], chains[c]];
+      model.urgent = chains.flat();
       return `moved "${it.title}" ${a.dir}`;
     }
     case "addTop5": {
@@ -247,7 +292,15 @@ export function applyAction(model, action, a = {}) {
 
       const item = source.item;
       const wasBucket = source.bucket === "urgent" ? (item.starred ? "today" : "urgent") : source.bucket;
-      source.arr.splice(source.idx, 1);
+      // Dragging a queue HEAD takes its followers with it — a queue that got torn
+      // apart by a drag would silently stop being a sequence. Dragging a follower
+      // detaches just that one (below), since its blocker is no longer above it.
+      const followers = [];
+      if (!item.blocked) {
+        for (let k = source.idx + 1; k < source.arr.length && source.arr[k].blocked; k++) followers.push(source.arr[k]);
+      }
+      source.arr.splice(source.idx, 1 + followers.length);
+      item.blocked = false;
       item.starred = destination === "today";
       if (destination !== "today") item.must = false;
       const arr = model[destinationBucket];
@@ -261,7 +314,8 @@ export function applyAction(model, action, a = {}) {
       } else {
         insertAt = arr.length;
       }
-      arr.splice(insertAt, 0, item);
+      arr.splice(insertAt, 0, item, ...followers);
+      normalizeChains(model);
       return wasBucket === destination
         ? `reordered "${item.title}" in ${destination}`
         : `moved "${item.title}" from ${wasBucket} to ${destination}`;
@@ -290,6 +344,7 @@ export function applyAction(model, action, a = {}) {
       const f = need(model, a.id);
       if (!model.toread) model.toread = { headerLine: "## 📚 To Read", rawLines: [] };
       model.toread.rawLines.push(`- ${f.item.title}`);
+      releaseFollower(f.arr, f.idx);
       f.arr.splice(f.idx, 1);
       return `moved "${f.item.title}" to To Read`;
     }

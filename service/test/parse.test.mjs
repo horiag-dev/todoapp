@@ -32,12 +32,14 @@ test("star prefix parsed; title kept verbatim (wikilinks + tags intact)", () => 
   assert.deepEqual(urgent.items[0], {
     checked: false,
     must: false,
+    blocked: false,
     starred: true,
     title: "Reply to [[Investor Update]] #fundraising",
   });
   assert.deepEqual(urgent.items[1], {
     checked: true,
     must: false,
+    blocked: false,
     starred: false,
     title: "Approve assets #launch",
   });

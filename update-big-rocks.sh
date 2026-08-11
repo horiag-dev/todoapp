@@ -6,6 +6,9 @@
 #   DEST="$HOME/apps/bigrocks" PORT=5179 sh update-big-rocks.sh
 #   sh update-big-rocks.sh --no-run        # refresh the install but don't start it
 #
+# This INSTALLS/UPGRADES from a downloaded package. To just start (or restart)
+# the copy you already have, use start-big-rocks.sh instead.
+#
 # Your data is never touched — todos live in your vault (.md) and chat/memory
 # state lives in ~/.config/big-rocks-first, both outside the install dir.
 set -eu

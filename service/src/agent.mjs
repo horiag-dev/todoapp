@@ -1,6 +1,6 @@
 import { query, tool, createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
-import { findById, reflowUrgent, newItem, itemView, searchModel, MUST_CAP, countMusts } from "./model.mjs";
+import { findById, reflowUrgent, newItem, itemView, searchModel, MUST_CAP, countMusts, blockerOf, releaseFollower, normalizeChains } from "./model.mjs";
 import { tagsOf } from "./parse.mjs";
 import { ageDays, mustDays } from "./ledger.mjs";
 import { insertGoal } from "./ops.mjs";
@@ -33,6 +33,8 @@ The model is categorical, never temporal — there are NO due dates, calendars, 
 - Urgent: the active working list.
 - Normal: the pile of everything else.
 - Top 5: the handful of priorities for the week.
+
+QUEUES. Items can be sequential: queue_after marks an item as waiting on the one directly ABOVE it in the same section (shown as ·after↑ in the board). A queue is just consecutive lines, so ordering IS the dependency — to queue B behind A, B must sit directly below A (reorder first if not). A queued item isn't startable: it can't be Today or Must, and marking it either releases it. Completing/deleting/parking the head automatically releases the next one. Use this only for real sequencing ("can't send invites before booking the venue"), never for things that are merely related — that's what tags are for.
 
 THE COMMITMENT LADDER: Urgent (could do) → Today (intends to) → Must (has committed to). Both Today and Must live in Urgent and float to the top, Must above Today.
 - "Today" is an intention — what the user would LIKE to get done. Generous; no cap.
@@ -76,7 +78,7 @@ export const TOOL_GROUPS = {
   core: [
     "list_items", "search", "add_todo", "set_priority", "set_today", "clear_today",
     "complete", "edit_title", "delete", "reorder", "park", "unpark", "add_to_top5",
-    "set_must", "clear_must",
+    "set_must", "clear_must", "queue_after", "unqueue", "uncomplete",
   ],
   organize: ["reorder_top5", "clear_top5", "rename_tag", "move_to_goals", "add_to_read", "remove_from_read"],
   goals: ["read_goals", "write_goals"],
@@ -96,8 +98,11 @@ function buildServer(ctx, scope = "full") {
     return f;
   };
   const move = (f, to) => {
+    releaseFollower(f.arr, f.idx);   // whatever was queued behind it is promoted
     f.arr.splice(f.idx, 1);
+    f.item.blocked = false;
     model[to].push(f.item);
+    normalizeChains(model);
   };
 
   const tools = [
@@ -110,8 +115,8 @@ function buildServer(ctx, scope = "full") {
       }
       const arr = model[bucket] ?? [];
       const cap = bucket === "completed" || bucket === "deleted" ? arr.slice(-40) : arr;
-      return ok(JSON.stringify(cap.map((it) => ({
-        ...itemView(it),
+      return ok(JSON.stringify(cap.map((it, i) => ({
+        ...itemView(it, cap, i),
         age_days: ageDays(seen, it.title),
         ...(it.must ? { must_days: mustDays(mustSince, it.title) } : {}),
       }))));
@@ -167,9 +172,39 @@ function buildServer(ctx, scope = "full") {
       ops.push(`cleared Must on "${f.item.title}"`);
       return ok("Cleared — still Today.");
     }),
+    tool("queue_after", "Queue an item to happen AFTER the item directly above it in the same section — for steps that genuinely must happen in order. A queued item is not startable, so this clears Today/Must on it. If the item isn't already directly below the one it should follow, use `reorder` first. Don't queue things that merely feel related; only real sequencing.", { id: z.string() }, async ({ id }) => {
+      const f = need(id);
+      if (f.item.blocked) return ok("Already queued.");
+      if (!["urgent", "normal"].includes(f.bucket)) return ok("Only Urgent and Normal items can be queued.");
+      if (f.idx === 0) return ok("Nothing above this to queue behind — reorder it below the item it should follow first.");
+      f.item.blocked = true; f.item.starred = false; f.item.must = false;
+      if (f.bucket === "urgent") reflowUrgent(model);
+      const after = blockerOf(f.arr, f.arr.indexOf(f.item));
+      ops.push(`queued "${f.item.title}" after "${after?.title ?? "the item above"}"`);
+      return ok(`Queued after "${after?.title ?? "the item above"}".`);
+    }),
+    tool("unqueue", "Release an item from its queue so it can be worked on independently.", { id: z.string() }, async ({ id }) => {
+      const f = need(id);
+      if (!f.item.blocked) return ok("Not queued.");
+      f.item.blocked = false;
+      ops.push(`released "${f.item.title}" from its queue`);
+      return ok("Released.");
+    }),
+    tool("uncomplete", "Put a completed item back into Urgent, unchecked — for when something was ticked off by mistake.", { id: z.string() }, async ({ id }) => {
+      const f = need(id);
+      if (f.bucket !== "completed") return ok("That item isn't in Completed.");
+      f.item.checked = false;
+      releaseFollower(f.arr, f.idx);
+      f.arr.splice(f.idx, 1);
+      model.urgent.push(f.item);
+      reflowUrgent(model);
+      ops.push(`un-completed "${f.item.title}"`);
+      return ok("Back in Urgent.");
+    }),
     tool("move_to_goals", "Move an item into the Goals notepad (optionally under a **subsection**).", { id: z.string(), subsection: z.string().optional() }, async ({ id, subsection }) => {
       const f = need(id);
       insertGoal(model, f.item.title, subsection);
+      releaseFollower(f.arr, f.idx);
       f.arr.splice(f.idx, 1);
       ops.push(`moved "${f.item.title}" to Goals${subsection ? ` (${subsection})` : ""}`);
       return ok("Moved to Goals.");
@@ -197,7 +232,7 @@ function buildServer(ctx, scope = "full") {
     tool("reorder", "Reorder an item within its bucket (Urgent or Normal) to prioritize it — place it at the top or bottom, or just above/below another item by id. In Urgent, Today items always stay above the rest.", { id: z.string(), position: z.enum(["top", "bottom"]).optional(), before: z.string().optional(), after: z.string().optional() }, async ({ id, position, before, after }) => {
       const f = need(id);
       if (!["urgent", "normal"].includes(f.bucket)) return ok("Only Urgent or Normal items can be reordered.");
-      const arr = f.arr; arr.splice(f.idx, 1);
+      const arr = f.arr; releaseFollower(arr, f.idx); arr.splice(f.idx, 1);
       let idx = 0;
       if (position === "bottom") idx = arr.length;
       else if (before) { const t = arr.findIndex((it) => it.id === before); idx = t === -1 ? arr.length : t; }
@@ -334,6 +369,7 @@ export function snapshot(model, docs, mustSince) {
   // Must is called out with its streak so the assistant can spot re-commit theater
   // (the same item promised every morning) without another tool call.
   const mark = (it) => {
+    if (it.blocked) return " ·after↑";
     if (!it.must) return it.starred ? " ·Today" : "";
     const d = mustDays(mustSince, it.title);
     return d === null || d < 1 ? " ·MUST" : ` ·MUST (${d}d)`;
@@ -371,6 +407,7 @@ const TOOL_LABELS = {
   add_todo: "Adding a todo", set_priority: "Changing a priority",
   set_today: "Marking something Today", clear_today: "Clearing Today",
   set_must: "Committing to a Must", clear_must: "Clearing a Must",
+  queue_after: "Queuing a step", unqueue: "Releasing from a queue", uncomplete: "Putting it back",
   move_to_goals: "Moving to Goals", add_to_top5: "Updating Top 5",
   reorder_top5: "Reordering Top 5", clear_top5: "Clearing Top 5", reorder: "Reordering", rename_tag: "Renaming a tag",
   add_to_read: "Adding to To Read", remove_from_read: "Pruning To Read",

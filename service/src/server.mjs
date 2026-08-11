@@ -378,7 +378,7 @@ export function createBigRocksServer({
     refreshFromDisk();
     const model = currentModel();
     const ageOf = (text) => { const a = ageDays(seen, text); return a != null && a >= 7 ? a : null; };
-    const view = (it) => ({ ...itemView(it), age: ageOf(it.title), ...(it.must ? { mustDays: mustDays(mustSince, it.title) } : {}) });
+    const view = (it, i, arr) => ({ ...itemView(it, arr, i), age: ageOf(it.title), ...(it.must ? { mustDays: mustDays(mustSince, it.title) } : {}) });
     const readLines = (section, prefix) => (section?.rawLines ?? [])
       .map((line, index) => ({ line, index, text: line.replace(prefix, "").trim() }))
       .filter((entry) => entry.text);

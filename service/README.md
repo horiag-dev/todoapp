@@ -25,6 +25,16 @@ detected with content versions so stale drafts cannot overwrite the vault.
   something has been a Must is kept in a private sidecar (`.bigrocks/must-since.json`),
   never as a date in the markdown, so the assistant can flag an item that's been
   "must do today" for a week.
+- **Queues (sequential todos)** — `↳ ` on a line means "do this after the line
+  directly above me, in this section". Positional, not a graph: no ids, so cycles
+  and orphans are impossible and you can chain/unchain in Obsidian by typing one
+  character. A queued item isn't startable (can't be Today or Must; marking it
+  either releases it), a queue moves as a unit when reordered or reflowed, and
+  completing/deleting/parking a head promotes its direct follower — the rest of
+  the chain stays queued behind it.
+- **Un-complete** — a mis-clicked checkbox goes back to Urgent unchecked
+  (`uncomplete`). Distinct from Restore, which pulls an item out of the trash into
+  Normal: that's reconsidering a decision, not undoing an accident.
 - **Obsidian-safe writer** — preserve-and-splice: YAML frontmatter, `[[wikilinks]]`,
   and `#tags` round-trip byte-identical; only the bucket sections we own are
   regenerated. Titles are stored verbatim (tags/links are a derived read-only view).
@@ -72,8 +82,14 @@ work-sanctioned `ANTHROPIC_API_KEY`).
 sh scripts/build-service-package.sh    # → dist/big-rocks-first-service-<version>.tar.gz (+ .sha256)
 ```
 
-To run a delivered package: extract it and `sh run.sh` from a Terminal, then open
-`http://127.0.0.1:5178`. `run.sh` installs locked deps on first run (Node 18+),
+Two launcher scripts sit at the repo root, for the copy installed at
+`~/big-rocks-first`: **`start-big-rocks.sh`** starts / restarts / stops it
+(`--restart`, `--stop`; refuses to double-start, and refuses to touch a port held
+by something that isn't Big Rocks), and **`update-big-rocks.sh`** installs or
+upgrades from the newest downloaded package and then starts it.
+
+To run a delivered package by hand: extract it and `sh run.sh` from a Terminal,
+then open `http://127.0.0.1:5178`. `run.sh` installs locked deps on first run (Node 18+),
 then `node src/server.mjs`. Set `PORT=5179 sh run.sh` to change the port. For a
 Dock icon, use Chrome's "Save and Share → Create Shortcut" (a web manifest + PNG
 icons are served).
