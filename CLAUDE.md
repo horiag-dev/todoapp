@@ -13,7 +13,7 @@ A markdown-file-backed macOS todo app built around **categorical priority** (Tod
 - **No due-date / calendar system.** Things 3 and Todoist already own that space. Adding dates would erode the "categorical priority + weekly cadence" identity and pull us into a feature race we can't win.
 - **No recurring tasks** until / unless dates land — they require a temporal model the app doesn't have.
 - **No stats / streaks / karma as core features.** Fine as small affordances, never as a primary surface.
-- **No multi-pane editor for goals.** Goals are a notepad, not a project tool — keep the editor simple even if the rendered view stays rich.
+- **Goals stay a notepad, not a project tool.** No statuses, dates, progress, dependencies, or assignees — ever. The editor may be ergonomic (drag to reorder, click to edit, inline note linking), but it must stay a **single surface over the markdown**, render **nothing derived from outside the `## Goals` lines**, and preserve verbatim anything it doesn't model. A raw-markdown view may exist as a toggle, never a second pane.
 
 ## Roadmap
 

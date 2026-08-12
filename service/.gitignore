@@ -1,0 +1,8 @@
+node_modules/
+*.tmp-*
+# local vault machinery, if a vault is ever created inside the repo
+.bigrocks/
+
+# local vault docs used for dev
+todo.md
+*.local.md

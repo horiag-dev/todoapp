@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Big Rocks First</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪨</text></svg>" />
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23f4f3ef'/><text y='.92em' x='7' font-size='76'>🪨</text></svg>" />
+<meta name="theme-color" content="#111827" />
+<style>
+  :root{--bg:#f4f6f9;--card:#fff;--surface:#fafbfc;--ink:#20242c;--soft:#6e7682;--line:#e1e5eb;--hover:#f4f7fa;--today:#e5484d;--urgent:#d49a18;--normal:#3478e5;--read:#e87538;--goals:#3973dc;--accent:#356fe3;--danger:#d93d49;--r:12px;--shadow:0 1px 2px #1720330a,0 5px 18px #1720330a}
+  @media(prefers-color-scheme:dark){:root{--bg:#17191d;--card:#22252a;--surface:#272a30;--ink:#eef0f3;--soft:#a4aab3;--line:#363a42;--hover:#2b2f36;--today:#f06a6e;--urgent:#e2b552;--normal:#70a2f4;--read:#ef985f;--goals:#7ca5f2;--accent:#72a4f5;--danger:#f07178;--shadow:0 1px 2px #0003,0 8px 24px #0003}}
+  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.5 -apple-system,system-ui,"SF Pro Text","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  button,input,textarea{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid color-mix(in srgb,var(--accent) 65%,transparent);outline-offset:2px}header{display:flex;align-items:center;gap:10px;padding:13px 20px;border-bottom:1px solid color-mix(in srgb,var(--line) 85%,transparent);background:color-mix(in srgb,var(--card) 88%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);position:sticky;top:0;z-index:10}header h1{font-size:14px;margin:0;letter-spacing:-.01em}.sub,.path{color:var(--soft);font-size:11.5px}.ver{font-size:10px;color:var(--soft);font-weight:650;padding:1px 7px;border:1px solid var(--line);border-radius:999px;letter-spacing:.02em}.ver:empty{display:none}.path{margin-left:auto;max-width:38ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,"SF Mono",monospace}
+  .iconbtn,.mini{border:1px solid var(--line);background:var(--card);color:var(--soft);border-radius:7px;padding:3px 8px;box-shadow:0 1px 1px #17203308;transition:border-color .15s,background .15s,color .15s,transform .15s}.iconbtn:hover,.mini:hover{border-color:color-mix(in srgb,var(--soft) 35%,var(--line));background:var(--hover);color:var(--ink)}.iconbtn:active,.mini:active{transform:translateY(1px)}.mini{font-size:11px}.danger{color:var(--danger)!important}
+  .toolbar{display:flex;align-items:center;gap:7px;padding:1px 2px;background:transparent;border:0}.toolbar-label{font-size:11px;color:var(--soft);font-weight:600}.search{width:160px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);outline:none;box-shadow:0 1px 2px #17203308}.search:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 13%,transparent)}.tags{display:flex;gap:5px;overflow:auto;flex:1;padding:1px}.tagfilter{border:1px solid color-mix(in srgb,var(--tc,var(--soft)) 30%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--tc,var(--soft)) 9%,var(--card));color:color-mix(in srgb,var(--tc,var(--soft)) 72%,var(--ink));font-size:10px;font-weight:650;padding:2px 8px;white-space:nowrap}.tagfilter:hover{background:color-mix(in srgb,var(--tc,var(--soft)) 14%,var(--card))}.tagfilter.on{background:var(--tc,var(--accent));border-color:var(--tc,var(--accent));color:#fff}
+  .notice{margin:10px 14px 0;padding:8px 11px;border-radius:7px;background:color-mix(in srgb,var(--danger) 12%,var(--card));border:1px solid color-mix(in srgb,var(--danger) 45%,var(--line));display:flex;gap:8px;align-items:center}.notice[hidden]{display:none}.notice span{flex:1}.notice.info{background:color-mix(in srgb,var(--accent) 10%,var(--card));border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+  main{display:grid;grid-template-columns:var(--c1,340px) 18px minmax(430px,1fr) 18px var(--c2,350px);padding:18px 22px 28px;gap:0;align-items:start}.col{display:flex;flex-direction:column;gap:14px;min-width:0}.gutter{align-self:stretch;min-height:240px;cursor:col-resize;position:relative}.gutter:after{content:"";position:absolute;left:8px;inset-block:0;width:1px;background:color-mix(in srgb,var(--line) 70%,transparent);transition:background .15s,width .15s}.gutter:hover:after{width:2px;background:var(--accent)}
+  @media(max-width:960px){main{grid-template-columns:1fr;gap:12px}.gutter{display:none}.chat{height:460px!important;position:static!important}}
+  .card{--c:var(--line);background:color-mix(in srgb,var(--c) 2.5%,var(--card));border:1px solid color-mix(in srgb,var(--c) 22%,var(--line));border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}.goals-card{--c:var(--goals);border:0;background:transparent;box-shadow:none;overflow:visible}.read-card{--c:var(--read)}.top-card{--c:var(--normal)}.today-card{--c:var(--today);border-color:var(--line);background:color-mix(in srgb,var(--today) 3.5%,var(--card))}.normal-card{--c:var(--normal)}.urgent-card{--c:var(--urgent)}.life-card{--c:var(--soft);background:var(--card)}.docs-card{--c:#7c5cc4}.docs-card.dropping{box-shadow:0 0 0 2px var(--accent),var(--shadow)}
+  .card>h2{display:flex;align-items:center;gap:7px;margin:0;padding:10px 13px;font-size:13px;font-weight:700;letter-spacing:-.005em;border-bottom:1px solid color-mix(in srgb,var(--c) 20%,var(--line));background:color-mix(in srgb,var(--c) 6%,var(--card))}.goals-card>h2{padding:9px 5px;border-bottom:1px solid var(--line);background:transparent}.today-card>h2{border-bottom-color:var(--line);background:transparent}.section-icon{color:var(--c);width:15px;text-align:center;font-weight:800}.badge{font-size:10px;font-variant-numeric:tabular-nums;font-weight:750;color:var(--c);background:color-mix(in srgb,var(--c) 12%,var(--card));border:1px solid color-mix(in srgb,var(--c) 20%,transparent);padding:0 7px;border-radius:999px}.today-card .badge{border:0;background:color-mix(in srgb,var(--today) 10%,transparent)}.hacts{margin-left:auto;display:flex;gap:5px}.body{padding:8px 9px}.collapsed .body{display:none}.toggle{cursor:pointer}.chev{font-size:9px;color:var(--soft);transition:transform .15s}.collapsed .chev{transform:rotate(-90deg)}
+  ul.items{list-style:none;margin:0;padding:0;transition:background .12s,box-shadow .12s}.items.drop-zone{background:color-mix(in srgb,var(--accent) 7%,var(--card));box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--accent) 36%,transparent)}.item{display:flex;gap:7px;align-items:flex-start;padding:6px 7px;border:1px solid transparent;border-radius:8px;position:relative;transition:background .12s,border-color .12s,box-shadow .12s}.item:hover{background:var(--hover)}.item.today{background:transparent}.item.today:hover{background:color-mix(in srgb,var(--today) 6%,var(--card))}.item.sel,.item.today.sel:hover{background:color-mix(in srgb,var(--accent) 9%,var(--card));border-color:color-mix(in srgb,var(--accent) 24%,transparent)}.selbox{appearance:none;flex:0 0 15px;width:15px;height:15px;margin-top:1px;padding:0;border:1.5px solid color-mix(in srgb,var(--soft) 60%,var(--line));border-radius:4px;background:var(--card);color:var(--accent);font-size:11px;font-weight:800;line-height:12px;text-align:center;cursor:pointer;transition:border-color .12s,background .12s}.selbox:hover{border-color:var(--accent)}.selbox.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--card))}[data-select].on{color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}.item.today .box:disabled{opacity:.35;cursor:default;box-shadow:none}.tierchip{display:inline-block;font-size:10px;font-weight:650;letter-spacing:.02em;color:var(--soft);background:color-mix(in srgb,var(--soft) 11%,transparent);border-radius:999px;padding:1px 8px;margin-bottom:6px}.bulkbar[hidden]{display:none}.bulkbar{display:flex;align-items:center;gap:7px;margin:2px 9px 9px;padding:6px 9px;border-radius:8px;background:color-mix(in srgb,var(--accent) 8%,var(--card));border:1px solid color-mix(in srgb,var(--accent) 20%,transparent)}.bulkbar .bulk-count{margin-right:auto;font-size:11px;font-weight:700;color:var(--accent)}.bulkbar button{border:0;border-radius:6px;padding:3px 10px;font-size:11.5px;font-weight:650;cursor:pointer;background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent)}.bulkbar button:hover{background:color-mix(in srgb,var(--accent) 24%,transparent)}.bulkbar button.ghost{background:none;color:var(--soft)}.bulkbar button.ghost:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent)}.item .t{flex:1;min-width:0;overflow-wrap:anywhere}.pill{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;height:17px;margin-top:0;padding:0 7px;border:0;border-radius:999px;background:color-mix(in srgb,var(--today) 10%,transparent);color:color-mix(in srgb,var(--today) 84%,var(--ink));font-size:9px;font-weight:800;line-height:17px;letter-spacing:.055em;text-transform:uppercase}.pill.queued{background:color-mix(in srgb,var(--soft) 20%,transparent);color:var(--soft);letter-spacing:.05em}.item.queued{opacity:.72}.item.queued .t{color:var(--soft)}.item.queued .box{opacity:.5}.item.queued:before{content:"";position:absolute;left:2px;top:-3px;bottom:50%;width:1px;background:color-mix(in srgb,var(--soft) 45%,transparent)}.pill.must{background:color-mix(in srgb,var(--today) 88%,var(--ink));color:var(--card);letter-spacing:.06em}.item.must{background:color-mix(in srgb,var(--today) 5%,var(--card))}.item.must:hover{background:color-mix(in srgb,var(--today) 9%,var(--card))}.draghandle{width:10px;height:15px;cursor:grab;opacity:0;user-select:none;flex:0 0 10px;position:relative;transition:opacity .12s}.draghandle:before{content:"";position:absolute;inset:2px 0 1px 0;background:radial-gradient(circle,color-mix(in srgb,var(--soft) 72%,transparent) 1px,transparent 1.5px) 0 0/5px 5px}.item:hover .draghandle{opacity:1}.draghandle:active{cursor:grabbing}.item.dragging{opacity:.35;box-shadow:none}.item.drop-before:before,.item.drop-after:after{content:"";position:absolute;left:7px;right:7px;height:2px;background:var(--accent);border-radius:2px;box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 15%,transparent)}.item.drop-before:before{top:-2px}.item.drop-after:after{bottom:-2px}.box{appearance:none;border:1.5px solid color-mix(in srgb,var(--soft) 72%,var(--line));background:var(--card);color:transparent;padding:0;margin-top:1px;width:15px;height:15px;border-radius:50%;font-size:0;line-height:1;flex:0 0 15px;transition:border-color .12s,box-shadow .12s}.box:hover{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 10%,transparent)}.item.done{opacity:.62}.item.done .t{text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--soft) 65%,transparent)}.item.done .box{background:var(--accent);border-color:var(--accent)}.tg-head{list-style:none;display:flex;align-items:center;gap:7px;padding:8px 7px 3px;cursor:pointer;user-select:none}.tg-head.tg-static{cursor:default}.tg-name{font-size:10.5px;font-weight:750;letter-spacing:.03em;color:color-mix(in srgb,var(--tc,var(--soft)) 72%,var(--ink))}.tg-head:hover .tg-name{color:color-mix(in srgb,var(--tc,var(--soft)) 95%,var(--ink))}.tg-count{color:var(--soft);font-size:10px;font-weight:650;background:color-mix(in srgb,var(--tc,var(--soft)) 13%,transparent);border-radius:999px;padding:0 6px;min-width:16px;text-align:center}.item.tg-sub{margin-left:12px;border-left:2px solid color-mix(in srgb,var(--tc,var(--soft)) 42%,var(--line));border-radius:0 8px 8px 0;padding-left:11px}.tg-more{list-style:none;margin-left:12px;border-left:2px solid color-mix(in srgb,var(--tc,var(--soft)) 42%,var(--line));padding:4px 7px 7px 19px;font-size:11px;font-weight:550;color:var(--accent);cursor:pointer}.tg-more:hover{text-decoration:underline}.tg-head{padding-bottom:2px}.rowact{display:none;flex:0 0 auto}.item:hover .rowact,.item:focus-within .rowact{display:flex}.rowact button.talk{border:0;background:transparent;color:var(--accent);padding:0 4px;font-size:13px;line-height:1;border-radius:5px;white-space:nowrap;opacity:.85}.rowact button.talk:hover{opacity:1}.rowact button.talk:hover{background:color-mix(in srgb,var(--accent) 9%,transparent)}.rowact button:not(.talk){border:0;background:none;color:var(--soft);padding:1px 4px;font-size:11px;border-radius:5px}.rowact button:not(.talk):hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent)}.tag{display:inline-block;border:1px solid color-mix(in srgb,var(--tc,var(--soft)) 28%,transparent);background:color-mix(in srgb,var(--tc,var(--soft)) 9%,var(--card));color:color-mix(in srgb,var(--tc,var(--soft)) 72%,var(--ink));border-radius:999px;font-size:10px;font-weight:650;padding:0 6px;margin-left:4px}.age{font-size:10px;color:var(--soft);margin-left:5px}.empty{color:var(--soft);font-size:11.5px;padding:7px}.readline{display:flex;gap:6px;align-items:flex-start;margin:4px 2px;padding:3px 2px;border-radius:6px}.readline:hover{background:var(--hover)}.readline .text{flex:1;overflow-wrap:anywhere}.readline a{color:var(--accent)}.wikilink{color:var(--accent);text-decoration:none;border-bottom:1px dotted color-mix(in srgb,var(--accent) 55%,transparent)}.wikilink:hover{border-bottom-style:solid}.notelink{color:var(--accent);text-decoration:none;border-bottom:1px dotted color-mix(in srgb,var(--accent) 50%,transparent)}.notelink:hover{border-bottom-style:solid}.notechip{display:inline-flex;align-items:center;gap:1px;border:1px solid color-mix(in srgb,var(--accent) 24%,var(--line));background:color-mix(in srgb,var(--accent) 6%,transparent);border-radius:999px;padding:0 5px 0 8px;margin-left:5px;font-size:11px;line-height:1.75;white-space:nowrap}.notechip .notelink{border-bottom:0}.linkx{border:0;background:none;color:var(--soft);font-size:11px;line-height:1;padding:0 3px;margin-right:2px;cursor:pointer;vertical-align:middle}.linkx:hover{color:var(--danger)}.notechip{gap:2px;padding:1px 4px 1px 9px;vertical-align:middle;line-height:1.45;position:relative;top:-1px}.notechip .linkx{margin:0;padding:0;width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-size:12px;line-height:1;color:var(--soft);vertical-align:middle}.notechip .linkx:hover{color:var(--danger);background:color-mix(in srgb,var(--danger) 15%,transparent)}
+  #wiki-pop{position:fixed;z-index:40;background:var(--card);border:1px solid var(--line);border-radius:9px;box-shadow:0 10px 30px #1018283a;max-height:238px;overflow-y:auto;overflow-x:hidden;font-size:12.5px;padding:4px;min-width:200px;max-width:min(340px,calc(100vw - 12px))}#wiki-pop[hidden]{display:none}#wiki-pop .wp-head{font-size:10px;color:var(--soft);padding:3px 8px 4px;letter-spacing:.03em;text-transform:uppercase}.wp-item{padding:5px 8px;border-radius:6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}.wp-item.on{background:color-mix(in srgb,var(--accent) 15%,var(--card))}.wp-item b{font-weight:650;color:var(--accent)}.wp-item .wp-dir{color:var(--soft);font-size:11px;margin-left:6px}
+  .urgent-guard{display:flex;align-items:center;gap:8px;padding:8px 11px;border:1px solid color-mix(in srgb,var(--urgent) 42%,var(--line));background:color-mix(in srgb,var(--urgent) 9%,var(--card));border-radius:var(--r);font-size:12px;box-shadow:var(--shadow)}.urgent-guard[hidden]{display:none}.urgent-guard span{flex:1}
+  .inlineform,.quickadd{display:flex;gap:7px;padding:8px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);transition:border-color .15s,box-shadow .15s}.quickadd:focus-within{border-color:color-mix(in srgb,var(--accent) 65%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 11%,transparent),var(--shadow)}.inlineform{border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none;background:transparent}.inlineform input,.quickadd input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);outline:none}.inlineform input::placeholder,.quickadd input::placeholder,.chat input::placeholder,.search::placeholder{color:color-mix(in srgb,var(--soft) 72%,transparent)}.inlineform button,.quickadd .add,.primary{border:0;background:var(--accent);color:#fff;border-radius:7px;padding:5px 11px;font-weight:650;box-shadow:0 1px 2px color-mix(in srgb,var(--accent) 24%,transparent)}.inlineform button:hover,.quickadd .add:hover,.primary:hover{background:color-mix(in srgb,var(--accent) 88%,#102f70)}.qa-prio{border:0;border-radius:7px;background:color-mix(in srgb,var(--qc,var(--urgent)) 13%,var(--card));color:color-mix(in srgb,var(--qc,var(--urgent)) 85%,var(--ink));font-size:10px;font-weight:800;padding:5px 10px;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--qc,var(--urgent)) 22%,transparent)}.goals{padding:10px 0!important}.goal-group{--gc:var(--goals);border:1px solid color-mix(in srgb,var(--gc) 16%,var(--line));border-radius:11px;padding:11px 13px;margin-bottom:11px;background:var(--card);box-shadow:var(--shadow)}.goal-group h3{font-size:13px;margin:0 0 7px;padding-left:9px;border-left:3px solid var(--gc);letter-spacing:-.005em}.goal-group ul{margin:0;padding-left:18px}.goal-group li{margin:4px 0}.goal-group li::marker{color:color-mix(in srgb,var(--gc) 60%,var(--line))}.goals-ta{width:100%;min-height:260px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px;font:12px/1.5 ui-monospace,"SF Mono",monospace;resize:vertical}
+  .pending{padding:10px 12px;border:1px solid color-mix(in srgb,var(--today) 26%,var(--line));background:color-mix(in srgb,var(--today) 7%,var(--card));border-radius:var(--r);box-shadow:var(--shadow)}.pending[hidden]{display:none}
+  .dupwarn{padding:9px 11px;border:1px solid color-mix(in srgb,var(--accent) 32%,var(--line));background:color-mix(in srgb,var(--accent) 7%,var(--card));border-radius:var(--r);box-shadow:var(--shadow)}.dupwarn[hidden]{display:none}.dw-top{font-size:11px;font-weight:700;color:color-mix(in srgb,var(--accent) 82%,var(--ink));margin-bottom:4px}.dw-body{font-size:12px;margin-bottom:8px;overflow-wrap:anywhere}.dw-loc{color:var(--soft)}.dw-acts{display:flex;gap:6px;flex-wrap:wrap}.pendingtop{display:flex;align-items:center;gap:8px}.pendingtop strong{flex:1}.ops{font-size:11px;color:var(--soft);margin-top:5px}.chg{display:flex;align-items:center;gap:8px;padding:5px 2px;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent);font-size:11.5px}.chg:first-child{border-top:0}.chg-label{flex:1;overflow-wrap:anywhere}.chg-label:before{content:"•";margin-right:6px;font-weight:700;color:var(--soft)}.chg-added .chg-label:before{content:"＋";color:#2f9461}.chg-removed .chg-label:before,.chg-deleted .chg-label:before{content:"−";color:var(--danger)}.chg-completed .chg-label:before{content:"✓";color:var(--normal)}.chg-moved .chg-label:before{content:"→";color:var(--normal)}.chg-retitled .chg-label:before{content:"✎";color:var(--soft)}.chg-today .chg-label:before{content:"●";color:var(--today)}.chg-must .chg-label:before{content:"‼";color:var(--today);font-weight:800}.chg-unmust .chg-label:before{content:"◦";color:var(--soft)}.chg-untoday .chg-label:before{content:"○";color:var(--soft)}.chg-goals .chg-label:before{content:"◎";color:var(--goals)}.chg-toread .chg-label:before{content:"▤";color:var(--read)}.chg-parked .chg-label:before{content:"💤"}.chg-note .chg-label:before{content:"📝";color:var(--goals)}.chg-note-move .chg-label:before{content:"📂";color:var(--normal)}.chg-note-trash .chg-label:before{content:"🗑";color:var(--danger)}.chg-note-trash{border-left:3px solid var(--danger);padding-left:6px}.chg-ok,.chg-x{border:0;background:transparent;color:var(--soft);font-size:14px;line-height:1;padding:0 6px;border-radius:5px;flex:0 0 auto}.chg-ok{font-weight:800}.chg-ok:hover{color:#2f9461;background:color-mix(in srgb,#2f9461 12%,transparent)}.chg-x{font-size:15px}.chg-x:hover{color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,transparent)}
+  @keyframes br-flash{0%{background:color-mix(in srgb,#2f9461 36%,transparent);box-shadow:inset 0 0 0 2px color-mix(in srgb,#2f9461 55%,transparent)}70%{background:color-mix(in srgb,#2f9461 18%,transparent)}100%{background:transparent;box-shadow:none}}.item.flash{animation:br-flash 1.5s ease-out;border-radius:8px}.card.flash{animation:br-flash 1.5s ease-out}@media(prefers-reduced-motion:reduce){.item.flash,.card.flash{animation-duration:.01s}}.foot{color:var(--soft);font-size:11px;padding:0 2px}
+  .chat{display:flex;flex-direction:column;position:sticky;top:90px;height:calc(100vh - 112px);background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}.log{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:12px}.msg{padding:8px 11px;border-radius:11px;max-width:92%;font-size:12.5px}.you{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}.bot{align-self:flex-start;background:var(--hover);border:1px solid color-mix(in srgb,var(--line) 75%,transparent);border-bottom-left-radius:4px}.thinking .muse{font-size:11px;color:var(--soft);font-style:italic;margin-bottom:5px;white-space:pre-wrap;overflow-wrap:anywhere}.thinking .muse:empty{display:none}.thinking .steps{display:flex;flex-direction:column;gap:3px;margin-bottom:5px}.thinking .steps:empty{display:none}.thinking .step{font-size:11px;color:var(--soft);display:flex;gap:6px;align-items:baseline}.thinking .step:before{content:"›";color:var(--accent);font-weight:800}.thinking .step.active{animation:br-pulse 1.1s ease-in-out infinite}.thinking .step.done{opacity:.6}.thinking .step.done:before{content:"✓";color:var(--normal)}.thinking .stream{white-space:pre-wrap;overflow-wrap:anywhere}.thinking .stream:empty{display:none}@keyframes br-pulse{0%,100%{opacity:.5}50%{opacity:1}}@media(prefers-reduced-motion:reduce){.thinking .step.active{animation:none}}.bot p{margin:.4em 0}.bot p:first-child{margin-top:0}.bot p:last-child{margin-bottom:0}.bot ul,.bot ol{margin:.45em 0;padding-left:1.35em}.bot li{margin:3px 0}.bot strong{font-weight:700}.bot em{font-style:italic}.bot code{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11.5px;background:color-mix(in srgb,var(--ink) 9%,transparent);padding:1px 4px;border-radius:4px}.bot a{color:var(--accent);text-decoration:underline}.bot h3,.bot h4,.bot h5{margin:.75em 0 .3em;font-weight:750;font-size:12.5px;letter-spacing:-.005em}.bot h3:first-child,.bot h4:first-child{margin-top:0}.memory-view{max-height:60vh;overflow:auto;margin-top:8px;padding:2px 2px 0}.memory-view .empty{padding:8px 2px}.chat form{display:flex;flex-direction:column;gap:7px;padding:9px;border-top:1px solid var(--line);background:var(--surface)}.chat-compose{display:flex;gap:6px}.chat-settings{display:flex;gap:14px;padding:2px 2px 7px;font-size:10.5px;color:var(--soft)}.chat-settings label{display:inline-flex;align-items:center;gap:5px;text-transform:uppercase;letter-spacing:.04em;font-weight:600}.chat-settings select{font:inherit;font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:2px 5px;cursor:pointer}.chat input{flex:1;min-width:0;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;outline:none}.chat input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 10%,transparent)}#chatin{padding:12px 13px;font-size:14px}.chat-compose button{padding:11px 15px;font-size:13.5px}.chat button{border:0;border-radius:8px;background:var(--accent);color:#fff;padding:8px 12px;font-weight:650}.chat-context{display:flex;align-items:center;gap:7px;min-width:0;padding:6px 8px;border:1px solid color-mix(in srgb,var(--accent) 18%,var(--line));border-radius:8px;background:color-mix(in srgb,var(--accent) 6%,var(--card));font-size:11px}.chat-context[hidden]{display:none}.chat-context .context-label{color:var(--soft);flex:0 0 auto}.chat-context strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.chat-context button{margin-left:auto;padding:0 4px;background:transparent;color:var(--soft);font-size:15px;line-height:1}.chat-context button:hover{color:var(--ink)}
+  .gdiff{border:1px solid color-mix(in srgb,var(--goals) 32%,var(--line));border-radius:9px;overflow:hidden;font-size:11.5px;max-width:100%}.msg.gdiff-msg{max-width:100%;padding:0;background:transparent;border:0}.gdiff-t{padding:5px 9px;background:color-mix(in srgb,var(--goals) 13%,var(--card));color:color-mix(in srgb,var(--goals) 82%,var(--ink));font-weight:750;letter-spacing:-.005em}.gdiff-row{padding:3px 9px;font-family:ui-monospace,"SF Mono",Menlo,monospace;line-height:1.5;overflow-wrap:anywhere;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)}.gdiff-r{background:color-mix(in srgb,var(--danger) 9%,transparent);color:color-mix(in srgb,var(--danger) 78%,var(--ink))}.gdiff-a{background:color-mix(in srgb,#2f9461 13%,transparent);color:color-mix(in srgb,#2f9461 76%,var(--ink))}.gdiff-none{padding:6px 9px;color:var(--soft);font-style:italic}
+  .modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:#10182878;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}.modal[hidden]{display:none}.dialog{width:min(520px,calc(100vw - 28px));background:var(--card);border:1px solid color-mix(in srgb,var(--line) 82%,transparent);border-radius:16px;padding:20px;box-shadow:0 24px 80px #1018284d}.dialog h2{margin:0 0 5px;letter-spacing:-.015em}.dialog p{color:var(--soft)}.dialog input{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}.dialog .actions{display:flex;justify-content:flex-end;gap:7px;margin-top:12px}.dialog button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 11px}.dialog button:hover{background:var(--hover)}.dialog button.primary{border:0;color:#fff;background:var(--accent)}.dialog button.primary:hover{background:color-mix(in srgb,var(--accent) 88%,#102f70)}.dialog button:disabled{cursor:default;opacity:.55}
+  .goals-dialog{width:min(620px,calc(100vw - 32px));max-height:calc(100vh - 32px);padding:0;overflow:hidden;display:flex;flex-direction:column}.goals-editor-head{display:flex;align-items:center;gap:12px;padding:17px 19px;border-bottom:1px solid var(--line)}.goals-editor-head h2{margin:0;font-size:16px}.goals-editor-head .hint{margin-left:auto;color:var(--soft);font-size:11px}.goals-editor-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);flex:1;min-height:0}.goals-pane{display:flex;flex-direction:column;min-width:0;min-height:0}.goals-pane+.goals-pane{border-left:1px solid var(--line);background:var(--surface)}.pane-label{display:flex;align-items:center;gap:7px;padding:9px 13px;border-bottom:1px solid var(--line);color:var(--soft);font-size:10px;font-weight:750;letter-spacing:.06em;text-transform:uppercase}.pane-label .help{margin-left:auto;font-weight:500;letter-spacing:0;text-transform:none}.goals-editor-text{flex:1;width:100%;min-height:0;overflow:auto;resize:none;border:0!important;border-radius:0!important;background:var(--card)!important;color:var(--ink);padding:14px 16px!important;outline:none;font:12.5px/1.65 ui-monospace,"SF Mono",Menlo,monospace}.goals-editor-text:focus{box-shadow:inset 3px 0 0 color-mix(in srgb,var(--accent) 65%,transparent)}.goals-preview{flex:1;overflow:auto;padding:12px 14px}.goals-preview .goal-group{box-shadow:none;margin-bottom:9px}.goals-editor-foot{display:flex;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid var(--line);background:var(--surface)}.goals-editor-foot .status{color:var(--soft);font-size:11px;flex:1}.goals-editor-foot button{min-width:76px}
+  #goals-editor-modal.docked{background:none;backdrop-filter:none;-webkit-backdrop-filter:none;pointer-events:none;display:block;inset:0}
+  #goals-editor-modal.docked .goals-dialog{pointer-events:auto;position:fixed;left:10px;top:var(--gtop,64px);right:var(--gright,400px);bottom:10px;width:auto;max-width:none;max-height:none;height:auto;background:var(--surface);box-shadow:0 8px 40px #10182833}
+  @media(max-width:760px){#goals-editor-modal.docked .goals-dialog{right:10px}}
+  .goals-arrange{flex:1;overflow:auto;padding:14px 16px 10px}
+  .ge-group{margin-bottom:15px;border-left:3px solid var(--gc,var(--soft));padding-left:11px}
+  .ge-head{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+  .ge-htext{font-size:13px;font-weight:750;color:var(--gc,var(--ink));cursor:text;border-radius:4px;padding:1px 4px}
+  .ge-htext:hover{background:var(--hover)}.ge-untitled{color:var(--soft);font-weight:600}
+  .ge-hlink{opacity:0}.ge-head:hover .ge-hlink{opacity:1}
+  .ge-bullets{list-style:none;margin:0;padding:0;min-height:6px}
+  .ge-b{display:flex;align-items:flex-start;gap:6px;padding:4px 5px;border:1px solid transparent;border-radius:7px;position:relative}
+  .ge-b:hover{background:var(--hover)}.ge-b:focus-visible{outline:2px solid var(--accent);outline-offset:-1px}
+  .ge-b.dragging{opacity:.35}
+  .ge-b .draghandle{opacity:0;margin-top:3px}.ge-b:hover .draghandle{opacity:1}
+  .ge-t{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px;line-height:1.5;cursor:text;padding:1px 2px;border-radius:4px}
+  .ge-acts{display:none;flex:0 0 auto;gap:1px}.ge-b:hover .ge-acts,.ge-b:focus-within .ge-acts{display:flex}
+  .ge-acts button,.ge-hlink{border:0;background:none;color:var(--soft);font-size:12px;padding:1px 4px;border-radius:5px;cursor:pointer}
+  .ge-acts button:hover,.ge-hlink:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent)}
+  .ge-acts .ge-del:hover{color:var(--danger)}
+  .ge-add,.ge-addsec{display:block;width:100%;text-align:left;border:0;background:none;color:var(--soft);font-size:12px;padding:4px 7px;border-radius:6px;cursor:text}
+  .ge-add:hover,.ge-addsec:hover{background:var(--hover);color:var(--ink)}.ge-addsec{margin-top:8px;font-weight:600}
+  .ge-input{width:100%;border:1px solid var(--accent);border-radius:6px;background:var(--card);color:var(--ink);font:inherit;font-size:13px;padding:2px 6px;outline:none}
+  .ge-live{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .ge-b.drop-before:before,.ge-b.drop-after:after{content:"";position:absolute;left:5px;right:5px;height:2px;background:var(--accent);border-radius:2px;z-index:1}
+  .ge-b.drop-before:before{top:-1px}.ge-b.drop-after:after{bottom:-1px}
+  .ge-bullets.drop-zone{background:color-mix(in srgb,var(--accent) 7%,transparent);border-radius:7px;box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+  .kbd{display:inline-block;padding:0 5px;border:1px solid var(--line);border-bottom-color:color-mix(in srgb,var(--soft) 35%,var(--line));border-radius:5px;background:var(--card);font:10px/1.6 ui-monospace,monospace;color:var(--soft);box-shadow:0 1px 1px #1720330d}@media(max-width:700px){.goals-editor-grid{grid-template-columns:1fr;overflow:auto}.goals-pane+.goals-pane{border-left:0;border-top:1px solid var(--line)}.goals-editor-text{min-height:240px}.goals-editor-head .hint{display:none}}
+  .picker-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:16px 0}.picker-actions button{padding:12px 8px}.picker-actions button:first-child{background:var(--accent);border-color:var(--accent);color:#fff}.or{display:flex;align-items:center;gap:8px;font-size:11px}.or:before,.or:after{content:"";height:1px;background:var(--line);flex:1}
+  input.edit,input.tagadd{background:var(--card);color:var(--ink);border:1px solid var(--accent);border-radius:5px;padding:2px 5px;outline:none}input.edit{flex:1}input.tagadd{width:75px;margin-left:4px}input.linkadd{width:140px}
+</style>
+</head>
+<body>
+<header><h1>🪨 Big Rocks First</h1><span class="ver" id="ver" title="App version"></span><span class="sub">Markdown-owned · assistant changes require approval</span><span class="path" id="path"></span><button class="iconbtn" id="vault-btn" title="See the notes the assistant can read">📁 Vault</button><button class="iconbtn" id="tidy-btn" title="Reorganize your vault — the assistant proposes moves and cleanup for you to approve">🧹 Tidy Vault</button><button class="iconbtn" id="plan-btn" title="Plan today from Urgent + Top 5">● Plan My Day</button><button class="iconbtn" id="review-btn" title="Guided weekly review">◆ Weekly Review</button><button class="iconbtn" id="mem-btn" title="What the assistant remembers">🧠 Memory</button><button class="iconbtn" id="undo" hidden title="Undo the last saved change">↶ Undo</button><button class="iconbtn" id="undo-cleanup" hidden title="Undo the last applied vault cleanup — moves notes back and restores trashed ones">↶ Undo cleanup</button><button class="iconbtn" id="choose">File…</button></header>
+<div class="notice" id="notice" hidden><span id="notice-text"></span><button class="mini" id="notice-action" hidden></button><button class="mini" id="notice-close">×</button></div>
+<main>
+  <div class="col">
+    <section class="card goals-card"><h2>◎ Goals <span class="hacts"><button class="mini" id="edit-goals">✎ Edit</button></span></h2><div class="body goals" id="goals"></div></section>
+    <section class="card read-card"><h2><span class="section-icon">▤</span> To Read <span class="badge" id="b-read"></span></h2><div class="body" id="toread"></div><form class="inlineform" data-add="addToRead"><input placeholder="Add a link or reference…"><button>Add</button></form></section>
+    <section class="card docs-card" id="docs-card"><h2><span class="section-icon">❏</span> Documents <span class="badge" id="b-docs"></span><span class="hacts"><button class="mini" id="attach-doc">Attach…</button></span></h2><div class="body" id="documents"></div><input type="file" id="doc-file" multiple hidden></section>
+  </div>
+  <div class="gutter" id="gl"></div>
+  <div class="col" id="mid">
+    <form class="quickadd" id="quickadd"><button type="button" class="qa-prio" id="qa-prio">Urgent</button><input id="qa-input" placeholder="Add a todo…"><button class="add">Add</button></form>
+    <div class="dupwarn" id="dupwarn" hidden></div>
+    <div class="urgent-guard" id="urgent-guard" hidden></div>
+    <div class="toolbar"><input class="search" id="search" placeholder="Search…"/><span class="toolbar-label">Tags:</span><div class="tags" id="tags"></div><button class="mini" id="clear-filter" hidden>Clear</button></div>
+    <div class="pending" id="pending" hidden><div class="pendingtop"><strong id="pendingtext"></strong><button class="mini primary" id="apply">Apply</button><button class="mini" id="discard">Discard</button></div><div class="ops" id="pendingops"></div></div>
+    <section class="card top-card"><h2><span class="section-icon">★</span> Top 5 <span class="badge" id="b-top5"></span><span class="hacts"><button class="mini" data-prompt="addTop5">Add</button><button class="mini danger" data-confirm="clearTop5">Clear</button></span></h2><ul class="body items" id="top5"></ul></section>
+    <section class="card today-card"><h2><span class="section-icon">●</span> Today <span class="badge" id="b-today"></span><span class="hacts"><button class="mini" id="today-select" data-select="today" hidden>Select</button></span></h2><ul class="body items" id="today"></ul><div class="bulkbar" id="today-bulk" hidden><span class="bulk-count" id="today-bulk-count">Select items to move</span><button data-bulk="urgent">→ Urgent</button><button data-bulk="normal">→ Normal</button><button class="ghost" data-bulk="cancel">Cancel</button></div></section>
+    <section class="card urgent-card"><h2><span class="section-icon">◆</span> Urgent <span class="badge" id="b-urgent"></span><span class="hacts"><button class="mini" id="urgent-select" data-select="urgent" hidden>Select</button></span></h2><ul class="body items" id="urgent"></ul><div class="bulkbar" id="urgent-bulk" hidden><span class="bulk-count" id="urgent-bulk-count">Select items to move</span><button data-bulk="normal">→ Normal</button><button data-bulk="park">→ Park</button><button class="ghost" data-bulk="cancel">Cancel</button></div></section>
+    <section class="card normal-card"><h2><span class="section-icon">●</span> Normal <span class="badge" id="b-normal"></span></h2><ul class="body items" id="normal"></ul></section>
+    <section class="card life-card collapsed" id="parked-card"><h2 class="toggle" data-toggle="parked-card"><span class="chev">▾</span><span class="section-icon">💤</span> Parked <span class="badge" id="b-parked"></span></h2><ul class="body items" id="parked"></ul></section>
+    <section class="card life-card collapsed" id="completed-card"><h2 class="toggle" data-toggle="completed-card"><span class="chev">▾</span><span class="section-icon">✓</span> Completed <span class="badge" id="b-completed"></span><span class="hacts"><button class="mini" data-confirm="archiveCompleted">Move to Deleted</button></span></h2><ul class="body items" id="completed"></ul></section>
+    <section class="card life-card collapsed" id="deleted-card"><h2 class="toggle" data-toggle="deleted-card"><span class="chev">▾</span><span class="section-icon">⌫</span> Deleted <span class="badge" id="b-deleted"></span><span class="hacts"><button class="mini danger" data-confirm="clearDeleted">Empty Trash</button></span></h2><ul class="body items" id="deleted"></ul></section>
+    <div class="foot" id="foot"></div>
+  </div>
+  <div class="gutter" id="gr"></div>
+  <div class="col"><div class="chat"><div class="log" id="log"><div class="empty">Ask the assistant to triage, reorganize, tag, or clean up. Changes stay in a draft until you apply them.</div></div><form id="chatform"><div class="chat-context" id="chat-context" hidden><span class="context-label">Talking about</span><strong id="chat-context-title"></strong><button type="button" id="chat-context-clear" title="Clear todo context">×</button></div><div class="chat-settings"><label title="Auto picks the model per request — fast for quick edits, strong for the weekly review. Or pin one.">Model<select id="model-select"><option value="auto">Auto</option><option value="opus">Opus</option><option value="sonnet">Sonnet</option><option value="haiku">Haiku</option></select></label><label title="How much the model thinks before answering">Effort<select id="effort-select"><option value="">Adaptive</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label></div><div class="chat-compose"><input id="chatin" placeholder="Message the assistant…"><button id="chat-send">Send</button><button type="button" id="chat-cancel" class="danger" hidden>Cancel</button></div></form></div></div>
+</main>
+<div class="modal" id="goals-editor-modal" hidden><div class="dialog goals-dialog">
+  <div class="goals-editor-head"><div><h2>Goals</h2><span class="sub" id="goals-subhead">Drag to reorder · click a goal to edit · ⌥↑ ⌥↓ to move</span></div><span class="hint"><span class="kbd">esc</span> close</span></div>
+  <div class="goals-arrange" id="goals-arrange"></div>
+  <textarea class="goals-editor-text" id="goals-ta" spellcheck="true" aria-label="Goals Markdown" hidden></textarea>
+  <div class="ge-live" id="ge-live" aria-live="polite"></div>
+  <div class="goals-editor-foot"><span class="status" id="goals-editor-status">Changes save as you go.</span><button id="goals-mode" class="mini" title="Edit the raw Markdown instead">Markdown</button><button class="primary" id="goals-done">Done</button></div>
+</div></div>
+<datalist id="note-names"></datalist>
+<div class="modal" id="vault-modal" hidden><div class="dialog"><h2>📁 Vault</h2><p class="sub" id="vault-path"></p><div id="vault-body" class="memory-view"></div><div class="actions"><a id="vault-obsidian" class="mini" style="text-decoration:none" target="_blank" rel="noreferrer" hidden>Open in Obsidian</a><button id="vault-close">Close</button></div></div></div>
+<div class="modal" id="memory-modal" hidden><div class="dialog"><h2>🧠 What I remember</h2><p class="sub" id="memory-path"></p><div class="memory-view bot" id="memory-view"></div><div class="actions"><button id="memory-close">Close</button></div></div></div>
+<div class="modal" id="setup" hidden><div class="dialog"><h2>Choose your Markdown file</h2><p>Navigate to an existing todo document, or choose where to save a new one. The file remains the source of truth.</p><div class="picker-actions"><button data-pick="open">Open existing…</button><button data-pick="blank">Create blank…</button><button data-pick="demo">Create demo…</button></div><p class="or">or enter an exact path</p><input id="setup-path" placeholder="~/Documents/todos.md"><div class="actions"><button id="setup-cancel">Cancel</button><button class="primary" id="setup-manual">Open path</button></div></div></div>
+<script>
+const $=(s)=>document.querySelector(s), $$=(s)=>[...document.querySelectorAll(s)];
+const esc=(s)=>String(s??"").replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function wikilink(m,n){const nm=n.trim();return '<a href="obsidian://open?file='+encodeURIComponent(nm)+'" class="wikilink" title="Open in Obsidian">[['+nm+']]</a>'}
+function wikilinkRow(m,n){const nm=n.trim();return '<a href="obsidian://open?file='+encodeURIComponent(nm)+'" class="wikilink" title="Open in Obsidian">[['+nm+']]</a><button class="linkx" data-act="removeLink" data-link="'+nm+'" title="Remove this note link">×</button>'}
+const WIKI=/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
+function mdInline(t){return t.replace(/`([^`]+)`/g,'<code>$1</code>').replace(WIKI,wikilink).replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/(^|[^*])\*(?!\s)([^*\n]+?)\*/g,'$1<em>$2</em>').replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noreferrer">$1</a>')}
+// Render a title/goal with its [[links]], collapsing the common case where the
+// text IS the note name (goal "Trust and Governance" linked to the same-named
+// note) so the name shows once, as a link — no visible duplication.
+function noteInline(nm){return '<a href="obsidian://open?file='+encodeURIComponent(nm)+'" class="notelink" title="Open in Obsidian">'+esc(nm)+'</a>'}
+function noteChip(nm,removable){return '<span class="notechip">'+noteInline(nm)+(removable?'<button class="linkx" data-act="removeLink" data-link="'+esc(nm)+'" title="Unlink this note">×</button>':'')+'</span>'}
+function titleLinks(rawVisible,removable){
+  const links=[];let m;WIKI.lastIndex=0;
+  while((m=WIKI.exec(rawVisible)))links.push(m[1].split("#")[0].trim());
+  const bare=rawVisible.replace(WIKI,"").replace(/\s{2,}/g," ").trim();
+  const matchIdx=links.findIndex(n=>n.toLowerCase()===bare.toLowerCase());
+  let head,trailing;
+  if(bare&&matchIdx<0){head=esc(bare).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noreferrer">$1</a>');trailing=links;}
+  else if(matchIdx>=0){head=noteInline(links[matchIdx]);trailing=links.filter((_,i)=>i!==matchIdx);}
+  else{head=links.length?noteInline(links[0]):"";trailing=links.slice(1);}
+  const chips=trailing.map(n=>noteChip(n,removable)).join("");
+  return head+(chips?(head?" ":"")+chips:"");
+}
+function showActivity(a){
+  if(!a)return;
+  const logged=[...new Set(a.logged||[])],suggest=a.suggest||[],snotes=[...new Set(suggest.map(s=>s.note))];
+  if(snotes.length){
+    const msg=(logged.length?"Logged to "+logged.join(", ")+". ":"")+snotes.join(", ")+(snotes.length>1?" have":" has")+" no activity log yet.";
+    showNotice(msg,{sticky:true,label:"Start log"+(snotes.length>1?"s":""),action:()=>startActivityLog(suggest)});
+  }else if(logged.length){
+    showNotice("Logged to "+logged.join(", "),{info:true,label:"Undo",action:undoActivity});
+  }
+}
+async function startActivityLog(items){try{const r=await api("/api/activity/enable",{method:"POST",body:JSON.stringify({items})});render(r.model);noteCache=null;showNotice("Started an activity log in "+(r.logged||[]).join(", "),{info:true,label:"Undo",action:undoActivity})}catch(e){handleError(e)}}
+async function undoActivity(){try{const r=await api("/api/activity/undo",{method:"POST"});render(r.model);noteCache=null;showNotice("Removed the log entr"+((r.removed||0)===1?"y":"ies")+".",{info:true})}catch(e){handleError(e)}}
+function mdRender(s){const L=esc(String(s??"")).replace(/\r/g,"").split("\n"),out=[],ul=l=>/^\s*[-*]\s+/.test(l),ol=l=>/^\s*\d+\.\s+/.test(l);let i=0;while(i<L.length){if(L[i].trim()===""){i++;continue}const hm=L[i].match(/^(#{1,6})\s+(.+)$/);if(hm){const lv=Math.min(hm[1].length+2,6);out.push("<h"+lv+">"+mdInline(hm[2])+"</h"+lv+">");i++;continue}if(ul(L[i])){const it=[];while(i<L.length&&ul(L[i])){it.push(mdInline(L[i].replace(/^\s*[-*]\s+/,"")));i++}out.push("<ul>"+it.map(x=>"<li>"+x+"</li>").join("")+"</ul>");continue}if(ol(L[i])){const it=[];while(i<L.length&&ol(L[i])){it.push(mdInline(L[i].replace(/^\s*\d+\.\s+/,"")));i++}out.push("<ol>"+it.map(x=>"<li>"+x+"</li>").join("")+"</ol>");continue}const pa=[];while(i<L.length&&L[i].trim()!==""&&!ul(L[i])&&!ol(L[i])){pa.push(L[i]);i++}out.push("<p>"+pa.map(mdInline).join("<br>")+"</p>")}return out.join("")}
+const TAGC=["#3973DC","#278464","#7C5CC4","#168A8A","#C15F36","#247EAA","#A24F88"];
+const tagColor=(n)=>{let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))>>>0;return TAGC[h%TAGC.length]};
+let current=null, selectedTag="", query="", noticeTimer, attemptedStoredPath=false;
+// Multi-select lives in one list at a time — selectSection names it ("today" or
+// "urgent"), selected holds the ids inside it.
+let selectSection=null;const selected=new Set();const SELECT_LISTS=["today","urgent"];let MUST_CAP=3;
+
+async function api(path,options={}){
+  const controller=new AbortController(); const timeout=setTimeout(()=>controller.abort(),options.timeout||30000);
+  try{
+    const res=await fetch(path,{...options,signal:controller.signal,headers:{"content-type":"application/json",...(options.headers||{})}});
+    const body=await res.json();
+    if(!res.ok){const e=new Error(body.error||`Request failed (${res.status})`);e.body=body;e.status=res.status;throw e}
+    return body;
+  }catch(e){if(e.name==="AbortError")throw new Error("The request timed out. Please try again.");throw e}finally{clearTimeout(timeout)}
+}
+function showNotice(message,{action,label,info=false,sticky=false}={}){
+  clearTimeout(noticeTimer);$("#notice-text").textContent=message;$("#notice").hidden=false;$("#notice").classList.toggle("info",info);
+  const b=$("#notice-action");b.hidden=!action;b.textContent=label||"Action";b.onclick=action||null;
+  if(!sticky)noticeTimer=setTimeout(()=>$("#notice").hidden=true,6000);
+}
+$("#notice-close").onclick=()=>$("#notice").hidden=true;
+function handleError(e){
+  if(e.body?.conflict)showNotice(e.message,{sticky:true,label:"Reload file",action:reloadFile});
+  else showNotice(e.message||String(e),{sticky:true});
+}
+async function reloadFile(){try{render((await api("/api/reload",{method:"POST"})).model);showNotice("Reloaded the latest version from disk.",{info:true})}catch(e){handleError(e)}}
+
+function rich(it){
+  let visible=it.title;
+  for(const tag of it.tags||[]){
+    const safe=tag.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+    visible=visible.replace(new RegExp(`(^|\\s)#${safe}(?![\\w/-])`,"g"),"$1");
+  }
+  visible=visible.replace(/\s{2,}/g," ").trim();
+  let t=titleLinks(visible,true);
+  for(const tag of it.tags||[])t+=`<button class="tag" data-act="removeTag" data-tag="${esc(tag)}" style="--tc:${tagColor(tag)}">#${esc(tag)}</button>`;
+  if(it.age!=null)t+=`<span class="age">${it.age}d</span>`;return t;
+}
+function matches(it){const text=(it.title+" "+(it.tags||[]).join(" ")).toLowerCase();return(!query||text.includes(query))&&(!selectedTag||(it.tags||[]).some(t=>t.toLowerCase()===selectedTag))}
+function actions(it,section){const b=[];
+  if(["top5","today","urgent","normal"].includes(section)){b.push('<button class="talk" data-act="talk" title="Talk to the assistant about this todo" aria-label="Talk about this">💬</button>')}
+  if(["today","urgent"].includes(section)){b.push(it.must?'<button data-act="toggleMust" title="No longer a hard commitment — drops back to Today">Not a must</button>':'<button data-act="toggleMust" title="Commit to this today (max '+MUST_CAP+')">Must</button>')}
+  if(["top5","urgent","normal"].includes(section)&&/\+|;| and |, also /i.test(it.title||"")){b.push('<button data-act="split" title="This looks like several tasks — let the assistant break it into steps">Split</button>')}
+  if(["urgent","normal"].includes(section)){b.push(it.blocked?'<button data-act="toggleQueued" title="Stop waiting — work on this independently">Unqueue</button>':'<button data-act="toggleQueued" title="Do this only after the item above it">Queue after ↑</button>')}
+  else if(section==="parked")b.push('<button data-act="unpark">Un-park</button>');
+  else if(section==="deleted")b.push('<button data-act="restore">Restore</button><button class="danger" data-act="permanentDelete">Delete forever</button>');
+  else if(section==="completed")b.push('<button data-act="uncomplete" title="Ticked off by mistake? Put it back in Urgent">Not done</button><button data-act="delete">Move to Deleted</button>');return b.join("")
+}
+const GROUP_MIN=3;
+function itemLi(it,section,canDrag,sub,gc){const selectable=section===selectSection,sel=selectable&&selected.has(it.id);return `<li class="item ${sub?"tg-sub":""} ${it.today?"today":""} ${it.must?"must":""} ${it.blocked?"queued":""} ${sel?"sel":""} ${section==="top5"&&it.done?"done":""}" data-id="${esc(it.id)}" data-title="${esc(it.title)}" data-section="${section}"${sub&&gc?` style="--tc:${gc}"`:""}>${canDrag?'<span class="draghandle" draggable="true" title="Drag to reorder" aria-label="Drag to reorder"></span>':""}${selectable?`<button class="selbox${sel?" on":""}" data-selbox title="Select to move" aria-label="Select">${sel?"✓":""}</button>`:""}<button class="box" data-act="${section==="top5"?"toggleDone":"complete"}" ${["completed","deleted"].includes(section)||selectable?"disabled":""}>${section==="completed"||(section==="top5"&&it.done)?"●":"○"}</button>${it.blocked?`<span class="pill queued" title="${esc(it.waitingFor?"Waiting for: "+it.waitingFor:"Waiting for the item above")}">after</span>`:it.must?`<span class="pill must" title="A hard commitment for today${it.mustDays>=1?` — committed ${it.mustDays} day${it.mustDays===1?"":"s"} ago`:""}">Must${it.mustDays>=3?` ${it.mustDays}d`:""}</span>`:it.today?'<span class="pill">Today</span>':""}<span class="t">${rich(it)}</span><span class="rowact">${actions(it,section)}</span></li>`}
+const GROUP_PREVIEW=3;
+function expandedGroups(){try{return new Set(JSON.parse(localStorage.getItem("brf-expanded-groups")||"[]"))}catch{return new Set()}}
+function fill(id,items,section){
+  const shown=items.filter(matches),canDrag=["top5","today","urgent","normal"].includes(section),root=$("#"+id);root.dataset.section=section;
+  // Group a crowded Urgent/Normal by tag: any tag with GROUP_MIN+ items collapses
+  // into an expandable row (view-only — the markdown is untouched; Today items
+  // are excluded since they render in the Today list). Off while filtering/searching.
+  let html="";
+  if((section==="urgent"||section==="normal")&&shown.length&&!selectedTag&&!query){
+    const counts={};for(const it of shown)for(const t of (it.tags||[]))counts[t]=(counts[t]||0)+1;
+    const groupTagOf=it=>{for(const t of (it.tags||[]))if(counts[t]>=GROUP_MIN)return t;return null};
+    const exp=expandedGroups(),done=new Set();
+    html=shown.map(it=>{
+      const gt=groupTagOf(it);
+      if(!gt)return itemLi(it,section,canDrag);
+      if(done.has(gt))return "";
+      done.add(gt);
+      const members=shown.filter(x=>groupTagOf(x)===gt),key=section+":"+gt,open=exp.has(key);
+      // Urgent groups by tag but never hides: an urgent item behind "… 3 more" is an
+      // urgent item you don't see. Only Normal — the pile — collapses to a preview.
+      const collapsible=section!=="urgent";
+      const visible=collapsible&&!open?members.slice(0,GROUP_PREVIEW):members,gc=tagColor(gt);
+      const head=`<li class="tg-head${collapsible?"":" tg-static"}"${collapsible?` data-toggle-group="${esc(key)}"`:""} style="--tc:${gc}"><span class="tg-name">#${esc(gt)}</span><span class="tg-count">${members.length}</span></li>`;
+      const rows=visible.map(m=>itemLi(m,section,canDrag,true,gc)).join("");
+      const extra=collapsible?members.length-GROUP_PREVIEW:0;
+      const more=extra>0?`<li class="tg-more" data-toggle-group="${esc(key)}" style="--tc:${gc}">${open?"show less":`… ${extra} more`}</li>`:"";
+      return head+rows+more;
+    }).join("");
+  }else{
+    html=shown.map(it=>itemLi(it,section,canDrag)).join("");
+  }
+  root.innerHTML=html||'<li class="empty">Drop a todo here.</li>';
+  if(id==="today"){const nm=items.filter(it=>it.must).length;$("#b-today").textContent=nm?`${nm}/${MUST_CAP} must · ${items.length}`:items.length}
+  else $("#b-"+id).textContent=items.length;
+}
+function goalsMarkup(lines){const colors=["#3973DC","#2F9461","#2597A0","#D6536D","#795DB5","#C8872F"],groups=[];let group={title:"Goals",lines:[]};for(const raw of lines){const l=raw.trim(),m=l.match(/^\*\*(.+?)\*\*(.*)$/);if(m){if(group.lines.length)groups.push(group);group={title:(m[1]+m[2]).trim(),lines:[]}}else if(l)group.lines.push(l.replace(/^[-*]\s+/,""))}if(group.lines.length)groups.push(group);return groups.length?groups.map((g,i)=>`<section class="goal-group" style="--gc:${colors[i%colors.length]}"><h3>${titleLinks(g.title,false)}</h3><ul>${g.lines.map(l=>`<li>${titleLinks(l,false)}</li>`).join("")}</ul></section>`).join(""):'<div class="empty">Add a **Heading** and a few - goals to begin.</div>'}
+function renderGoals(lines){$("#goals").innerHTML=goalsMarkup(lines)}
+function renderLines(id,items,kind){$("#"+id).innerHTML=items.length?items.map(x=>`<div class="readline"><span class="text">${kind==="read"?esc(x.text).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank">$1</a>'):esc(x.text)}${x.age!=null?` <span class="age">${x.age}d</span>`:""}</span><button class="mini danger" data-line-act="${kind==="read"?"removeFromRead":"removeBigThing"}" data-index="${x.index}">×</button></div>`).join(""):'<div class="empty">Nothing here.</div>'}
+function renderTags(tags){$("#tags").innerHTML=tags.map(t=>`<button class="tagfilter ${selectedTag===t.toLowerCase()?"on":""}" data-filter="${esc(t.toLowerCase())}" style="--tc:${tagColor(t)}" title="Click to filter · double-click to rename">#${esc(t)}</button>`).join("");$("#clear-filter").hidden=!selectedTag&&!query}
+function human(n){return n<1024?n+" B":n<1048576?Math.round(n/1024)+" KB":(n/1048576).toFixed(1)+" MB"}
+function renderDocuments(list){$("#documents").innerHTML=list.length?list.map(d=>`<div class="readline"><a class="text" href="/api/documents/file?name=${encodeURIComponent(d.name)}" target="_blank" rel="noreferrer">${esc(d.name)}</a><span class="age">${human(d.size)}</span><button class="mini danger" data-doc-remove="${esc(d.name)}" title="Remove">×</button></div>`).join(""):'<div class="empty">No documents yet — attach one.</div>';$("#b-docs").textContent=list.length}
+function fileToBase64(file){return new Promise((res,rej)=>{const fr=new FileReader();fr.onerror=()=>rej(new Error("Could not read "+file.name));fr.onload=()=>res(String(fr.result).split(",",2)[1]||"");fr.readAsDataURL(file)})}
+async function uploadDoc(file){try{const data=await fileToBase64(file);const r=await api("/api/documents",{method:"POST",timeout:120000,body:JSON.stringify({name:file.name,data})});render(r.model);showNotice(`Attached ${file.name}.`,{info:true})}catch(e){handleError(e)}}
+async function removeDoc(name){try{render((await api("/api/documents/remove",{method:"POST",body:JSON.stringify({name})})).model)}catch(e){handleError(e)}}
+function flashEl(el){if(!el)return;el.classList.remove("flash");void el.offsetWidth;el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1500)}
+function flashItems(f){if(!f)return;requestAnimationFrame(()=>{for(const id of f.items||[])document.querySelectorAll('li[data-id="'+String(id).replace(/["\\]/g,"")+'"]').forEach(flashEl);if(f.goals)flashEl($(".goals-card"));if(f.toread)flashEl($(".read-card"))})}
+function render(m){current=m;if(m.appVersion)$("#ver").textContent="v"+m.appVersion;if(m.mustCap)MUST_CAP=m.mustCap;if(!m.configured){$("#setup").hidden=false;return}$("#setup").hidden=true;$("#path").textContent=m.todoDocPath;$("#undo").hidden=!m.canUndo;$("#undo-cleanup").hidden=!m.canUndoCleanup;renderTags(m.tags||[]);renderGoals(m.goals||[]);renderLines("toread",m.toread||[],"read");$("#b-read").textContent=m.toread.length;renderDocuments(m.documents||[]);fill("top5",m.top5||[],"top5");syncSelection(m);fill("today",(m.urgent||[]).filter(it=>it.today),"today");fill("urgent",(m.urgent||[]).filter(it=>!it.today),"urgent");for(const id of["normal","parked","completed","deleted"])fill(id,m[id]||[],id);$("#foot").textContent=`${m.completed.length} completed · ${m.deleted.length} deleted`;const uc=(m.urgent||[]).length;if(uc>15&&sessionStorage.getItem("ugDismiss")!=="1"){$("#urgent-guard").hidden=false;$("#urgent-guard").innerHTML=`<span>Urgent has <strong>${uc}</strong> items — when everything's urgent, nothing is.</span><button class="mini" data-ug="tidy">Help me tidy</button><button class="mini" data-ug="dismiss">Dismiss</button>`}else{$("#urgent-guard").hidden=true;$("#urgent-guard").innerHTML=""}$("#pending").hidden=!m.dirty;if(m.dirty){const ch=m.changes||[];$("#pendingtext").textContent=ch.length?`${ch.length} proposed change${ch.length===1?"":"s"} — ✓ approve or × reject each, or Apply all`:"Assistant draft pending";$("#pendingops").innerHTML=ch.map(c=>`<div class="chg chg-${esc(c.kind)}"><span class="chg-label">${esc(c.label)}</span><button class="chg-ok" data-approve="${esc(c.key)}" title="Approve — apply just this change now">✓</button><button class="chg-x" data-reject="${esc(c.key)}" title="Reject this change">×</button></div>`).join("")}if(m.conflict)showNotice("The Markdown file changed while an assistant draft was pending.",{sticky:true,label:"Discard draft and reload",action:reloadFile})}
+const hasInlineEditor=()=>!!$("input.edit,input.tagadd");
+async function load(silent=false){if(silent&&hasInlineEditor())return;try{const m=await api("/api/model");if(silent&&hasInlineEditor())return;if(!m.configured&&!attemptedStoredPath){attemptedStoredPath=true;const path=localStorage.getItem("todoDocPath");if(path){try{return render((await api("/api/config",{method:"POST",body:JSON.stringify({path,mode:"open"})})).model)}catch{localStorage.removeItem("todoDocPath")}}}render(m)}catch(e){if(!silent)handleError(e)}}
+async function act(action,extra={}){try{const r=await api("/api/act",{method:"POST",body:JSON.stringify({action,...extra})});render(r.model);showActivity(r.activity)}catch(e){handleError(e)}}
+// Multi-select on the Today list: prune the selection to what's still there, then
+// show/hide the bulk-move bar. Called from render() every time Today is redrawn.
+function selectPools(m){const u=m.urgent||[];return{today:u.filter(it=>it.today),urgent:u.filter(it=>!it.today)}}
+function syncSelection(m){
+  const pools=selectPools(m);
+  // Anything that left the active list while selected (completed, reprioritised by
+  // the assistant, moved from another tab) drops out of the selection.
+  if(selectSection){
+    const live=new Set((pools[selectSection]||[]).map(it=>it.id));
+    for(const id of[...selected])if(!live.has(id))selected.delete(id);
+    if(!live.size){selectSection=null;selected.clear()}
+  }
+  for(const s of SELECT_LISTS){
+    const on=selectSection===s,btn=$("#"+s+"-select"),bar=$("#"+s+"-bulk"),count=$("#"+s+"-bulk-count");
+    if(btn){btn.hidden=!(pools[s]||[]).length;btn.textContent=on?"Done":"Select";btn.classList.toggle("on",on)}
+    if(bar)bar.hidden=!on;
+    if(count)count.textContent=selected.size?`${selected.size} selected`:"Select items to move";
+  }
+}
+function updateBulkCount(){const c=$("#"+selectSection+"-bulk-count");if(c)c.textContent=selected.size?`${selected.size} selected`:"Select items to move"}
+
+$("#search").oninput=e=>{query=e.target.value.trim().toLowerCase();if(current)render(current)};
+$("#tags").onclick=e=>{const b=e.target.closest("[data-filter]");if(b){selectedTag=selectedTag===b.dataset.filter?"":b.dataset.filter;render(current)}};
+$("#tags").ondblclick=e=>{const b=e.target.closest("[data-filter]");if(!b)return;const to=prompt(`Rename #${b.dataset.filter} to:`,b.dataset.filter);if(to&&to.replace(/^#/,"")!==b.dataset.filter)act("renameTag",{from:b.dataset.filter,to:to.replace(/^#/,"")})};
+$("#clear-filter").onclick=()=>{selectedTag="";query="";$("#search").value="";render(current)};
+$("#mid").onclick=e=>{const selToggle=e.target.closest("[data-select]");if(selToggle){const s=selToggle.dataset.select;selectSection=selectSection===s?null:s;selected.clear();render(current);return}const selbtn=e.target.closest("[data-selbox]");if(selbtn){const li=selbtn.closest("li[data-id]");if(!li)return;const id=li.dataset.id;selected.has(id)?selected.delete(id):selected.add(id);const on=selected.has(id);li.classList.toggle("sel",on);selbtn.classList.toggle("on",on);selbtn.textContent=on?"✓":"";updateBulkCount();return}const bulkBtn=e.target.closest("[data-bulk]");if(bulkBtn){const kind=bulkBtn.dataset.bulk;if(kind==="cancel"){selectSection=null;selected.clear();render(current);return}const ids=[...selected];if(!ids.length)return;selectSection=null;selected.clear();act(kind==="park"?"parkMany":"setPriorityMany",kind==="park"?{ids}:{ids,bucket:kind});return}const grp=e.target.closest("[data-toggle-group]");if(grp){const key=grp.dataset.toggleGroup,exp=expandedGroups();exp.has(key)?exp.delete(key):exp.add(key);localStorage.setItem("brf-expanded-groups",JSON.stringify([...exp]));render(current);return}const tog=e.target.closest("[data-toggle]");if(tog&&!e.target.closest("button")){$("#"+tog.dataset.toggle).classList.toggle("collapsed");return}const promptBtn=e.target.closest("[data-prompt]");if(promptBtn){const title=prompt("Add to Top 5:");if(title)act(promptBtn.dataset.prompt,{title});return}const confirmBtn=e.target.closest("[data-confirm]");if(confirmBtn){const cmsg={clearDeleted:"Permanently delete everything in Trash? (still recoverable via Undo)",archiveCompleted:"Move all completed items to Trash?",clearTop5:"Clear all Top 5 items?"};if(confirm(cmsg[confirmBtn.dataset.confirm]||"Are you sure?"))act(confirmBtn.dataset.confirm);return}const btn=e.target.closest("button[data-act]");if(!btn)return;const li=btn.closest("li[data-id]");if(!li)return;const action=btn.dataset.act;if(action==="talk")return setChatContext(li);
+  if(action==="split")return chat(`Split the todo with id ${li.dataset.id}, titled "${li.dataset.title}", into separate todos with split_todo. Use sequential=true only if the parts genuinely have to happen in order. Keep the parts short.`,`Split "${li.dataset.title}"`);if(action==="addTag")return startAddTag(li);if(action==="linkNote")return startLinkNote(li);if(action==="removeTag"){const re=new RegExp("\\s*#"+btn.dataset.tag.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(?![\\w/-])","g");return act("editTitle",{id:li.dataset.id,title:li.dataset.title.replace(re,"").replace(/\s{2,}/g," ").trim()})}if(action==="removeLink"){const nm=btn.dataset.link.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");const re=new RegExp("\\s*\\[\\["+nm+"(?:\\|[^\\]]*)?\\]\\]","g");return act("editTitle",{id:li.dataset.id,title:li.dataset.title.replace(re,"").replace(/\s{2,}/g," ").trim()})}if(action==="permanentDelete"&&!confirm("Permanently delete this item? This cannot be undone."))return;act(action,{id:li.dataset.id,dir:btn.dataset.dir,bucket:btn.dataset.bucket})};
+let dragging=null;
+const todoBuckets=["today","urgent","normal"];
+function compatibleDrop(from,to){return from==="top5"||to==="top5"?from===to:todoBuckets.includes(from)&&todoBuckets.includes(to)}
+function clearDropMarkers(){$$(".drop-before,.drop-after,.drop-zone").forEach(el=>el.classList.remove("drop-before","drop-after","drop-zone"))}
+$("#mid").addEventListener("dragstart",e=>{const handle=e.target.closest(".draghandle");if(!handle)return;const li=handle.closest("li[data-id]");dragging={id:li.dataset.id,bucket:li.dataset.section,today:li.classList.contains("today")};li.classList.add("dragging");e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",li.dataset.id)});
+$("#mid").addEventListener("dragover",e=>{if(!dragging)return;const li=e.target.closest("li[data-id]"),list=e.target.closest("ul.items[data-section]");if(!list||!compatibleDrop(dragging.bucket,list.dataset.section)||li?.dataset.id===dragging.id)return;e.preventDefault();clearDropMarkers();if(li){const rect=li.getBoundingClientRect();li.classList.add(e.clientY<rect.top+rect.height/2?"drop-before":"drop-after")}else list.classList.add("drop-zone");e.dataTransfer.dropEffect="move"});
+$("#mid").addEventListener("drop",e=>{if(!dragging)return;const li=e.target.closest("li[data-id]"),list=e.target.closest("ul.items[data-section]");if(!list||!compatibleDrop(dragging.bucket,list.dataset.section)||li?.dataset.id===dragging.id)return;e.preventDefault();const position=li&&e.clientY<li.getBoundingClientRect().top+li.getBoundingClientRect().height/2?"before":"after",move=dragging;clearDropMarkers();dragging=null;act("reorderTo",{id:move.id,bucket:list.dataset.section,targetId:li?.dataset.id||null,position})});
+$("#mid").addEventListener("dragend",()=>{clearDropMarkers();$(".item.dragging")?.classList.remove("dragging");dragging=null});
+$("#mid").ondblclick=e=>{const li=e.target.closest("li[data-id]");if(li&&e.target.closest(".t"))startEdit(li)};
+function startEdit(li){if(li.querySelector("input.edit"))return;const raw=li.dataset.title,id=li.dataset.id,input=document.createElement("input");input.className="edit";input.value=raw;li.querySelector(".t").replaceWith(input);input.focus();input.select();input.oninput=()=>onWikiInput(input);let done=false;const finish=save=>{if(done)return;done=true;const v=input.value.trim();hideWiki();render(current);if(save&&v&&v!==raw)act("editTitle",{id,title:v})};input.onkeydown=e=>{if(wikiKey(e))return;if(e.key==="Enter"){e.preventDefault();finish(true)}else if(e.key==="Escape"){e.preventDefault();finish(false)}};input.onblur=()=>setTimeout(()=>finish(true),120)}
+let noteCache=null;
+async function fetchNotes(){if(noteCache)return noteCache;try{noteCache=(await api("/api/notes")).notes||[]}catch{noteCache=[]}return noteCache}
+// Obsidian-style [[ autocomplete (caret-anchored, ranked, robust dismissal).
+const WIKI_MIN=2;
+let wikiPop=null,wikiInput=null,wikiItems=[],wikiSel=0,wikiStart=-1,wikiQuery="",wikiSeq=0,wikiMute=null,wikiMirror=null,wikiRaf=0,wikiBound=false;
+function ensureWikiPop(){
+  if(wikiPop)return wikiPop;
+  wikiPop=document.createElement("div");
+  wikiPop.id="wiki-pop";wikiPop.hidden=true;
+  wikiPop.setAttribute("role","listbox");wikiPop.setAttribute("aria-label","Note suggestions");
+  document.body.appendChild(wikiPop);
+  wikiPop.addEventListener("mousedown",e=>{e.preventDefault();const it=e.target.closest(".wp-item");if(it)chooseWiki(+it.dataset.i)});
+  wikiPop.addEventListener("mouseover",e=>{const it=e.target.closest(".wp-item");if(it&&+it.dataset.i!==wikiSel){wikiSel=+it.dataset.i;paintWikiSel(false)}});
+  return wikiPop;
+}
+function hideWiki(){
+  if(wikiPop)wikiPop.hidden=true;
+  if(wikiInput&&wikiInput.isConnected)wikiInput.removeAttribute("aria-activedescendant");
+  wikiItems=[];wikiInput=null;wikiStart=-1;wikiQuery="";
+  unbindWikiGlobals();
+}
+async function onWikiInput(el){
+  ensureWikiPop();
+  const seq=++wikiSeq;
+  const v=el.value,c=el.selectionStart??v.length;
+  const m=el.selectionEnd===c?v.slice(0,c).match(/\[\[([^\]\[]*)$/):null;
+  if(!m){wikiMute=null;hideWiki();return}
+  const start=c-m[1].length;
+  if(wikiMute&&(wikiMute.el!==el||wikiMute.start!==start))wikiMute=null;
+  const q=m[1].trim().toLowerCase();
+  if(wikiMute||q.length<WIKI_MIN){hideWiki();return}
+  const notes=await fetchNotes();
+  if(seq!==wikiSeq)return;
+  if(!el.isConnected||document.activeElement!==el){hideWiki();return}
+  const ranked=rankWiki(notes,q);
+  if(!ranked.length){hideWiki();return}
+  wikiInput=el;wikiStart=start;wikiQuery=m[1];wikiSel=0;wikiItems=ranked;
+  renderWiki(q);positionWiki();bindWikiGlobals();
+}
+function rankWiki(paths,q){
+  const out=[];
+  for(const p of paths||[]){
+    const name=String(p).replace(/\.md$/i,"");
+    const lower=name.toLowerCase(),base=lower.slice(lower.lastIndexOf("/")+1);
+    let s=-1;
+    if(base.startsWith(q))s=0;
+    else if(wikiWordStart(base,q))s=1;
+    else if(lower.startsWith(q))s=2;
+    else if(wikiWordStart(lower,q))s=3;
+    else if(base.includes(q))s=4;
+    else if(lower.includes(q))s=5;
+    if(s>=0)out.push({name,base,s});
+  }
+  out.sort((a,b)=>a.s-b.s||a.base.length-b.base.length||a.name.localeCompare(b.name));
+  return out.slice(0,8).map(o=>o.name);
+}
+function wikiWordStart(s,q){let i=s.indexOf(q);while(i!==-1){if(i===0||!/[a-z0-9]/i.test(s[i-1]))return true;i=s.indexOf(q,i+1)}return false}
+function renderWiki(q){
+  wikiPop.innerHTML='<div class="wp-head">Link a note</div>'+wikiItems.map((n,i)=>{
+    const cut=n.lastIndexOf("/"),base=cut<0?n:n.slice(cut+1),dir=cut<0?"":n.slice(0,cut);
+    return `<div class="wp-item" id="wp-opt-${i}" role="option" data-i="${i}">${wikiHi(base,q)}${dir?` <span class="wp-dir">${esc(dir)}</span>`:""}</div>`;
+  }).join("");
+  wikiPop.hidden=false;
+  paintWikiSel(true);
+}
+function wikiHi(base,q){
+  const i=q?base.toLowerCase().indexOf(q):-1;
+  if(i<0)return esc(base);
+  return esc(base.slice(0,i))+"<b>"+esc(base.slice(i,i+q.length))+"</b>"+esc(base.slice(i+q.length));
+}
+function paintWikiSel(scroll){
+  const els=wikiPop.querySelectorAll(".wp-item");
+  els.forEach((d,i)=>{d.classList.toggle("on",i===wikiSel);d.setAttribute("aria-selected",i===wikiSel?"true":"false")});
+  const on=els[wikiSel];
+  if(on){if(scroll)on.scrollIntoView({block:"nearest"});if(wikiInput)wikiInput.setAttribute("aria-activedescendant",on.id)}
+}
+// Caret screen coords via a mirror that matches the element's box + wrapping —
+// works for single-line inputs AND multi-line textareas (the earlier version
+// measured one line, so [[ autocomplete mispositioned in a textarea).
+function caretXY(el,index){
+  const isInput=el.tagName==="INPUT";
+  if(!wikiMirror){wikiMirror=document.createElement("div");document.body.appendChild(wikiMirror)}
+  const m=wikiMirror,cs=getComputedStyle(el);
+  m.style.cssText="position:fixed;top:-9999px;left:0;visibility:hidden;pointer-events:none;overflow:hidden";
+  m.style.whiteSpace=isInput?"pre":"pre-wrap";m.style.wordWrap="break-word";
+  for(const p of ["fontFamily","fontSize","fontWeight","fontStyle","fontVariant","letterSpacing","textTransform","lineHeight","textIndent","paddingTop","paddingRight","paddingBottom","paddingLeft","borderTopWidth","borderRightWidth","borderBottomWidth","borderLeftWidth","boxSizing","tabSize"])m.style[p]=cs[p];
+  m.style.width=isInput?"auto":cs.width;
+  m.textContent=el.value.slice(0,index);
+  const span=document.createElement("span");span.textContent=el.value.slice(index)||".";
+  m.appendChild(span);
+  const sx=span.offsetLeft,sy=span.offsetTop;
+  m.textContent="";
+  const r=el.getBoundingClientRect(),lh=parseFloat(cs.lineHeight)||parseFloat(cs.fontSize)*1.3;
+  return {x:r.left+sx-el.scrollLeft,y:r.top+sy-el.scrollTop,lineHeight:lh};
+}
+function positionWiki(){
+  const el=wikiInput;
+  if(!el||!el.isConnected){hideWiki();return}
+  const r=el.getBoundingClientRect();
+  if(!r.width&&!r.height){hideWiki();return}
+  const c=caretXY(el,wikiStart);
+  wikiPop.style.visibility="hidden";wikiPop.hidden=false;
+  const pw=wikiPop.offsetWidth,ph=wikiPop.offsetHeight;
+  const below=c.y+c.lineHeight+3,above=c.y-3-ph;
+  const top=(below+ph<=innerHeight-6)||!(above>=6)?below:above;
+  const x=Math.max(r.left+4,Math.min(c.x,r.right-4));
+  wikiPop.style.left=Math.max(6,Math.min(x,innerWidth-pw-6))+"px";
+  wikiPop.style.top=Math.max(6,Math.min(top,innerHeight-ph-6))+"px";
+  wikiPop.style.visibility="";
+}
+function chooseWiki(i){
+  const el=wikiInput;
+  if(!el||!el.isConnected||i<0||i>=wikiItems.length){hideWiki();return}
+  const name=wikiItems[i],v=el.value;
+  let end=Math.max(el.selectionStart??v.length,wikiStart);
+  const after=v.slice(end);
+  if(after.startsWith("]]"))end+=2;else if(after.startsWith("]"))end+=1;
+  wikiMute=null;
+  el.focus();
+  wikiInsert(el,wikiStart,end,name+"]]");
+  hideWiki();
+}
+function wikiInsert(el,start,end,text){
+  let ok=false;
+  try{
+    el.setSelectionRange(start,end);
+    ok=document.execCommand("insertText",false,text);
+  }catch{ok=false}
+  if(!ok||el.value.slice(start,start+text.length)!==text){
+    try{el.setRangeText(text,start,end,"end")}catch{el.value=el.value.slice(0,start)+text+el.value.slice(end)}
+    el.dispatchEvent(new Event("input",{bubbles:true}));
+  }
+  const caret=start+text.length;
+  try{el.setSelectionRange(caret,caret)}catch{}
+}
+function wikiKey(e){
+  if(!wikiPop||wikiPop.hidden||!wikiItems.length||!wikiInput)return false;
+  if(e.isComposing||e.keyCode===229)return false;
+  const plain=!e.metaKey&&!e.ctrlKey&&!e.altKey&&!e.shiftKey;
+  if(plain&&(e.key==="ArrowDown"||e.key==="ArrowUp")){
+    wikiSel=(wikiSel+(e.key==="ArrowDown"?1:-1)+wikiItems.length)%wikiItems.length;
+    paintWikiSel(true);
+    e.preventDefault();e.stopPropagation();return true;
+  }
+  if(plain&&(e.key==="Enter"||e.key==="Tab")){
+    chooseWiki(wikiSel);
+    e.preventDefault();e.stopPropagation();return true;
+  }
+  if(e.key==="Escape"){
+    wikiMute={el:wikiInput,start:wikiStart};
+    hideWiki();
+    e.preventDefault();e.stopPropagation();return true;
+  }
+  if(!plain||/^(Arrow(Left|Right)|Home|End|Page(Up|Down))$/.test(e.key))setTimeout(recheckWiki,0);
+  return false;
+}
+function recheckWiki(){
+  const el=wikiInput;
+  if(!el||!wikiPop||wikiPop.hidden)return;
+  if(!el.isConnected||document.activeElement!==el){hideWiki();return}
+  const v=el.value,c=el.selectionStart??v.length;
+  if(el.selectionEnd!==c){hideWiki();return}
+  const m=v.slice(0,c).match(/\[\[([^\]\[]*)$/);
+  if(!m){hideWiki();return}
+  if(c-m[1].length!==wikiStart||m[1]!==wikiQuery)onWikiInput(el);
+}
+function onWikiWin(e){
+  if(!wikiPop||wikiPop.hidden)return;
+  if(e&&e.target===wikiPop)return;
+  if(wikiRaf)return;
+  wikiRaf=requestAnimationFrame(()=>{wikiRaf=0;if(wikiPop&&!wikiPop.hidden)positionWiki()});
+}
+function onWikiDocDown(e){
+  if(!wikiPop||wikiPop.hidden)return;
+  if(wikiPop.contains(e.target))return;
+  if(e.target===wikiInput){setTimeout(recheckWiki,0);return}
+  hideWiki();
+}
+function onWikiFocusOut(e){if(wikiInput&&e.target===wikiInput)hideWiki()}
+function onWikiSelChange(){recheckWiki()}
+function onWikiWinBlur(){hideWiki()}
+function bindWikiGlobals(){
+  if(wikiBound)return;wikiBound=true;
+  window.addEventListener("scroll",onWikiWin,{capture:true,passive:true});
+  window.addEventListener("resize",onWikiWin);
+  window.addEventListener("blur",onWikiWinBlur);
+  document.addEventListener("mousedown",onWikiDocDown,true);
+  document.addEventListener("focusout",onWikiFocusOut,true);
+  document.addEventListener("selectionchange",onWikiSelChange);
+}
+function unbindWikiGlobals(){
+  if(!wikiBound)return;wikiBound=false;
+  window.removeEventListener("scroll",onWikiWin,{capture:true});
+  window.removeEventListener("resize",onWikiWin);
+  window.removeEventListener("blur",onWikiWinBlur);
+  document.removeEventListener("mousedown",onWikiDocDown,true);
+  document.removeEventListener("focusout",onWikiFocusOut,true);
+  document.removeEventListener("selectionchange",onWikiSelChange);
+  if(wikiRaf){cancelAnimationFrame(wikiRaf);wikiRaf=0}
+}
+function attachWiki(el){
+  el.addEventListener("input",()=>onWikiInput(el));
+  el.addEventListener("keydown",e=>{wikiKey(e)});
+}
+async function startLinkNote(li){if(li.querySelector("input.linkadd"))return;const t=li.querySelector(".t");if(!t)return;const id=li.dataset.id,base=li.dataset.title,input=document.createElement("input");input.className="tagadd linkadd";input.setAttribute("list","note-names");input.placeholder="link/create a note…";t.appendChild(input);input.focus();const notes=await fetchNotes();$("#note-names").innerHTML=notes.map(n=>`<option value="${esc(n.replace(/\.md$/i,""))}"></option>`).join("");let done=false;const finish=async save=>{if(done)return;done=true;const v=input.value.trim().replace(/^\[\[|\]\]$/g,"").replace(/\.md$/i,"");render(current);if(!save||!v)return;const list=await fetchNotes(),norm=s=>s.replace(/\.md$/i,"").toLowerCase(),exists=list.some(n=>norm(n)===v.toLowerCase()||norm(n.split("/").pop())===v.toLowerCase());if(!exists){try{await api("/api/notes/create",{method:"POST",body:JSON.stringify({name:v})});noteCache=null;showNotice(`Created note “${v}” in your vault.`,{info:true})}catch(e){handleError(e)}}act("editTitle",{id,title:base+" [["+v+"]]"})};input.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();finish(true)}else if(e.key==="Escape"){e.preventDefault();finish(false)}};input.onblur=()=>finish(true)}
+function startAddTag(li){if(li.querySelector("input.tagadd"))return;const t=li.querySelector(".t");if(!t)return;const id=li.dataset.id,base=li.dataset.title,input=document.createElement("input");input.className="tagadd";input.placeholder="tag…";t.appendChild(input);input.focus();let done=false;const finish=save=>{if(done)return;done=true;const v=input.value.trim().replace(/^#+/,"");render(current);if(save&&v)act("editTitle",{id,title:base+" #"+v})};input.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();finish(true)}else if(e.key==="Escape"){e.preventDefault();finish(false)}};input.onblur=()=>finish(true)}
+
+const PRIOS=[{k:"urgent",l:"Urgent",c:"var(--urgent)"},{k:"today",l:"Today",c:"var(--today)"},{k:"normal",l:"Normal",c:"var(--normal)"}];let pi=0;function prio(){const p=PRIOS[pi];$("#qa-prio").textContent=p.l;$("#qa-prio").style.setProperty("--qc",p.c)}$("#qa-prio").onclick=()=>{pi=(pi+1)%PRIOS.length;prio()};prio();
+const DUP_STOP=new Set(["the","and","for","with","from","this","that","your","you","are","was","get","got","new","now","out","its"]);
+function dupToks(t){return [...new Set(String(t).toLowerCase().replace(/#[\w/-]+/g," ").replace(/[^a-z0-9\s]/g," ").split(/\s+/).filter(w=>w.length>=3&&!DUP_STOP.has(w)))]}
+function dupScore(a,b){const A=dupToks(a),B=dupToks(b);if(!A.length||!B.length)return 0;const bs=new Set(B);let inter=0;for(const w of A)if(bs.has(w))inter++;if(!inter)return 0;const overlap=inter/Math.min(A.length,B.length),jac=inter/(A.length+B.length-inter);return Math.max(overlap*0.92,jac)}
+function findDup(title){let best=null;for(const bucket of["urgent","normal","top5"])for(const it of(current?.[bucket]||[])){const s=dupScore(title,it.title);if(s>=0.67&&(!best||s>best.score))best={item:it,bucket,score:s}}return best}
+function hideDup(){const d=$("#dupwarn");d.hidden=true;d.innerHTML=""}
+function doAdd(title,p){hideDup();$("#qa-input").value="";act("add",{title,today:p.k==="today",bucket:p.k==="normal"?"normal":"urgent"})}
+function showDupPrompt(title,p,dup){const d=$("#dupwarn");d.hidden=false;d.innerHTML=`<div class="dw-top">↔ This may already be on your list</div><div class="dw-body">Adding: <strong>${esc(title)}</strong><br>Similar to: <strong>${esc(dup.item.title)}</strong> <span class="dw-loc">· ${dup.bucket}</span></div><div class="dw-acts"><button class="mini primary" id="dw-add">Add anyway</button><button class="mini" id="dw-ai">Let the assistant reconcile</button><button class="mini" id="dw-cancel">Cancel</button></div>`;$("#dw-add").onclick=()=>doAdd(title,p);$("#dw-cancel").onclick=hideDup;$("#dw-ai").onclick=()=>{hideDup();$("#qa-input").value="";chat(`I want to add a todo: "${title}". It looks similar to "${dup.item.title}" (id ${dup.item.id}) in ${dup.bucket}. If it's really a duplicate, don't add it and say so. Otherwise add it — and if the two would be clearer merged or simplified into one item, do that instead.`,`Reconcile "${title}" with "${dup.item.title}"?`)}}
+$("#quickadd").onsubmit=e=>{e.preventDefault();const input=$("#qa-input"),title=input.value.trim();if(!title)return;const p=PRIOS[pi];const dup=findDup(title);if(dup)showDupPrompt(title,p,dup);else doAdd(title,p)};
+$$('[data-add]').forEach(f=>f.onsubmit=e=>{e.preventDefault();const input=f.querySelector("input"),text=input.value.trim();if(text){input.value="";act(f.dataset.add,{text})}});
+async function rejectChange(key){try{render((await api("/api/reject-change",{method:"POST",body:JSON.stringify({key})})).model)}catch(e){handleError(e)}}
+async function approveChange(key){try{const r=await api("/api/approve-change",{method:"POST",body:JSON.stringify({key})});render(r.model);flashItems(r.flash);showActivity(r.activity)}catch(e){handleError(e)}}
+document.body.addEventListener("click",e=>{const ap=e.target.closest("[data-approve]");if(ap){approveChange(ap.dataset.approve);return}const rj=e.target.closest("[data-reject]");if(rj){rejectChange(rj.dataset.reject);return}const rm=e.target.closest("[data-doc-remove]");if(rm){const n=rm.dataset.docRemove;if(confirm(`Remove "${n}"? It moves to the vault's .bigrocks/trash so you can recover it.`))removeDoc(n);return}const b=e.target.closest("[data-line-act]");if(b)act(b.dataset.lineAct,{index:Number(b.dataset.index)})});
+$("#attach-doc").onclick=()=>$("#doc-file").click();
+$("#doc-file").onchange=async e=>{const files=[...e.target.files];e.target.value="";for(const f of files)await uploadDoc(f)};
+(()=>{const dc=$("#docs-card");if(!dc)return;dc.addEventListener("dragover",e=>{e.preventDefault();dc.classList.add("dropping")});dc.addEventListener("dragleave",e=>{if(!dc.contains(e.relatedTarget))dc.classList.remove("dropping")});dc.addEventListener("drop",async e=>{e.preventDefault();dc.classList.remove("dropping");for(const f of[...e.dataTransfer.files])await uploadDoc(f)})})();
+
+// --- Goals editor v2: direct manipulation over the markdown (one surface) -----
+const GCOLORS=["#3973DC","#2F9461","#2597A0","#D6536D","#795DB5","#C8872F"];
+let goalUnits=null,goalSaveTimer=null,goalMode="visual",geDrag=null;
+const geHeaderText=s=>{if(s.header==null)return"";const m=s.header.match(/^\s*\*\*(.+?)\*\*(.*)$/);return m?(m[1]+m[2]).trim():s.header.trim()};
+const geBulletPrefix=raw=>{const m=raw.match(/^(\s*[-*]\s+)/);return m?m[1]:"- "};
+const geBulletText=raw=>raw.replace(/^(\s*[-*]\s+)/,"");
+const linksOfClient=t=>{const o=[];let m;WIKI.lastIndex=0;while((m=WIKI.exec(t)))o.push(m[1].split("#")[0].trim());return o};
+// Parse the goals rawLines into units (headers, bullets, and "attached" lines —
+// prose/sub-bullets/blanks bound to the bullet above, travelling with it). A
+// no-edit round-trip serializes byte-identical (the safety invariant).
+function parseGoals(lines){
+  const preamble=[],sections=[];let cur=null,b=null;
+  const isH=l=>/^\s*\*\*(.+?)\*\*(.*)$/.test(l),isB=l=>/^\s*[-*]\s+/.test(l);
+  for(const line of lines||[]){
+    if(isH(line)){cur={header:line,pre:[],bullets:[],post:[]};sections.push(cur);b=null}
+    else if(isB(line)){if(!cur){cur={header:null,pre:[],bullets:[],post:[]};sections.push(cur)}b={raw:line,attached:[]};cur.bullets.push(b)}
+    else{if(b)b.attached.push(line);else if(cur)cur.pre.push(line);else preamble.push(line)}
+  }
+  for(const s of sections){const sink=s.bullets.length?s.bullets[s.bullets.length-1].attached:s.pre;while(sink.length&&sink[sink.length-1].trim()==="")s.post.unshift(sink.pop())}
+  return {preamble,sections};
+}
+function serializeGoals(g){const out=[...g.preamble];for(const s of g.sections){if(s.header!=null)out.push(s.header);out.push(...s.pre);for(const b of s.bullets){out.push(b.raw);out.push(...b.attached)}out.push(...s.post)}return out.join("\n")}
+function geStatus(t){$("#goals-editor-status").textContent=t}
+function geAnnounce(m){$("#ge-live").textContent=m}
+function geStats(){let g=0;for(const s of goalUnits.sections)g+=s.bullets.length;return `${g} goal${g===1?"":"s"} in ${goalUnits.sections.length} section${goalUnits.sections.length===1?"":"s"}`}
+function scheduleGoalSave(){geStatus("Saving…");clearTimeout(goalSaveTimer);goalSaveTimer=setTimeout(saveGoalsNow,800)}
+async function saveGoalsNow(){clearTimeout(goalSaveTimer);if(!goalUnits)return;try{const r=await api("/api/goals",{method:"POST",body:JSON.stringify({content:serializeGoals(goalUnits)})});current=r.model;renderGoals(current.goals||[]);renderTags(current.tags||[]);geStatus("Saved ✓")}catch(e){geStatus("Not saved");handleError(e)}}
+function geCommit(){renderGoalEditor();scheduleGoalSave()}
+function renderGoalEditor(){
+  const host=$("#goals-arrange"),ta=$("#goals-ta");
+  if(goalMode==="markdown"){host.hidden=true;ta.hidden=false;ta.value=serializeGoals(goalUnits);$("#goals-mode").textContent="Visual view";$("#goals-subhead").textContent="Raw Markdown — ⌥↑/⌥↓ don't apply here";requestAnimationFrame(()=>ta.focus());return}
+  ta.hidden=true;host.hidden=false;$("#goals-mode").textContent="Markdown";$("#goals-subhead").textContent="Drag to reorder · click a goal to edit · ⌥↑ ⌥↓ to move";
+  host.innerHTML=goalUnits.sections.map((s,si)=>{
+    const head=s.header==null?`<span class="ge-htext ge-untitled">Goals</span>`:`<span class="ge-htext" data-ehead="${si}">${titleLinks(geHeaderText(s),false)||"Untitled"}</span>`;
+    const bullets=s.bullets.map((b,bi)=>`<li class="ge-b" data-sec="${si}" data-bi="${bi}" tabindex="0"><span class="draghandle" draggable="true" title="Drag to reorder"></span><span class="ge-t" data-eb="${si}:${bi}">${titleLinks(geBulletText(b.raw),true)}</span><span class="ge-acts"><button class="ge-link" data-glink="${si}:${bi}" title="Link a note">🔗</button></span></li>`).join("");
+    return `<section class="ge-group" data-sec="${si}" style="--gc:${GCOLORS[si%GCOLORS.length]}"><div class="ge-head">${head}</div><ul class="ge-bullets" data-sec="${si}">${bullets}<li class="ge-add" data-gadd="${si}">+ Add a goal…</li></ul></section>`;
+  }).join("")+`<button class="ge-addsec" data-gaddsec>+ New section…</button>`;
+  geStatus(geStats());
+}
+// Dock the editor over the left+middle columns, leaving the chat column visible
+// and interactive to its right (not a full-screen modal).
+function dockGoals(){const chat=$("#log")?.closest(".col"),m=$("main");if(!chat||!m)return;const cr=chat.getBoundingClientRect(),mr=m.getBoundingClientRect();const R=document.documentElement.style;R.setProperty("--gtop",Math.round(mr.top)+"px");R.setProperty("--gright",Math.round(innerWidth-cr.left+10)+"px")}
+function openGoalsEditor(){
+  if(current?.dirty){showNotice("Apply or discard the assistant's pending draft before editing goals.",{sticky:true});return}
+  goalMode="visual";goalUnits=parseGoals(current?.goals||[]);
+  const modal=$("#goals-editor-modal");modal.hidden=false;modal.classList.add("docked");dockGoals();renderGoalEditor();
+  addEventListener("resize",dockGoals);
+}
+function closeGoalsEditor(){if(goalMode==="markdown")goalUnits=parseGoals($("#goals-ta").value.replace(/\r/g,"").split("\n"));saveGoalsNow();const modal=$("#goals-editor-modal");modal.hidden=true;modal.classList.remove("docked");removeEventListener("resize",dockGoals)}
+function geToggleMode(){if(goalMode==="visual")goalMode="markdown";else{goalUnits=parseGoals($("#goals-ta").value.replace(/\r/g,"").split("\n"));goalMode="visual";scheduleGoalSave()}renderGoalEditor()}
+// One inline input over an anchor element; Enter commits, Esc reverts, blur commits.
+function geInline(anchor,value,withWiki,onCommit,onCancel){
+  const input=document.createElement("input");input.className="ge-input";input.value=value||"";
+  anchor.replaceWith(input);input.focus();try{input.setSelectionRange(0,input.value.length)}catch{}
+  if(withWiki)input.addEventListener("input",()=>onWikiInput(input));
+  let done=false;const finish=save=>{if(done)return;done=true;hideWiki();if(save)onCommit(input.value);else{(onCancel||renderGoalEditor)()}};
+  input.onkeydown=e=>{if(withWiki&&wikiKey(e))return;if(e.key==="Enter"){e.preventDefault();finish(true)}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();finish(false)}};
+  input.onblur=()=>setTimeout(()=>finish(true),120);
+  return input;
+}
+function geEditBullet(key){const [si,bi]=key.split(":").map(Number);const b=goalUnits.sections[si]?.bullets[bi];if(!b)return;const sp=document.querySelector(`.ge-t[data-eb="${si}:${bi}"]`);if(!sp)return;
+  geInline(sp,geBulletText(b.raw),true,v=>{v=v.trim();if(!v){goalUnits.sections[si].bullets.splice(bi,1);geAnnounce("Deleted goal")}else b.raw=geBulletPrefix(b.raw)+v;geCommit()});}
+function geEditHeader(si){const s=goalUnits.sections[si];if(!s||s.header==null)return;const sp=document.querySelector(`.ge-htext[data-ehead="${si}"]`);if(!sp)return;
+  geInline(sp,geHeaderText(s),false,v=>{v=v.trim();if(v)s.header="**"+v+"**";geCommit()});}
+function geDelBullet(key){const [si,bi]=key.split(":").map(Number);if(!goalUnits.sections[si]?.bullets[bi])return;goalUnits.sections[si].bullets.splice(bi,1);geAnnounce("Deleted goal");geCommit()}
+function geUnlink(li,name){if(!li)return;const si=+li.dataset.sec,bi=+li.dataset.bi,b=goalUnits.sections[si]?.bullets[bi];if(!b)return;const re=new RegExp("\\s*\\[\\["+name.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(?:\\|[^\\]]*)?(?:#[^\\]]*)?\\]\\]","i");b.raw=b.raw.replace(re,"").replace(/\s+$/,"");geCommit()}
+function geAddBullet(si){const ghost=document.querySelector(`.ge-add[data-gadd="${si}"]`);if(!ghost)return;
+  const input=document.createElement("input");input.className="ge-input";input.placeholder="New goal…";ghost.replaceWith(input);input.focus();
+  input.addEventListener("input",()=>onWikiInput(input));
+  let done=false;const close=()=>{if(done)return;done=true;hideWiki();renderGoalEditor()};
+  input.onkeydown=e=>{if(wikiKey(e))return;if(e.key==="Enter"){e.preventDefault();const v=input.value.trim();hideWiki();if(!v){close();return}done=true;goalUnits.sections[si].bullets.push({raw:"- "+v,attached:[]});geAnnounce("Added goal");renderGoalEditor();scheduleGoalSave();geAddBullet(si)}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();close()}};
+  input.onblur=()=>setTimeout(close,120);}
+function geAddSection(){const ghost=document.querySelector(".ge-addsec");if(!ghost)return;
+  const input=document.createElement("input");input.className="ge-input";input.placeholder="New section name…";ghost.replaceWith(input);input.focus();
+  let done=false;const close=()=>{if(done)return;done=true;renderGoalEditor()};
+  input.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();const v=input.value.trim();if(v){goalUnits.sections.push({header:"**"+v+"**",pre:[],bullets:[],post:[]});geAnnounce("Added section");geCommit()}else close()}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();close()}};
+  input.onblur=()=>setTimeout(close,120);}
+// The 🔗 button seeds a `[[` at the end of the goal and opens the same ranked
+// note picker as typing `[[` inline — pick an existing note, or a new name
+// creates it. Own input with an explicit caret right after `[[` (no select-all).
+function geLinkBullet(key){const [si,bi]=key.split(":").map(Number);const b=goalUnits.sections[si]?.bullets[bi];if(!b)return;
+  const sp=document.querySelector(`.ge-t[data-eb="${si}:${bi}"]`);if(!sp)return;
+  const base=geBulletText(b.raw).replace(/\s+$/,""),seed=base+(base?" ":"")+"[[";
+  const input=document.createElement("input");input.className="ge-input";input.value=seed;
+  sp.replaceWith(input);input.focus();input.setSelectionRange(seed.length,seed.length);
+  input.addEventListener("input",()=>onWikiInput(input));
+  let done=false;const finish=async save=>{if(done)return;done=true;hideWiki();
+    if(!save){renderGoalEditor();return}
+    let v=input.value.replace(/\[\[\s*([^\]]*?)\s*$/,(m,n)=>n?"[["+n+"]]":"").replace(/\s+$/,"").trim();
+    const list=await fetchNotes(),norm=s=>s.replace(/\.md$/i,"").toLowerCase();
+    for(const nm of linksOfClient(v)){
+      if(!list.some(n=>norm(n)===nm.toLowerCase()||norm(n.split("/").pop())===nm.toLowerCase())){
+        try{await api("/api/notes/create",{method:"POST",body:JSON.stringify({name:nm})});noteCache=null;showNotice(`Created note “${nm}” in your vault.`,{info:true})}catch(e){handleError(e)}
+      }
+    }
+    b.raw=geBulletPrefix(b.raw)+v;geCommit();
+  };
+  input.onkeydown=e=>{if(wikiKey(e))return;if(e.key==="Enter"){e.preventDefault();finish(true)}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();finish(false)}};
+  input.onblur=()=>setTimeout(()=>finish(true),120);
+  onWikiInput(input);
+}
+function geClearDrop(){$$(".ge-b.drop-before,.ge-b.drop-after,.ge-bullets.drop-zone").forEach(el=>el.classList.remove("drop-before","drop-after","drop-zone"))}
+function geMoveBullet(si,bi,tsi,tbi){const src=goalUnits.sections[si],[b]=src.bullets.splice(bi,1),dst=goalUnits.sections[tsi];let idx=tbi;if(si===tsi&&bi<tbi)idx--;idx=Math.max(0,Math.min(idx,dst.bullets.length));dst.bullets.splice(idx,0,b);geAnnounce(`Moved to ${idx+1} of ${dst.bullets.length} in ${geHeaderText(dst)||"Goals"}`);geCommit()}
+function geMoveKb(si,bi,up){const S=goalUnits.sections,s=S[si];
+  if(up){if(bi>0){[s.bullets[bi-1],s.bullets[bi]]=[s.bullets[bi],s.bullets[bi-1]];geCommit();return{si,bi:bi-1}}if(si>0){const[b]=s.bullets.splice(bi,1);S[si-1].bullets.push(b);geCommit();return{si:si-1,bi:S[si-1].bullets.length-1}}return null}
+  if(bi<s.bullets.length-1){[s.bullets[bi+1],s.bullets[bi]]=[s.bullets[bi],s.bullets[bi+1]];geCommit();return{si,bi:bi+1}}if(si<S.length-1){const[b]=s.bullets.splice(bi,1);S[si+1].bullets.unshift(b);geCommit();return{si:si+1,bi:0}}return null}
+const ge=$("#goals-arrange");
+ge.addEventListener("click",e=>{let el;
+  if((el=e.target.closest(".linkx"))){e.stopPropagation();geUnlink(el.closest(".ge-b"),el.dataset.link);return}
+  if((el=e.target.closest("[data-glink]"))){geLinkBullet(el.dataset.glink);return}
+  if((el=e.target.closest("[data-gdel]"))){geDelBullet(el.dataset.gdel);return}
+  if((el=e.target.closest("[data-gadd]"))){geAddBullet(+el.dataset.gadd);return}
+  if((el=e.target.closest("[data-gaddsec]"))){geAddSection();return}
+  if((el=e.target.closest("[data-ehead]"))){geEditHeader(+el.dataset.ehead);return}
+  if((el=e.target.closest("[data-eb]"))){geEditBullet(el.dataset.eb);return}});
+ge.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&!e.target.closest("input")){e.preventDefault();closeGoalsEditor();return}
+  if(!e.altKey||(e.key!=="ArrowUp"&&e.key!=="ArrowDown"))return;const li=e.target.closest(".ge-b");if(!li)return;e.preventDefault();
+  const r=geMoveKb(+li.dataset.sec,+li.dataset.bi,e.key==="ArrowUp");if(r)requestAnimationFrame(()=>document.querySelector(`.ge-b[data-sec="${r.si}"][data-bi="${r.bi}"]`)?.focus())});
+ge.addEventListener("dragstart",e=>{const h=e.target.closest(".draghandle");if(!h)return;const li=h.closest(".ge-b");geDrag={si:+li.dataset.sec,bi:+li.dataset.bi};li.classList.add("dragging");e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain","g")});
+ge.addEventListener("dragover",e=>{if(!geDrag)return;const li=e.target.closest(".ge-b"),ul=e.target.closest(".ge-bullets");if(!ul)return;e.preventDefault();geClearDrop();if(li&&!(+li.dataset.sec===geDrag.si&&+li.dataset.bi===geDrag.bi)){const r=li.getBoundingClientRect();li.classList.add(e.clientY<r.top+r.height/2?"drop-before":"drop-after")}else if(!li)ul.classList.add("drop-zone");e.dataTransfer.dropEffect="move"});
+ge.addEventListener("drop",e=>{if(!geDrag)return;const li=e.target.closest(".ge-b"),ul=e.target.closest(".ge-bullets");if(!ul){geClearDrop();geDrag=null;return}e.preventDefault();const tsi=+ul.dataset.sec;let tbi;if(li){const r=li.getBoundingClientRect();tbi=+li.dataset.bi+(e.clientY<r.top+r.height/2?0:1)}else tbi=goalUnits.sections[tsi].bullets.length;const d=geDrag;geClearDrop();geDrag=null;geMoveBullet(d.si,d.bi,tsi,tbi)});
+ge.addEventListener("dragend",()=>{geClearDrop();document.querySelector(".ge-b.dragging")?.classList.remove("dragging");geDrag=null});
+$("#edit-goals").onclick=openGoalsEditor;$("#goals-done").onclick=closeGoalsEditor;$("#goals-mode").onclick=geToggleMode;
+$("#goals-ta").oninput=()=>{if(goalMode==="markdown"){goalUnits=parseGoals($("#goals-ta").value.replace(/\r/g,"").split("\n"));scheduleGoalSave()}onWikiInput($("#goals-ta"))};
+$("#goals-ta").onkeydown=e=>{if(wikiKey(e))return;if(e.key==="Escape"){e.preventDefault();closeGoalsEditor()}};
+async function openMemory(){try{const r=await api("/api/memory");$("#memory-view").innerHTML=(r.content&&r.content.trim())?mdRender(r.content):'<div class="empty">No memory yet — it fills in as you chat. Tell the assistant a lasting preference (e.g. "always keep my replies short") to seed it.</div>';$("#memory-path").textContent=r.path||"";$("#memory-modal").hidden=false}catch(e){handleError(e)}}
+$("#mem-btn").onclick=openMemory;$("#memory-close").onclick=()=>{$("#memory-modal").hidden=true};
+async function openVault(){try{const r=await api("/api/notes"),notes=r.notes||[],dir=r.dir||current?.vaultDir||"",name=dir.split("/").filter(Boolean).pop()||"";$("#vault-path").textContent=dir?"Vault folder: "+dir:"";let body;if(notes.length)body=`<p><strong>${notes.length}</strong> note${notes.length===1?"":"s"} the assistant can read (read-only):</p><ul>${notes.slice(0,500).map(n=>`<li>${esc(n)}</li>`).join("")}${notes.length>500?`<li>…and ${notes.length-500} more</li>`:""}</ul>`;else if(r.rootEntries>0)body=`<div class="empty"><strong>0 readable notes</strong>, but this folder has ${r.rootEntries} item${r.rootEntries===1?"":"s"}${r.subdirs?` (${r.subdirs} subfolder${r.subdirs===1?"":"s"})`:""}.<br><br>That usually means this folder <strong>isn't your Obsidian vault root</strong> — or the notes live here but aren't downloaded/synced yet (cloud "online-only"). Put your todo file in the vault's <strong>root folder</strong> and re-open it via File….</div>`;else if(r.dirError==="EPERM"||r.dirError==="EACCES")body=`<div class="empty">macOS is <strong>blocking access</strong> to this folder (${esc(r.dirError)}). Cloud folders like OneDrive/Dropbox under ~/Library/CloudStorage need permission: grant your <strong>Terminal Full Disk Access</strong> (System Settings → Privacy &amp; Security → Full Disk Access → add Terminal), then restart the app (Ctrl-C, sh run.sh).</div>`;else if(r.dirError==="ENOENT")body=`<div class="empty">That folder <strong>doesn't exist</strong> at this path (${esc(r.dirError)}) — the todo file isn't actually inside the vault, or the path differs. Re-open the todo file from the real vault root via File….</div>`;else body=`<div class="empty">This folder looks empty or unreadable${r.dirError?` (${esc(r.dirError)})`:""}. Move your todo file into your Obsidian vault's <strong>root folder</strong> and re-open it via File….</div>`;$("#vault-body").innerHTML=body;const link=$("#vault-obsidian");if(name){link.href="obsidian://open?vault="+encodeURIComponent(name);link.hidden=false}else link.hidden=true;$("#vault-modal").hidden=false}catch(e){handleError(e)}}
+$("#vault-btn").onclick=openVault;$("#vault-close").onclick=()=>{$("#vault-modal").hidden=true};
+const REVIEW_PROMPT=(d)=>`Let's do my weekly review (today is ${d}). Go step by step and conversationally — propose, don't bulk-change; wait for my go-ahead before applying sweeping edits.
+
+1. Read my Goals notepad and your memory notes first — frame the whole review around my Goals.
+2. Wins: call list_items for "completed" and give a short, specific recap of what I actually finished — group by #tag or theme, name the meaningful ones, and note which Goals they advanced (2–4 sentences, no stats dashboard).
+3. Last week's Top 5: for each, one line — done, carry over, or drop.
+4. De-stale: using age_days, surface the most stale items in Urgent and Normal, the oldest To Read links, and anything sitting in the Parked section (call list_items "parked"). For each, propose un-park, demote-to-Normal, move-to-Goals, or delete — name them exactly.
+5. Sync check (both directions): flag any Goal with no supporting todos, and any Urgent/Top 5 item that doesn't ladder up to a Goal. Ask what I want to do about each.
+6. Next week: propose a new Top 5, mapping each pick to the Goal it advances, and flag any Goal none of the five touch.
+7. Journal it: once we've decided, append a short entry to a note called "Weekly Reviews" (use append_to_note) — a "## ${d}" heading, then ~5 lines: what I finished, last Top 5's disposition (done/carried/dropped), the new Top 5, and one observation. A date is fine in this journal note; never put dates on todos.
+
+Keep it tight and skimmable. I'll tell you what to apply.`;
+const PLAN_PROMPT=(day)=>`It's ${day}. Help me plan today — propose which items I should make "Today".
+- Draw mainly from Urgent, and weight this week's Top 5 heavily — they're the week's big rocks. If it's Thursday or later, prioritize unfinished Top 5 first; the week is running out.
+- Favor items that advance one of my Goals (read them). Factor in age_days (things that keep slipping) and your memory notes about how I work.
+- Pick a realistic few, not the whole list. One line per pick on why.
+- Propose first; after I confirm, set them as Today.
+Keep it tight.`;
+const weekday=()=>{try{return new Date().toLocaleDateString(undefined,{weekday:"long"})}catch{return"today"}};
+const today=()=>{try{return new Date().toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric",year:"numeric"})}catch{return"today"}};
+$("#review-btn").onclick=()=>{if(!current?.configured)return;chat(REVIEW_PROMPT(today()),"Let's do my weekly review",{intent:"review"})};
+$("#tidy-btn").onclick=()=>{if(!current?.configured)return;clearChatContext();const i=$("#chatin");i.value="Help me clean up my vault";i.focus()};
+$("#undo-cleanup").onclick=async()=>{if(!current?.configured)return;try{const r=await api("/api/cleanup/undo",{method:"POST"});render(r.model);noteCache=null;addMsg("bot","↶ "+(r.done?`Cleanup undone — restored ${r.restored} note${r.restored===1?"":"s"} to where they were.`:`Undid ${r.restored}, but ${r.skipped} couldn't be restored automatically.`));if(!r.done)showNotice("Some notes couldn't be restored — they may have been edited or moved since. They're still in .bigrocks/trash and .bigrocks/cleanup.",{sticky:true})}catch(e){handleError(e)}};
+$("#plan-btn").onclick=()=>{if(!current?.configured)return;chat(PLAN_PROMPT(weekday()),"Plan my day",{intent:"plan"})};
+$("#urgent-guard").onclick=e=>{const b=e.target.closest("[data-ug]");if(!b)return;if(b.dataset.ug==="dismiss"){sessionStorage.setItem("ugDismiss","1");$("#urgent-guard").hidden=true}else{chat("Urgent is overloaded — help me tidy it. Propose which items to demote to Normal, move to Goals, or drop, weighing age_days and whether each advances a Goal. Propose only; I'll confirm.","Help me tidy Urgent",{intent:"tidy"})}};
+function addMsg(cls,text){const d=document.createElement("div");d.className="msg "+cls;d.textContent=text;$("#log").appendChild(d);$("#log").scrollTop=$("#log").scrollHeight;return d}
+let chatContext=null;
+function setChatContext(li){chatContext={id:li.dataset.id,title:li.dataset.title,bucket:li.dataset.section};$("#chat-context-title").textContent=chatContext.title;$("#chat-context").hidden=false;$("#chatin").placeholder="What should happen to this todo?";$("#chatin").focus()}
+function clearChatContext(){chatContext=null;$("#chat-context").hidden=true;$("#chatin").placeholder="Message the assistant…"}
+async function restoreChat(){try{const r=await api("/api/chat-history");if(!r.messages||!r.messages.length)return;const log=$("#log");log.innerHTML="";for(const m of r.messages){const d=document.createElement("div");d.className="msg "+(m.role==="you"?"you":"bot");if(m.role==="you")d.textContent=m.text;else d.innerHTML=mdRender(m.text);log.appendChild(d)}log.scrollTop=log.scrollHeight}catch{}}
+function goalsDiffMsg(before,after){const clean=a=>(a||[]).map(l=>l.replace(/\s+$/,"")).filter(l=>l.trim()),b=clean(before),a=clean(after),removed=b.filter(l=>!a.includes(l)),added=a.filter(l=>!b.includes(l));const strip=l=>l.replace(/^\s*[-*]\s+/,"");let h='<div class="gdiff"><div class="gdiff-t">◎ Goals — proposed changes</div>';if(!removed.length&&!added.length)h+='<div class="gdiff-none">Same items, reordered.</div>';else{h+=removed.map(l=>`<div class="gdiff-row gdiff-r">− ${mdInline(esc(strip(l)))}</div>`).join("");h+=added.map(l=>`<div class="gdiff-row gdiff-a">+ ${mdInline(esc(strip(l)))}</div>`).join("")}h+='</div>';const d=document.createElement("div");d.className="msg bot gdiff-msg";d.innerHTML=h;$("#log").appendChild(d);$("#log").scrollTop=$("#log").scrollHeight}
+async function chat(message,visibleMessage=message,opts={}){
+  addMsg("you",visibleMessage);
+  const log=$("#log"),p=document.createElement("div");p.className="msg bot thinking";
+  p.innerHTML='<div class="tierchip" hidden></div><div class="muse"></div><div class="steps"><div class="step active">Thinking…</div></div><div class="stream"></div>';
+  log.appendChild(p);const follow=()=>{log.scrollTop=log.scrollHeight};follow();
+  const chipEl=p.querySelector(".tierchip"),museEl=p.querySelector(".muse"),stepsEl=p.querySelector(".steps"),streamEl=p.querySelector(".stream");
+  const doneLast=()=>{const a=stepsEl.querySelector(".step.active");if(a){a.classList.remove("active");a.classList.add("done")}};
+  let streamText="",finalModel=null,finalReply="",finalFlash=null,finalActivity=null,errored=null;
+  const onStep=d=>{
+    if(d.kind==="tool"){doneLast();const s=document.createElement("div");s.className="step active";s.textContent=d.label;stepsEl.appendChild(s);follow()}
+    else if(d.kind==="thinking"){museEl.textContent=String(d.text||"").trim().slice(-220);follow()}
+    else if(d.kind==="text"){doneLast();streamText+=d.text;streamEl.textContent=streamText;follow()}
+  };
+  $("#chat-send").hidden=true;$("#chat-cancel").hidden=false;
+  try{
+    const res=await fetch("/api/chat",{method:"POST",headers:{"content-type":"application/json",accept:"text/event-stream"},body:JSON.stringify({message,model:$("#model-select")?.value||undefined,effort:$("#effort-select")?.value||undefined,context:opts.context||undefined,intent:opts.intent||undefined})});
+    if(!res.ok){let b={};try{b=await res.json()}catch{}throw Object.assign(new Error(b.error||`Request failed (${res.status})`),{body:b,status:res.status})}
+    if(!(res.headers.get("content-type")||"").includes("text/event-stream")){const b=await res.json();finalModel=b.model;finalReply=b.reply;finalFlash=b.flash;finalActivity=b.activity}
+    else{const reader=res.body.getReader(),dec=new TextDecoder();let buf="";
+      for(;;){const {value,done}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});
+        let i;while((i=buf.indexOf("\n\n"))>=0){const raw=buf.slice(0,i);buf=buf.slice(i+2);let ev="message",data="";
+          for(const line of raw.split("\n")){if(line.startsWith("event:"))ev=line.slice(6).trim();else if(line.startsWith("data:"))data+=line.slice(5).replace(/^ /,"")}
+          let d={};try{d=JSON.parse(data)}catch{}
+          if(ev==="start"){if(d.model){chipEl.hidden=false;chipEl.textContent=(d.tier?"Auto → ":"")+d.model.charAt(0).toUpperCase()+d.model.slice(1)+(d.reason?" · "+d.reason:"")}}else if(ev==="step")onStep(d);else if(ev==="done"){finalModel=d.model;finalReply=d.reply;finalFlash=d.flash;finalActivity=d.activity}else if(ev==="error")errored=new Error(d.error||"The assistant stopped.")}}}
+    if(errored)throw errored;
+    p.className="msg bot";p.innerHTML=mdRender(finalReply||streamText||"Done.");follow();
+    if(finalModel){render(finalModel);if(finalModel.goalsChanged)goalsDiffMsg(finalModel.goalsBefore,finalModel.goals);flashItems(finalFlash);showActivity(finalActivity)}
+  }catch(e){p.className="msg bot danger";p.textContent=e.message||String(e);handleError(e)}
+  finally{$("#chat-send").hidden=false;$("#chat-cancel").hidden=true}
+}
+$("#chat-context-clear").onclick=clearChatContext;
+$("#chatform").onsubmit=e=>{e.preventDefault();const i=$("#chatin"),v=i.value.trim();if(!v)return;i.value="";const ctx=chatContext,message=ctx?`Regarding the todo with id ${ctx.id}, titled "${ctx.title}", currently shown in ${ctx.bucket}: ${v}`:v;/* The pin is scoped to ONE question. Clearing it on send stops the next, unrelated message from silently still being about that todo — and stops the router from treating it as a pinned single-item edit. This message still carries the context: chat() reads opts.context, not the global. */if(ctx)clearChatContext();chat(message,v,ctx?{context:{id:ctx.id,title:ctx.title,bucket:ctx.bucket}}:{})};
+$("#chat-cancel").onclick=async()=>{try{await api("/api/cancel",{method:"POST"});showNotice("Cancelling the assistant…",{info:true})}catch(e){handleError(e)}};
+$("#apply").onclick=async()=>{try{const r=await api("/api/apply",{method:"POST"});render(r.model);flashItems(r.flash);noteCache=null;const notes=r.notes||[],wrote=notes.filter(n=>n&&n.path&&!n.moved&&!n.trashed&&!n.skipped&&!n.error),moved=notes.filter(n=>n&&n.moved),trashed=notes.filter(n=>n&&n.trashed),skipped=notes.filter(n=>n&&n.skipped),failed=notes.filter(n=>n&&n.error&&!n.skipped),parts=[];if(wrote.length)parts.push("wrote "+wrote.map(n=>n.path).join(", "));if(moved.length)parts.push(`moved ${moved.length} note${moved.length===1?"":"s"}`);if(trashed.length)parts.push(`trashed ${trashed.length} note${trashed.length===1?"":"s"} (recoverable)`);addMsg("bot","✓ Applied to your file."+(parts.length?" "+parts.join("; ")+".":""));if(skipped.length)showNotice(`${skipped.length} change${skipped.length===1?"":"s"} skipped — the file changed on disk since it was proposed. Ask the assistant again.`,{sticky:true});if(failed.length)showNotice("Some note edits failed: "+failed.map(n=>n.error).join("; "),{sticky:true});if(!skipped.length&&!failed.length)showActivity(r.activity)}catch(e){handleError(e)}};$("#discard").onclick=async()=>{try{render((await api("/api/discard",{method:"POST"})).model);addMsg("bot","Draft discarded.")}catch(e){handleError(e)}};
+$("#undo").onclick=async()=>{if(current?.dirty&&!confirm("Undo reverts the last change saved to your file, and will drop the pending assistant draft. Continue?"))return;try{const r=await api("/api/undo",{method:"POST"});render(r.model);addMsg("bot","↶ Reverted the last saved change.")}catch(e){handleError(e)}};
+
+function rememberAndRender(r){localStorage.setItem("todoDocPath",r.model.todoDocPath);render(r.model);restoreChat();showNotice("Todo file connected.",{info:true})}
+function showSetup(){if(current?.todoDocPath)$("#setup-path").value=current.todoDocPath;$("#setup").hidden=false}$("#choose").onclick=showSetup;$("#setup-cancel").onclick=()=>{if(current?.configured)$("#setup").hidden=true};
+$$('[data-pick]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{rememberAndRender(await api("/api/pick-file",{method:"POST",body:JSON.stringify({mode:b.dataset.pick}),timeout:120000}))}catch(e){if(e.body?.code!=="PICKER_CANCELLED")handleError(e)}finally{b.disabled=false}});
+$("#setup-manual").onclick=async()=>{try{rememberAndRender(await api("/api/config",{method:"POST",body:JSON.stringify({path:$("#setup-path").value,mode:"open"})}))}catch(e){handleError(e)}};
+function resizer(id,name,def,min,max,invert){const g=$("#"+id),saved=localStorage.getItem(name);if(saved)document.documentElement.style.setProperty(name,saved);g.onmousedown=e=>{e.preventDefault();const x=e.clientX,w=parseInt(getComputedStyle(document.documentElement).getPropertyValue(name))||def;const move=ev=>document.documentElement.style.setProperty(name,Math.max(min,Math.min(max,w+(invert?x-ev.clientX:ev.clientX-x)))+"px");const up=()=>{document.removeEventListener("mousemove",move);document.removeEventListener("mouseup",up);localStorage.setItem(name,getComputedStyle(document.documentElement).getPropertyValue(name).trim())};document.addEventListener("mousemove",move);document.addEventListener("mouseup",up)}}resizer("gl","--c1",300,210,620,false);resizer("gr","--c2",360,260,680,true);
+attachWiki($("#chatin"));attachWiki($("#qa-input"));
+// Model + effort picker — remembered between sessions. Defaults to Auto, which
+// routes each message to the right model (fast Haiku for quick edits, Opus for
+// the weekly review) — see router.mjs. Pin a model to override. One-time
+// migration flips an older saved default to Auto; after that your pick sticks.
+(()=>{const m=$("#model-select"),e=$("#effort-select");if(!m||!e)return;if(!localStorage.getItem("brf-model-default-v3")){localStorage.setItem("brf-model","auto");localStorage.setItem("brf-model-default-v3","1")}m.value=localStorage.getItem("brf-model")||"auto";e.value=localStorage.getItem("brf-effort")||"";m.onchange=()=>localStorage.setItem("brf-model",m.value);e.onchange=()=>localStorage.setItem("brf-effort",e.value)})();
+load();restoreChat();setInterval(()=>load(true),3000);
+</script>
+</body>
+</html>

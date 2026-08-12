@@ -1,0 +1,17 @@
+{
+  "name": "bigrocks-service",
+  "version": "0.29.1",
+  "private": true,
+  "type": "module",
+  "description": "Big Rocks First — a local, agent-assisted service over a markdown/Obsidian todo file.",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "BIGROCKS_STATE_DIR=\"$(mktemp -d)\" node --test test/*.test.mjs",
+    "validate": "node scripts/validate-real-file.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.207",
+    "unpdf": "^1.6.2",
+    "zod": "^4.4.3"
+  }
+}
